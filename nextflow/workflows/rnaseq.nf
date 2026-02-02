@@ -8,11 +8,11 @@ nextflow.enable.dsl=2        // Enable DSL2 syntax (modern Nextflow with explici
 
 include { VALIDATE_INPUT }               from '../modules/validate_input.nf'
 include { FASTQC as FASTQC_RAW }         from '../modules/fastqc.nf'
-include { FASTQC as FASTQC_TRIMMED }    from '../modules/fastqc.nf'     // Reusable process with alias
+include { FASTQC as FASTQC_TRIMMED }     from '../modules/fastqc.nf'     // Reusable process with alias
 include { STAR_INDEX }                   from '../modules/star_index.nf'
-include { EXTRACT_GENTROME }               from '../modules/salmon_index.nf'
-include { SALMON_INDEX }                   from '../modules/salmon_index.nf'
-include { RSEQC_BED }                   from '../modules/rseqc_bed.nf'
+include { EXTRACT_GENTROME }             from '../modules/salmon_index.nf'
+include { SALMON_INDEX }                 from '../modules/salmon_index.nf'
+include { RSEQC_BED }                    from '../modules/rseqc_bed.nf'
 include { SALMON_QUANT }                 from '../modules/salmon_quant.nf'
 include { STAR_ALIGN }                   from '../modules/star_align.nf'
 include { SAMBAMBA_PREP }                from '../modules/sambamba_prep.nf'
@@ -67,8 +67,8 @@ workflow RNASEQ {
     // Validates naming conventions and creates organized sample channels
 
     VALIDATE_INPUT(params.raw_fastq_dir())
-    mode_ch         = VALIDATE_INPUT.out.mode.collect()         // [mode] → collected for RSeQC
-    sample_fastq_ch = VALIDATE_INPUT.out.grouped_samples_ch        // [sample_id, [R1, R2]]
+    mode_ch         = VALIDATE_INPUT.out.mode.collect()          // [mode] → collected for RSeQC
+    sample_fastq_ch = VALIDATE_INPUT.out.grouped_samples_ch      // [sample_id, [R1, R2]]
     sample_ch        = VALIDATE_INPUT.out.sample_names_ch        // [sample_id]
 
     // =====================================================================================

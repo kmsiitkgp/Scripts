@@ -21,7 +21,7 @@
 # PROJECT METADATA
 # -----------------------------------------------------------------------------------------
 
-project: "BBN_C57BL6"                  # Project name (used in output directory naming)
+project: "BBN_C57BL6"             # Project name (used in output directory naming)
 expt: "scRNASeq"                  # Experiment type (determines output structure)
 assay: "RNA"                      # Assay type (metadata only)
 
@@ -88,7 +88,7 @@ cache_dir: "/hpc/home/kailasamms/NGSTools/singularity_cache"
 # =========================================================================================
 
 cellranger_count:
-  tenx_cloud_token_path: "/hpc/home/kailasamms/NGSTools/cellranger_index_dir/tenx_token.txt"
+  tenx_cloud_token_path: "tenx_token.txt"
   chemistry: "auto"                         # Novel junction discovery (2-5% better mapping)
   cell_annotation_model: "auto"             # ReadLength - 1 (100 works for 75-150bp reads)
   include_introns: "true"

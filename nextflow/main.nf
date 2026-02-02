@@ -4,7 +4,7 @@ nextflow.enable.dsl=2        // Enable DSL2 syntax (modern Nextflow with explici
 // ===============================
 // INCLUDE WORKFLOWS
 // ===============================
-include { RNASEQ }         from './workflows/rnaseq'
+include { RNASEQ }       from './workflows/rnaseq'
 include { SCRNASEQ }     from './workflows/scrnaseq'
 
 // ===============================

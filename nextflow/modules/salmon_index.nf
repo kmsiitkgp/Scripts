@@ -21,9 +21,9 @@ process EXTRACT_GENTROME {
     path(ref_gtf)    // Gene annotation GTF
 
     output:
-    path("decoy.txt"),                             emit: decoy      // Chromosome names for decoy marking
+    path("decoy.txt"),                          emit: decoy      // Chromosome names for decoy marking
     path("gentrome.fa"),                        emit: gentrome   // Combined transcriptome + genome
-    path("EXTRACT_GENTROME.error.log"),            emit: log        // Process log
+    path("EXTRACT_GENTROME.error.log"),         emit: error_log  // Process log
 
     script:
 

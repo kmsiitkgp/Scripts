@@ -47,7 +47,7 @@ process RSEQC {
     path("${sample_id}*.{pdf,jpeg,png,tiff}"),      emit: rseqc_plots,     optional: true      // Visualization plots
     path("${sample_id}*.{txt,log,r,xls}"),          emit: rseqc_logs,      optional: true      // Data files and logs
     path("${sample_id}*.bed"),                      emit: rseqc_beds,      optional: true      // Junction BED files
-    path("${sample_id}.RSEQC.error.log"),           emit: rseqc_error_log                    // Process log
+    path("${sample_id}.RSEQC.error.log"),           emit: error_log                            // Process log
     // Note: optional: true prevents errors when PE-only files don't exist for SE data
 
     // =================================================================================

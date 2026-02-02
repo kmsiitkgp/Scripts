@@ -31,8 +31,8 @@ process STAR_INDEX {
     // OUTPUT
     // =================================================================================
     output:
-    path("star_index_dir"),            emit: star_index_dir        // STAR genome index
-    path("STAR_INDEX.error.log"),    emit: star_index_error_log  // Process log
+    path("star_index_dir"),          emit: star_index_dir        // STAR genome index
+    path("STAR_INDEX.error.log"),    emit: error_log             // Process log
 
     // =================================================================================
     // EXECUTION

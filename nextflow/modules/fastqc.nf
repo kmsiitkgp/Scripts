@@ -26,7 +26,7 @@ process FASTQC {
     input:
     tuple val(sample_id), path(fastq_files), val(read_type)
     // sample_id    : Sample identifier (e.g., "Sample1")
-    // fastq_files    : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
+    // fastq_files  : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
     // read_type    : "raw" or "trimmed" (determines output directory)
 
     // =================================================================================
@@ -34,8 +34,8 @@ process FASTQC {
     // =================================================================================
     output:
     path("*_fastqc.zip"),                emit: fastqc_zip        // Data for MultiQC aggregation
-    path("*_fastqc.html"),                emit: fastqc_html       // Individual HTML reports
-    path("*.FASTQC.error.log"),            emit: fastqc_error_log  // Process execution log
+    path("*_fastqc.html"),               emit: fastqc_html       // Individual HTML reports
+    path("*.FASTQC.error.log"),          emit: error_log         // Process log
 
     // =================================================================================
     // EXECUTION

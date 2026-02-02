@@ -8,7 +8,7 @@ nextflow.enable.dsl=2        // Enable DSL2 syntax (modern Nextflow with explici
 
 include { VALIDATE_INPUT }               from '../modules/validate_input.nf'
 include { FASTQC as FASTQC_RAW }         from '../modules/fastqc.nf'
-include { CELLRANGER_COUNT }            from '../modules/cellranger_count.nf'
+include { CELLRANGER_COUNT }             from '../modules/cellranger_count.nf'
 include { MULTIQC }                      from '../modules/multiqc.nf'
 //include { TEST_INDEX }                   from '../modules/test_index.nf'  // Debugging utility
 
@@ -56,8 +56,8 @@ workflow SCRNASEQ {
 
     VALIDATE_INPUT(params.raw_fastq_dir())
     mode_ch         = VALIDATE_INPUT.out.mode.collect()         // [mode] → collected for RSeQC
-    sample_fastq_ch = VALIDATE_INPUT.out.grouped_samples_ch        // [sample_id, [R1, R2]]
-    sample_ch         = VALIDATE_INPUT.out.sample_names_ch         // [sample_id]
+    sample_fastq_ch = VALIDATE_INPUT.out.grouped_samples_ch     // [sample_id, [R1, R2]]
+    sample_ch       = VALIDATE_INPUT.out.sample_names_ch        // [sample_id]
 
     // =====================================================================================
     // STEP 2: QUALITY CONTROL ON RAW READS
@@ -75,7 +75,7 @@ workflow SCRNASEQ {
     // CRITICAL: Pre-join arguments to prevent cache invalidation
     // If params.CELLRANGER_ARGS().join(' ') called inside process → hash changes → resume fails
     cellranger_args     = params.CELLRANGER_ARGS().join(' ')
-    raw_fastq_ch        = Channel.value(file(params.raw_fastq_dir(),         type: 'dir', checkIfExists: true))
+    raw_fastq_ch        = Channel.value(file(params.raw_fastq_dir(),        type: 'dir', checkIfExists: true))
     cellranger_index_ch = Channel.value(file(params.cellranger_index_dir(), type: 'dir', checkIfExists: true))
     CELLRANGER_COUNT(sample_ch, raw_fastq_ch, cellranger_index_ch, cellranger_args)
 
@@ -86,6 +86,8 @@ workflow SCRNASEQ {
 
     multiqc_ch = Channel.empty()
         .mix(FASTQC_RAW.out.fastqc_zip)                     // FastQC reports
+        .mix(CELLRANGER_COUNT.out.web_summary)
+        .mix(CELLRANGER_COUNT.out.metric_summary)
         .collect()                                          // Wait for all samples
 
     // CRITICAL: Convert closures to string and pass into process to  prevent cache invalidation
@@ -141,7 +143,7 @@ workflow SCRNASEQ {
 //   To resume: bash run_nextflow.sh (script includes -resume flag)
 //   Cache is invalidated if: process code changes, input files change, or work/ deleted
 //
-// CLEANING UP:
+/// CLEANING UP:
 //   After successful run and verification:
 //     rm -rf ${work_dir}/*              # Free disk space
 //   Warning: Cannot resume after deleting work directory!

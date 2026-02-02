@@ -31,7 +31,7 @@ process SALMON_QUANT {
     // =================================================================================
     input:
     tuple val(sample_id), path(fastq_files)              // sample_id    : Sample identifier (e.g., "Sample1")
-                                                        // fastq_files  : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
+                                                         // fastq_files  : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
     path(salmon_index_dir)                               // Pre-built Salmon index directory
     val(salmon_args)                                     // Pre-joined SALMON ARGS from config
     // Never do ${params.SALMON_ARGS().join(' ')} inside process. It changes hash on
@@ -42,9 +42,9 @@ process SALMON_QUANT {
     // =================================================================================
     output:
     tuple val(sample_id),
-        path(sample_id),                            emit: salmon_quant_dir        // Full output directory
-    path("${sample_id}.quant.sf"),                    emit: salmon_quant_file        // Transcript abundances (TPM, counts)
-    path("${sample_id}.SALMON_QUANT.error.log"),    emit: salmon_error_log        // Process log
+        path(sample_id),                            emit: salmon_quant_dir      // Full output directory
+    path("${sample_id}.quant.sf"),                  emit: salmon_quant_file     // Transcript abundances (TPM, counts)
+    path("${sample_id}.SALMON_QUANT.error.log"),    emit: error_log             // Process log
 
     // =================================================================================
     // EXECUTION

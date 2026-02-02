@@ -33,9 +33,9 @@ process RSEQC_BED {
     // OUTPUT
     // =================================================================================
     output:
-    path("${ref_gtf.baseName}.bed"),                         emit: ref_bed              // Full BED12 file
-    path("${ref_gtf.baseName}.housekeeping.bed"),             emit: housekeeping_bed     // Subset for fast QC
-    path("RSEQC_BED.error.log"),                            emit: rseqc_bed_error_log  // Process log
+    path("${ref_gtf.baseName}.bed"),                        emit: ref_bed              // Full BED12 file
+    path("${ref_gtf.baseName}.housekeeping.bed"),           emit: housekeeping_bed     // Subset for fast QC
+    path("RSEQC_BED.error.log"),                            emit: error_log            // Process log
 
     // =================================================================================
     // EXECUTION

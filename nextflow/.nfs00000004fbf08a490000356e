@@ -25,8 +25,8 @@
 # CONFIGURATION
 # -----------------------------------------------------------------------------------------
 
-project="Xinyi"                  # Project name (used in output directory naming)
-#project="BBN_C57BL6"
+#project="Xinyi"                  # Project name (used in output directory naming)
+project="BBN_C57BL6"
 
 # Nextflow directory (where main.nf, nextflow.config, modules/, workflows/, projects/ are located)
 NF_DIR="$HOME/projects/nextflow"
@@ -144,24 +144,24 @@ NF_FILES=(
 # Using a loop handles the file list more reliably across different OS versions
 for file in "${NF_FILES[@]}"; do
 
-    # # 1. Convert to UTF-8 (and remove ANSI/ISO encoding)
-    # # iconv -c ignores invalid characters to prevent crashing
-    # if command -v iconv >/dev/null; then
-        # iconv -f WINDOWS-1252 -t UTF-8 "$file" > "${file}.tmp" 2>/dev/null && mv "${file}.tmp" "$file"
-    # fi
+    # 1. Convert to UTF-8 (and remove ANSI/ISO encoding)
+    # iconv -c ignores invalid characters to prevent crashing
+    if command -v iconv >/dev/null; then
+        iconv -f WINDOWS-1252 -t UTF-8 "$file" > "${file}.tmp" 2>/dev/null && mv "${file}.tmp" "$file"
+    fi
 
     # 2. Remove UTF-8 BOM (Byte Order Mark) if present
     # BOM appears as: 0xEF 0xBB 0xBF at file start (from some text editors)
     # Causes error: "Invalid character at start of file"
     sed -i '1s/^\xEF\xBB\xBF//' "$file"
 
-    # # 3. Convert Windows Line Endings (CRLF) to Linux (LF)
-    # # Using 'dos2unix' if available, otherwise 'sed'
-    # if command -v dos2unix >/dev/null; then
-        # dos2unix -q "$file"
-    # else
-        # sed -i 's/\r$//' "$file"
-    # fi
+    # 3. Convert Windows Line Endings (CRLF) to Linux (LF)
+    # Using 'dos2unix' if available, otherwise 'sed'
+    if command -v dos2unix >/dev/null; then
+        dos2unix -q "$file"
+    else
+        sed -i 's/\r$//' "$file"
+    fi
 
     # 4. Clean up whitespace: Remove trailing spaces & convert tabs to 4 spaces
     # - Strip trailing whitespace (prevents unnecessary git diffs)
@@ -170,7 +170,7 @@ for file in "${NF_FILES[@]}"; do
     sed -i 's/\t/    /g' "$file"
 done
 
-echo "All files are now Unix-friendly (UTF-8, LF, No BOM)."
+echo "âœ… All files are now Unix-friendly (UTF-8, LF, No BOM)."
 
 # Disable nullglob
 shopt -u nullglob
@@ -204,7 +204,6 @@ cd "${WORK_DIR}"
 # --dynamic_binds: Custom parameter passing bind flags to Singularity (see nextflow.config)
 nextflow run "${NF_DIR}/main.nf" \
   -params-file "${YAML}" \
-  -name "${project}" \
   -profile sge \
   -resume \
   --dynamic_binds "$BIND_FLAGS"
@@ -216,14 +215,14 @@ nextflow run "${NF_DIR}/main.nf" \
 # Problem: Nextflow needs to pass bind mounts to Singularity, but has limited options
 #
 # Approaches that DIDN'T work:
-#   ✗ export NXF_SINGULARITY_RUNOPS="$BIND_FLAGS"
-#   ✗ --singularity.runOptions "${BIND_FLAGS}"
-#   ✗ --singularity.runOptions "'${BIND_FLAGS}'"
-#   ✗ Hardcoding in nextflow.config: runOptions = "--bind /scratch ..."
+#   âœ— export NXF_SINGULARITY_RUNOPS="$BIND_FLAGS"
+#   âœ— --singularity.runOptions "${BIND_FLAGS}"
+#   âœ— --singularity.runOptions "'${BIND_FLAGS}'"
+#   âœ— Hardcoding in nextflow.config: runOptions = "--bind /scratch ..."
 #
 # Solution that WORKS:
-#   ✓ Pass bind flags as custom parameter: --dynamic_binds "$BIND_FLAGS"
-#   ✓ In nextflow.config: runOptions = "${params.dynamic_binds}"
+#   âœ“ Pass bind flags as custom parameter: --dynamic_binds "$BIND_FLAGS"
+#   âœ“ In nextflow.config: runOptions = "${params.dynamic_binds}"
 #
 # Why this works:
 #   - Custom parameters are evaluated at runtime
@@ -237,9 +236,9 @@ nextflow run "${NF_DIR}/main.nf" \
 # Check for UTF-8 BOM in files:
 # head -c 3 "${NF_DIR}/main.nf" | od -c
 # If output shows: 0000000 357 273 277 # ! /
-#   → BOM present, needs removal
+#   â†’ BOM present, needs removal
 # If output shows: 0000000 # ! /
-#   → No BOM, file is clean
+#   â†’ No BOM, file is clean
 
 # View which work directories correspond to which processes:
 # nextflow log <run_name> -f name,workdir,status,duration

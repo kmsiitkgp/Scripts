@@ -36,13 +36,13 @@ process SAMBAMBA_PREP {
     // =================================================================================
     output:
     tuple val(sample_id),
-        path("${sample_id}.bam"),              // Renamed full BAM
-        path("${sample_id}.bam.bai"),          // Full BAM index
-        path("${sample_id}.1M.bam"),           // Subsampled BAM (1M reads)
-        path("${sample_id}.1M.bam.bai"),       // Subsample index
-        path("${sample_id}.read_length.txt"),  // Detected read length
+        path("${sample_id}.bam"),                                        // Renamed full BAM
+        path("${sample_id}.bam.bai"),                                    // Full BAM index
+        path("${sample_id}.1M.bam"),                                     // Subsampled BAM (1M reads)
+        path("${sample_id}.1M.bam.bai"),                                 // Subsample index
+        path("${sample_id}.read_length.txt"),                            // Detected read length
         emit: bam_indexed
-    path("${sample_id}.SAMBAMBA_PREP.error.log"),     emit: sambamba_error_log
+    path("${sample_id}.SAMBAMBA_PREP.error.log"),     emit: error_log    // Process log
 
     // =================================================================================
     // EXECUTION

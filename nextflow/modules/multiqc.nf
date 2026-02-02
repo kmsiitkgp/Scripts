@@ -29,8 +29,8 @@ process MULTIQC {
     // INPUT
     // =================================================================================
     input:
-    path(all_reports)          // All QC files from upstream processes
-    val(multiqc_title)      // Report title as a string
+    path(all_reports)        // All QC files from upstream processes
+    val(multiqc_title)       // Report title as a string
     val(multiqc_filename)    // Report filename as a string
 
     // =================================================================================
@@ -39,7 +39,7 @@ process MULTIQC {
     output:
     path("${multiqc_filename}.html"),      emit: multiqc_html  // HTML report
     path("${multiqc_filename}_data"),      emit: multiqc_dir   // Data directory
-    path("MULTIQC.error.log"),             emit: multiqc_log   // Process log
+    path("MULTIQC.error.log"),             emit: error_log     // Process log
 
     // =================================================================================
     // EXECUTION
