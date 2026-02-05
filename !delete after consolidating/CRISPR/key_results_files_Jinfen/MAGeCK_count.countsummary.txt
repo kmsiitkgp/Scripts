@@ -1,0 +1,13 @@
+File	Label	Reads	Mapped	Percentage	TotalsgRNAs	Zerocounts	GiniIndex	NegSelQC	NegSelQCPval	NegSelQCPvalPermutation	NegSelQCPvalPermutationFDR	NegSelQCGene
+/home/kailasamms/scratch/CRISPR/raw_reads/H1_21_1.fq.gz	Ctrl_A_1	22060627	18422810	0.8351	24569	199	0.07617	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H2_68_1.fq.gz	Ctrl_A_2	33209792	27721486	0.8347	24569	200	0.07232	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H7_1_69_1.fq.gz	Day07_2D_1	33451650	27082715	0.8096	24569	197	0.07982	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H7_2_70_1.fq.gz	Day07_2D_2	35495955	29513166	0.8315	24569	195	0.08177	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H14_1_71_1.fq.gz	Day14_2D_1	47426811	39557280	0.8341	24569	203	0.08709	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H14_2_72_1.fq.gz	Day14_2D_2	40330379	32056268	0.7948	24569	202	0.08512	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H3D7_1_75_1.fq.gz	Day07_3D_1	23511158	13039326	0.5546	24569	252	0.07822	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H3D7_2_76_1.fq.gz	Day07_3D_2	22224458	12070636	0.5431	24569	267	0.08267	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H3DS1_73_1.fq.gz	Ctrl_B_1	24390118	14000912	0.574	24569	265	0.07985	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H3DS2_41_1.fq.gz	Ctrl_B_2	29562012	24079234	0.8145	24569	202	0.07138	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H3D14_1_77_1.fq.gz	Day14_3D_1	17171889	8954253	0.5214	24569	319	0.09352	0	1	1	1	0.0
+/home/kailasamms/scratch/CRISPR/raw_reads/H3D14_2_78_1.fq.gz	Day14_3D_2	29967428	15214207	0.5077	24569	332	0.09271	0	1	1	1	0.0

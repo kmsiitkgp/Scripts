@@ -1,0 +1,27 @@
+Create account in Geo using gmail and login.
+
+It has show details of how to transfer:
+Our FTP server credentials are:
+host address	ftp-private.ncbi.nlm.nih.gov
+username	geoftp
+password	noducAbAdraleef0
+
+
+In Mobaxterm, create a new session using ftp and details above.
+Then, type "uploads/kmsiitkgp@gmail.com_SVAtssqa" to navigate to your directory in Geo server
+You can monitor what folders and files are being uploaded using this console
+
+
+Now, go to your Cedars SSH session annd login.
+Change directory to directory that has all files (raw, processed, metadata)
+Next, login to Geo server using sftp
+sftp geoftp@sftp-private.ncbi.nlm.nih.gov
+password: noducAbAdraleef0
+cd uploads/kmsiitkgp@gmail.com_SVAtssqa
+mkdir new_geo_submission
+cd new_geo_submission
+put *     
+
+#sftp> ls  # will list files in geoserver
+#sftp> lls # will list files in HPC
+#Since our current d irectory in HPC has all files to be copied, we just use put * to copy all files to directory in Geo server.

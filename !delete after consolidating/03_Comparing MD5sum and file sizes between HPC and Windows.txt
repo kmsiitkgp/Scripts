@@ -1,0 +1,142 @@
+### CALCULATE MD5SUM OF ALL FILES IN A DIRECTORY
+# NOTE: md5sum --text <file> and md5sum --binary <file> will give same values in linux
+# NOTE: IT IS FASTER to run from compute node rather than submit node
+# NOTE: Only find method is BEST. It calculates md5sum for all files including subdirectories.
+# First, cd to folder you want to calculate md5sum and then run the below command
+
+# METHOD #1 : using find 
+find -type f -exec md5sum '{}' \; > md5sum.txt
+
+Next, download the md5sum.txt to windows and run the MD5sum program on windows 
+# to verify the MD5sums from md5sum.txt
+
+# METHOD #2 : cannot calculate md5sum values within subdirectories
+# Save all files in directory to an array
+files=(/hpc/home/kailasamms/common/scRNASeq_HRA003620/*)
+
+# Create an empty file to store the md5 values
+touch t.txt
+
+# Loop through the files, calculate md5sum and store it
+for f in ${files[*]}
+do
+md5sum $f >> t.txt
+done
+
+
+
+### COMPARE FILE SIZES BETWEEN HPC vs WINDOWS
+# NOTE: du -sch --block-size=K gives incorrect size
+
+touch t.txt
+ls -l -R --block-size=K ~/scratch/scRNASeq_Jinfen/cellranger_results/* > t.txt
+
+# Open powershell in windows. Adjust folder location and use command below
+Get-ChildItem "E:\Processed_data\scRNASeq_BBN_Rag\cellranger_results\" -Recurse -File | ForEach-Object {
+    Write-Host "File: $($_.FullName), Size: $([math]::ceiling($_.Length/1KB))"
+}
+
+# Copy paste both the output to excel and compare
+
+
+#*****************************************#
+
+
+
+
+
+
+
+
+
+
+
+
+# Calculate md5sum for each fastq.gz. Compare the values in md5.txt vs the values from powershell
+md5sum ~/common/EGA/EGAD00001003977/*/*.gz > md5.txt
+Get-FileHash -Algorithm MD5 -Path (Get-ChildItem "F:\EGAD00001003977\*.*" -Recurse)
+
+folders <- list.files("F:/EGAD00001003977/")
+files <- c()
+value <- c()
+
+for (f in folders){
+  f1 <- list.files(paste0("F:/EGAD00001003977/",f))
+  f1 <- f1[grepl(pattern="md5", x=f1)]
+  v <- read.table(paste0("F:/EGAD00001003977/",f[1],"/", f1))
+  value <- c(value,v)
+  files <- c(files, f1)
+}
+
+df <- data.frame(files, unlist(value, use.names = FALSE))
+wb <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb, sheetName = "md5")
+openxlsx::writeData(wb, sheet = "md5", x = df)
+openxlsx::saveWorkbook(wb, 
+                       file = paste0("F:/EGAD00001003977/MD5_values.xlsx"), 
+                       overwrite = TRUE)
+
+proj=scRNASeq_NA13_CDH12_C57B6
+SAMPLES=(N1 N2 N3 N4 N5 N6)
+
+# Make sure size of files in outs folder are same
+for i in ${SAMPLES[*]}
+do
+echo $i
+ls -l --block-size=K ~/scratch/$proj/cellranger_results/$i/outs/*
+echo DONE
+done
+
+# Make sure size of files in each sample folder are same
+for i in ${SAMPLES[*]}
+do
+echo $i
+ls -l --block-size=K ~/scratch/$proj/cellranger_results/$i/
+echo DONE
+done
+
+#Make sure number of files in outs folder are same
+for i in ${SAMPLES[*]}
+do
+echo $i
+ls -Rl ~/scratch/$proj/cellranger_results/$i/outs | grep "^-" | wc -l
+echo DONE
+done
+
+# It is the SC_RNA_COUNTER_CS that have differences usually in file number. 
+# This is ok as these files are only useful for troubleshooting if needed 
+for i in ${SAMPLES[*]}
+do
+echo $i
+ls -Rl ~/scratch/$proj/cellranger_results/$i/SC_RNA_COUNTER_CS/ | grep "^-" | wc -l
+echo DONE
+done
+
+# It is the SC_RNA_COUNTER_CS that have differences usually in file size
+for i in ${SAMPLES[*]}
+do
+echo $i
+ls -l --block-size=K ~/scratch/$proj/cellranger_results/$i/SC_RNA_COUNTER_CS
+echo DONE
+done
+
+# Get size of entire folder
+du -sch ~/scratch/$proj/cellranger_results/
+ls -Rl ~/scratch/$proj/cellranger_results/ | grep "^-" | wc -l
+
+# Remove files from cluster after successfully copying all data to HDD
+for i in ${SAMPLES[*]}
+do
+echo $i
+rm -r ~/scratch/$proj/cellranger_results/$i/
+echo DONE
+done
+
+# Make sure size of files in outs folder are same
+for i in ${SAMPLES[*]}
+do
+echo $i
+ls -l --block-size=K ~/scratch/$proj/cellranger_results/$i/outs/*feature_bc_matrix/*
+echo DONE
+done
+

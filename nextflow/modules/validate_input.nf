@@ -21,327 +21,343 @@
 workflow VALIDATE_INPUT {
 
     take:
-    data_dir                          // Path to directory containing raw FASTQ files
+    fastq_files_ch                         // This is now a list of file objects
 
     main:
-    log.info "==> Validating parameters and file paths"
-
-    // Safety check: Prevent null directory errors
-    if ( !data_dir ) {
-        error "VALIDATE_INPUT: data_dir is null or empty. Check your config logic."
-    }
-
-    println "DEBUG: data_dir = ${data_dir.toString()}"
+    log.info "==> Validating file naming conventions"
 
     // =================================================================================
-    // 1. FIND AND VALIDATE FASTQ FILES
+    // 1. VALIDATE FASTQ FILES
     // =================================================================================
 
-    // Glob all compressed FASTQ files
-    fastq_dir = data_dir.toString()
-    fastq_files_set = files("${fastq_dir}/*.f*q.gz")
-    fastq_files_list = fastq_files_set.collect()
-    fastq_files = fastq_files_list.sort()
+    // Using .collect() on a channel (e.g., fastq_files_ch) acts as a synchronization
+    // barrier. It waits for the complete signal from the upstream channel, then gathers
+    // all emitted items (e.g., Path objects) into a single new event: a List object.
+    // The resulting channel emits this List exactly once.
+    // Using .map{} on a channel (e.g., fastq_files_ch) is a 1-to-1 transformation of the
+    // live data stream. As each item is emitted by the upstream channel, the code within
+    // {} is applied to it immediately. The result is put onto a new channel, maintaining
+    // the same number of items (events) as the original.
 
-    // Define validation regex pattern
-    // Expected: *_R1.fq.gz, *_R2.fq.gz (or _r1/_r2)
-    // Optional: _Tumor or _Normal designation
-    def VALID_PATTERN
+    results_ch = fastq_files_ch.collect().map { fastq_list ->
 
-    if (params.expt == "RNASeq") {
-        //VALID_PATTERN = ~/.*((_Tumor|_Normal))?.*((_R|_r)[12]).*\.f(q|astq)\.gz/
-        VALID_PATTERN = ~/.*(_Tumor|_Normal)?.*(_[Rr][12]).*\.f(q|astq)\.gz/
-    }
-    else if (params.expt == "scRNASeq") {
-        VALID_PATTERN = ~/^([A-Za-z0-9-]+)_S\d+_L\d{3}_(R[12]|I[12])_001\.fastq\.gz$/
-    } else {
-        error "❌ Unknown experiment type: ${params.expt}. Options: 'RNASeq', 'scRNASeq'"
-    }
+        // Sort fastq files by name
+        def fastq_files = fastq_list.sort { it.name }
 
-    // Separate valid from invalid files
-    valid_files   = fastq_files.findAll { it.name ==~ VALID_PATTERN }
-    invalid_files = fastq_files.findAll { !(it.name ==~ VALID_PATTERN) }
-
-    // =================================================================================
-    // 2. DETECT FILE FORMAT
-    // =================================================================================
-
-    fq_gz_files     = valid_files.findAll { it.name.endsWith(".fq.gz") }
-    fastq_gz_files  = valid_files.findAll { it.name.endsWith(".fastq.gz") }
-
-    def FILE_FORMAT = ""
-    if (fq_gz_files.size() == valid_files.size()) {
-        FILE_FORMAT = "fq.gz"
-    } else if (fastq_gz_files.size() == valid_files.size()) {
-        FILE_FORMAT = "fastq.gz"
-    }
-
-    // =================================================================================
-    // 3. DETECT SEQUENCING MODE (SE vs PE)
-    // =================================================================================
-
-    def MODE = ""
-    r1_files = valid_files.findAll { it.name.contains("_r1") }
-    r2_files = valid_files.findAll { it.name.contains("_r2") }
-    R1_files = valid_files.findAll { it.name.contains("_R1") }
-    R2_files = valid_files.findAll { it.name.contains("_R2") }
-
-    // SE: All files are R1, no R2
-    if (r1_files.size() == valid_files.size() ||  R1_files.size() == valid_files.size() ) {
-        MODE = "SINGLE_END"
-    }
-    // PE (lowercase): Equal R1/R2 files
-    else if (r1_files.size() > 0 && r1_files.size() == r2_files.size() && r1_files.size() * 2 == valid_files.size()) {
-        MODE = "PAIRED_END"
-    }
-    // PE (uppercase): Equal R1/R2 files
-    else if (R1_files.size() > 0 && R1_files.size() == R2_files.size() && R1_files.size() * 2 == valid_files.size()) {
-        MODE = "PAIRED_END"
-    }
-
-    // =================================================================================
-    // 4. DETECT READ TAGS
-    // =================================================================================
-
-    def Read1_TAG = ""
-    def Read2_TAG = ""
-
-    if (MODE == "SINGLE_END" && r1_files.size() == valid_files.size()) {
-        Read1_TAG = "_r1"
-    } else if (MODE == "SINGLE_END" && R1_files.size() == valid_files.size()) {
-        Read1_TAG = "_R1"
-    } else if (MODE == "PAIRED_END" && r1_files.size() * 2 == valid_files.size()){
-        Read1_TAG = "_r1"
-    } else if (MODE == "PAIRED_END" && R1_files.size() * 2 == valid_files.size()){
-        Read1_TAG = "_R1"
-    }
-
-    if (MODE == "PAIRED_END") {
-        if (r2_files.size() * 2 == valid_files.size()) {
-            Read2_TAG = "_r2"
-        } else if (R2_files.size() * 2 == valid_files.size()) {
-            Read2_TAG = "_R2"
+        // Define validation regex pattern
+        // Expected: *_R1.fq.gz, *_R2.fq.gz (or _r1/_r2)
+        // Optional: _Tumor or _Normal designation
+        def VALID_PATTERN
+        if (params.expt == "RNASeq") {
+            //VALID_PATTERN = ~/.*((_Tumor|_Normal))?.*((_R|_r)[12]).*\.f(q|astq)\.gz/
+            VALID_PATTERN = ~/.*(_Tumor|_Normal)?.*(_[Rr][12]).*\.f(q|astq)\.gz/
         }
-    }
-
-    // =================================================================================
-    // 5. VALIDATION CHECKS (Fail Fast)
-    // =================================================================================
-
-    // CHECK A: At least one valid file found
-    if (valid_files.size() == 0) {
-        println "\n" + "!" * 50
-        println " ERROR: NO VALID FASTQ FILES FOUND"
-        println "!" * 50
-        println " Search Path: ${params.raw_fastq_dir()}"
-        println " Pattern: *.f*q.gz"
-        println " Files found: ${fastq_files.size()}"
-        println "!" * 50
-        println "\n Possible reasons:"
-        println "   1. Wrong directory path in config"
-        println "   2. Files not gzipped (.gz extension missing)"
-        println "   3. Files don't match naming convention"
-        println "   4. Directory is empty"
-        println "!" * 50 + "\n"
-        error "Aborting: Zero files matched the pattern in the directory."
-    }
-
-    // CHECK B: Report invalid file names
-    if (invalid_files.size() > 0) {
-        println "\n" + "!" * 50
-        println " ERROR: ${invalid_files.size()} INVALID FILE(S) DETECTED"
-        println "!" * 50
-        println " These files don't match the expected naming pattern:"
-        println " Expected: *_R1.fq.gz / *_R2.fq.gz (or _r1/_r2)"
-        println " Optional: *_Tumor_* or *_Normal_* designation"
-        println ""
-
-        invalid_files.each {
-            println "  ✗ ${it.name}"
-        }
-
-        println ""
-        println " Common fixes:"
-        println "   1. Rename _1.fq.gz → _R1.fq.gz (add 'R')"
-        println "   2. Add .gz extension if missing"
-        println "   3. Ensure consistent case (_R1 not _r1 mixed)"
-        println "!" * 50 + "\n"
-        error "Aborting: Please rename the files listed above to match expected pattern."
-    }
-
-    // CHECK C: Ensure consistent file format
-    if (FILE_FORMAT == "") {
-        println "\n" + "!" * 50
-        println " FORMAT ERROR: Mixed FASTQ extensions detected"
-        println "!" * 50
-        println " .fq.gz files    : ${fq_gz_files.size()}"
-        println " .fastq.gz files : ${fastq_gz_files.size()}"
-        println ""
-        println " All files must use the SAME extension."
-        println " Choose one and rename all files:"
-        println "   Option 1: Rename all to .fq.gz"
-        println "   Option 2: Rename all to .fastq.gz"
-        println "!" * 50 + "\n"
-        error "Aborting: Please standardize all files to either .fq.gz or .fastq.gz"
-    }
-
-    // CHECK D: Verify consistent read pair tags
-    if (MODE == ""){
-        println "\n" + "!" * 50
-        println " ERROR: INCONSISTENT READ PAIR NAMING"
-        println "!" * 50
-        println " File counts by tag:"
-        println "   Lowercase → r1: ${r1_files.size()}, r2: ${r2_files.size()}"
-        println "   Uppercase → R1: ${R1_files.size()}, R2: ${R2_files.size()}"
-        println "   Total files   : ${valid_files.size()}"
-        println ""
-        println " Possible issues:"
-        println "   1. Mixed case (_r1 and _R1 in same dataset)"
-        println "   2. Mismatched pairs (different number of R1 vs R2)"
-        println "   3. Missing R2 files for some samples"
-        println ""
-        println " Solution:"
-        println "   - Use ONLY _R1/_R2 (or ONLY _r1/_r2)"
-        println "   - Ensure every R1 has matching R2 with same sample name"
-        println "!" * 50 + "\n"
-        error "Mixed case or mismatched pairs detected. Please standardize naming."
-    }
-
-    // =================================================================================
-    // 6. COUNT SAMPLES (Tumor/Normal classification)
-    // =================================================================================
-
-    tumor_files  = valid_files.findAll { it.name.contains("_Tumor") }
-    normal_files = valid_files.findAll { it.name.contains("_Normal") }
-
-    def TOTAL_SAMPLES    = 0
-    def N_TUMOR_SAMPLES  = 0
-    def N_NORMAL_SAMPLES = 0
-
-    if (MODE == "SINGLE_END") {
-        TOTAL_SAMPLES    = valid_files.size()
-        N_TUMOR_SAMPLES  = tumor_files.size()
-        N_NORMAL_SAMPLES = normal_files.size()
-    } else if (MODE == "PAIRED_END") {
-        TOTAL_SAMPLES    = valid_files.size().intdiv(2)
-        N_TUMOR_SAMPLES  = tumor_files.size().intdiv(2)
-        N_NORMAL_SAMPLES = normal_files.size().intdiv(2)
-    }
-
-    // =================================================================================
-    // 7. CREATE SAMPLE +FASTQ CHANNELS
-    // =================================================================================
-
-    all_r1_files = (r1_files + R1_files).sort()
-    R1_FASTQS_ch = Channel.fromList(all_r1_files)
-
-    grouped_samples_ch = R1_FASTQS_ch.map { r1 ->
-
-        def sample_id = ""
-
-        if (params.expt == "scRNASeq") {
-            // Use the regex capture group to get exactly what's in the first parentheses
-            def matcher = (r1.name =~ VALID_PATTERN)
-            sample_id = matcher ? matcher[0][1] : r1.simpleName
+        else if (params.expt == "scRNASeq") {
+            VALID_PATTERN = ~/^([A-Za-z0-9-]+)_S\d+_L\d{3}_(R[12]|I[12])_001\.fastq\.gz$/
         } else {
-            // Extract sample ID by removing Read1_TAG
-            def idx = r1.name.lastIndexOf(Read1_TAG)
-            sample_id = (idx != -1) ? r1.name.take(idx) : r1.simpleName
+            error "❌ Unknown experiment type: ${params.expt}. Options: 'RNASeq', 'scRNASeq'"
+        }
+
+        // Separate valid from invalid files
+        def valid_files   = fastq_files.findAll { it.name ==~ VALID_PATTERN }
+        def invalid_files = fastq_files.findAll { !(it.name ==~ VALID_PATTERN) }
+
+        // =================================================================================
+        // 2. DETECT FILE FORMAT
+        // =================================================================================
+
+        def fq_gz_files     = valid_files.findAll { it.name.endsWith(".fq.gz") }
+        def fastq_gz_files  = valid_files.findAll { it.name.endsWith(".fastq.gz") }
+
+        def FILE_FORMAT = ""
+        if (fq_gz_files.size() == valid_files.size()) {
+            FILE_FORMAT = "fq.gz"
+        } else if (fastq_gz_files.size() == valid_files.size()) {
+            FILE_FORMAT = "fastq.gz"
+        }
+
+        // =================================================================================
+        // 3. DETECT SEQUENCING MODE (SE vs PE)
+        // =================================================================================
+
+        def r1_files = valid_files.findAll { it.name.contains("_r1") }
+        def r2_files = valid_files.findAll { it.name.contains("_r2") }
+        def R1_files = valid_files.findAll { it.name.contains("_R1") }
+        def R2_files = valid_files.findAll { it.name.contains("_R2") }
+
+        // SE: All files are R1, no R2
+        def MODE = ""
+        if (r1_files.size() == valid_files.size() ||  R1_files.size() == valid_files.size() ) {
+            MODE = "SINGLE_END"
+        }
+        // PE (lowercase): Equal R1/R2 files
+        else if (r1_files.size() > 0 && r1_files.size() == r2_files.size() && r1_files.size() * 2 == valid_files.size()) {
+            MODE = "PAIRED_END"
+        }
+        // PE (uppercase): Equal R1/R2 files
+        else if (R1_files.size() > 0 && R1_files.size() == R2_files.size() && R1_files.size() * 2 == valid_files.size()) {
+            MODE = "PAIRED_END"
+        }
+
+        // =================================================================================
+        // 4. DETECT READ TAGS
+        // =================================================================================
+
+        def Read1_TAG = ""
+        def Read2_TAG = ""
+        if (MODE == "SINGLE_END" && r1_files.size() == valid_files.size()) {
+            Read1_TAG = "_r1"
+        } else if (MODE == "SINGLE_END" && R1_files.size() == valid_files.size()) {
+            Read1_TAG = "_R1"
+        } else if (MODE == "PAIRED_END" && r1_files.size() * 2 == valid_files.size()){
+            Read1_TAG = "_r1"
+        } else if (MODE == "PAIRED_END" && R1_files.size() * 2 == valid_files.size()){
+            Read1_TAG = "_R1"
         }
 
         if (MODE == "PAIRED_END") {
-            // Find R2 mate using reverse-replace trick
-            // Reverses string, replaces first (=last) occurrence, reverses back
-            def r1_name = r1.name
-            def r2_name = r1_name.reverse().replaceFirst(Read1_TAG.reverse(), Read2_TAG.reverse()).reverse()
-            def r2 = r1.parent.resolve(r2_name)
+            if (r2_files.size() * 2 == valid_files.size()) {
+                Read2_TAG = "_r2"
+            } else if (R2_files.size() * 2 == valid_files.size()) {
+                Read2_TAG = "_R2"
+            }
+        }
 
-            // Verify R2 exists
-            if (!r2.exists()) {
-                println "\n" + "!" * 50
-                println " ERROR: MISSING R2 PAIR"
-                println "!" * 50
-                println " R1 file  : ${r1.name}"
-                println " Expected : ${r2_name}"
-                println " Location : ${r1.parent}"
-                println ""
-                println " This R1 file has no matching R2 file."
-                println " Check for:"
-                println "   1. Typo in R2 filename"
-                println "   2. Missing file (incomplete download/transfer)"
-                println "   3. Case mismatch (R1 vs r1)"
-                println "!" * 50 + "\n"
-                error "Aborting: Missing paired-end mate for ${r1.name}"
+        // =================================================================================
+        // 5. VALIDATION CHECKS (Fail Fast)
+        // =================================================================================
+
+        // CHECK A: At least one valid file found
+        if (valid_files.size() == 0) {
+            log.error """
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                     ERROR: NO VALID FASTQ FILES FOUND
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             Search Path : ${params.raw_fastq_dir()}
+             Pattern     : *.f*q.gz
+             Files found : ${fastq_files.size()}
+
+             Possible reasons:
+               1. Wrong directory path in config
+               2. Files not gzipped (.gz extension missing)
+               3. Files don't match naming convention
+               4. Directory is empty
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            """.stripIndent()
+            error "Aborting: Zero files matched the pattern in the directory."
+        }
+
+        // CHECK B: Report invalid file names
+        if (invalid_files.size() > 0) {
+            log.error """
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             ERROR: ${invalid_files.size()} INVALID FILE(S) DETECTED
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             These files don't match the expected naming pattern:
+             Expected: *_R1.fq.gz / *_R2.fq.gz (or _r1/_r2)
+
+               ✗ ${invalid_files.collect{ it.name }.join('\n   ✗ ')}
+
+             Common fixes:
+               1. Rename _1.fq.gz → _R1.fq.gz (add 'R')
+               2. Add .gz extension if missing
+               3. Ensure consistent case (_R1 not _r1 mixed)
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            """.stripIndent()
+            error "Aborting: Please rename the files listed above."
+        }
+
+        // CHECK C: Ensure consistent file format
+        if (FILE_FORMAT == "") {
+            log.error """
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+              FORMAT ERROR: Mixed FASTQ extensions detected
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             .fq.gz files    : ${fq_gz_files.size()}
+             .fastq.gz files : ${fastq_gz_files.size()}
+
+             All files must use the SAME extension.
+             Choose one and rename all files:
+               Option 1: Rename all to .fq.gz
+               Option 2: Rename all to .fastq.gz
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            """.stripIndent()
+            error "Aborting: Please standardize all files to either .fq.gz or .fastq.gz"
+        }
+
+        // CHECK D: Verify consistent read pair tags
+        if (MODE == ""){
+            log.error """
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                   ERROR: INCONSISTENT READ PAIR NAMING
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             File counts by tag:
+               Lowercase → r1: ${r1_files.size()}, r2: ${r2_files.size()}
+               Uppercase → R1: ${R1_files.size()}, R2: ${R2_files.size()}
+               Total files   : ${valid_files.size()}
+
+             Possible issues:
+               1. Mixed case (_r1 and _R1 in same dataset)
+               2. Mismatched pairs (different number of R1 vs R2)
+               3. Missing R2 files for some samples
+
+             Solution:
+               - Use ONLY _R1/_R2 (or ONLY _r1/_r2)
+               - Ensure every R1 has matching R2 with same sample name
+            !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            """.stripIndent()
+            error "Mixed case or mismatched pairs detected. Please standardize naming."
+        }
+
+        // =================================================================================
+        // 6. COUNT SAMPLES (Tumor/Normal classification)
+        // =================================================================================
+
+        def tumor_files  = valid_files.findAll { it.name.contains("_Tumor") }
+        def normal_files = valid_files.findAll { it.name.contains("_Normal") }
+
+        def N_SAMPLES
+        def N_TUMOR_SAMPLES
+        def N_NORMAL_SAMPLES
+
+        N_SAMPLES        = (MODE == "PAIRED_END") ? valid_files.size().intdiv(2)  : valid_files.size()
+        N_TUMOR_SAMPLES  = (MODE == "PAIRED_END") ? tumor_files.size().intdiv(2)  : tumor_files.size()
+        N_NORMAL_SAMPLES = (MODE == "PAIRED_END") ? normal_files.size().intdiv(2) : normal_files.size()
+
+        // =================================================================================
+        // 7. CREATE SAMPLE-FASTQ CHANNELS
+        // =================================================================================
+
+        // Using .collect{} on a List object (e.g., all_r1_files) is a synchronous loop within
+        // the script's memory. It iterates through every element in the existing List, applies
+        // the code within {} to each, and returns a new List object containing the transformed
+        // items. This happens entirely within the current process/block and has no "channel"
+        // properties.
+
+        def all_r1_files = (r1_files + R1_files).sort()
+        def grouped_samples = all_r1_files.collect { r1 ->
+
+            def sample_id = ""
+            if (params.expt == "scRNASeq") {
+                // Use the regex capture group to get exactly what's in the first parentheses
+                def matcher = (r1.name =~ VALID_PATTERN)
+                sample_id = matcher ? matcher[0][1] : r1.simpleName
+            } else {
+                // Extract sample ID by removing Read1_TAG
+                def idx = r1.name.lastIndexOf(Read1_TAG)
+                sample_id = (idx != -1) ? r1.name.take(idx) : r1.simpleName
             }
 
-            return [ sample_id, [r1, r2] ]
+            if (MODE == "PAIRED_END") {
+                // Find R2 mate using reverse-replace trick
+                // Reverses string, replaces first (=last) occurrence, reverses back
+                def r1_name = r1.name
+                def r2_name = r1_name.reverse().replaceFirst(Read1_TAG.reverse(), Read2_TAG.reverse()).reverse()
+                def r2 = r1.parent.resolve(r2_name)
 
-        } else {
-            // Single-end: return R1 only (as list for consistency)
-            return [ sample_id, [r1] ]
+                // Verify R2 exists
+                if (!r2.exists()) {
+                    log.error """
+                    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                                  ERROR: MISSING R2 PAIR
+                    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                     R1 file   : ${r1.name}
+                     Expected  : ${r2_name}
+                     Location  : ${r1.parent}
+
+                     This R1 file has no matching R2 file.
+                     Check for:
+                       1. Typo in R2 filename
+                       2. Missing file (incomplete download/transfer)
+                       3. Case mismatch (R1 vs r1)
+                    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    """.stripIndent()
+                    error "Aborting: Missing paired-end mate for ${r1.name}"
+                }
+                return [ sample_id, [r1, r2] ]
+            } else {
+                // Single-end: return R1 only (as list for consistency)
+                return [ sample_id, [r1] ]
+            }
         }
+
+        // =================================================================================
+        // 8. CREATE SAMPLE CHANNELS
+        // =================================================================================
+
+        // .unique() ensures if a sample has multiple lanes, you only get the name once
+        def sample_names = grouped_samples.collect { id, fastqs -> id }.unique()
+
+        // =================================================================================
+        // 9. PRINT SUMMARY
+        // =================================================================================
+
+        log.info """
+             ============================================================
+             FASTQ INPUT VALIDATION SUMMARY
+             ============================================================
+             FILE FORMAT         : $FILE_FORMAT
+              - .fq.gz           : ${fq_gz_files.size()}
+              - .fastq.gz        : ${fastq_gz_files.size()}
+            ------------------------------------------------------------
+             SEQUENCING MODE     : $MODE
+             READ TAGS USED      :
+              - R1 tag           : $Read1_TAG
+              - R2 tag           : ${MODE == "PAIRED_END" ? Read2_TAG : 'N/A'}
+             TAG DISTRIBUTION    :
+              - Uppercase (R1/R2): ${R1_files.size()} / ${R2_files.size()}
+              - Lowercase (r1/r2): ${r1_files.size()} / ${r2_files.size()}
+            ------------------------------------------------------------
+             SAMPLE SUMMARY      :
+              - Total samples    : $N_SAMPLES
+              - Tumor samples    : $N_TUMOR_SAMPLES
+              - Normal samples   : $N_NORMAL_SAMPLES
+              - Other samples    : ${N_SAMPLES - N_TUMOR_SAMPLES - N_NORMAL_SAMPLES}
+             TOTAL FASTQ FILES   : ${valid_files.size()}
+            ============================================================
+        """.stripIndent()
+
+        // Return everything to the results channel
+        return [
+            // Metadata outputs
+            mode: MODE,
+            read1_tag        : Read1_TAG,
+            read2_tag        : Read2_TAG,
+            file_format      : FILE_FORMAT,
+            total_samples    : N_SAMPLES,
+            n_tumor_samples  : N_TUMOR_SAMPLES,
+            n_normal_samples : N_NORMAL_SAMPLES,
+            // Raw file lists
+            valid_files      : valid_files,
+            tumor_files      : tumor_files,
+            normal_files     : normal_files,
+            // Sample name list [sample_id]
+            sample_names     : sample_names,
+            // Grouped sample tuples [sample_id, [R1] or [R1, R2]]
+            grouped_samples  : grouped_samples
+        ]
     }
-
-    // =================================================================================
-    // 8. CREATE SAMPLE CHANNELS
-    // =================================================================================
-
-    // .unique() ensures if a sample has multiple lanes, you only get the name once
-    sample_names_ch = grouped_samples_ch.map { id, fastqs -> id }.unique()
-
-    // =================================================================================
-    // 9. PRINT SUMMARY
-    // =================================================================================
-
-    println "\n" + "=" * 60
-    println "              FASTQ INPUT VALIDATION SUMMARY"
-    println "=" * 60
-
-    println " FILE FORMAT      : $FILE_FORMAT"
-    println "   - .fq.gz       : ${fq_gz_files.size()}"
-    println "   - .fastq.gz    : ${fastq_gz_files.size()}"
-    println "-" * 60
-
-    println " SEQUENCING MODE  : $MODE"
-    println " READ TAGS USED   :"
-    println "   - R1 tag       : $Read1_TAG"
-    if (MODE == "PAIRED_END") {
-        println "   - R2 tag       : $Read2_TAG"
-    }
-    println " TAG DISTRIBUTION :"
-    println "   - Uppercase (R1/R2): ${R1_files.size()} / ${R2_files.size()}"
-    println "   - Lowercase (r1/r2): ${r1_files.size()} / ${r2_files.size()}"
-    println "-" * 60
-
-    println " SAMPLE SUMMARY       :"
-    println "   - Total samples    : $TOTAL_SAMPLES"
-    println "   - Tumor samples    : $N_TUMOR_SAMPLES"
-    println "   - Normal samples   : $N_NORMAL_SAMPLES"
-    println "   - Other samples    : ${TOTAL_SAMPLES - N_TUMOR_SAMPLES - N_NORMAL_SAMPLES}"
-    println " TOTAL FASTQ FILES    : ${valid_files.size()}"
-    println "=" * 60 + "\n"
 
     emit:
-        // Metadata outputs
-        mode             = MODE
-        read1_tag        = Read1_TAG
-        read2_tag        = Read2_TAG
-        file_format      = FILE_FORMAT
-        total_samples    = TOTAL_SAMPLES
-        n_tumor_samples  = N_TUMOR_SAMPLES
-        n_normal_samples = N_NORMAL_SAMPLES
+    // Metadata outputs (As Single Values)
+    mode             = results_ch.map { it.mode }
+    read1_tag        = results_ch.map { it.read1_tag }
+    read2_tag        = results_ch.map { it.read2_tag }
+    file_format      = results_ch.map { it.file_format }
+    total_samples    = results_ch.map { it.total_samples }
+    n_tumor_samples  = results_ch.map { it.n_tumor_samples }
+    n_normal_samples = results_ch.map { it.n_normal_samples }
 
-        // Raw file channels
-        fastq_ch   = Channel.fromList(valid_files)
-        tumor_ch   = Channel.fromList(tumor_files)
-        normal_ch  = Channel.fromList(normal_files)
+    // File channels (Using flatMap to turn lists back into streams)
+    all_fastq_ch     = results_ch.flatMap { it.valid_files }
+    tumor_fastq_ch   = results_ch.flatMap { it.tumor_files }
+    normal_fastq_ch  = results_ch.flatMap { it.normal_files }
 
-        // Grouped sample tuples: [sample_id, [R1] or [R1, R2]]
-        grouped_samples_ch = grouped_samples_ch
+    // Grouped sample tuples: [sample_id, [R1, R2]]
+    grouped_samples_ch = results_ch.flatMap { it.grouped_samples }
 
-        // The channel with just [sample_id]
-        sample_names_ch    = sample_names_ch
-
+    // Unique sample names
+    sample_names_ch    = results_ch.flatMap { it.sample_names }
 }
 
 // =========================================================================================

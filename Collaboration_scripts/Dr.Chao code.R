@@ -1085,7 +1085,70 @@ if (length(heatmap_plot_list) > 0) {
   dev.off()
 }
 
-## bulk RNASeq
+## bulk RNASeq Xinyi
+
+# ⚙️️ Project Setup 
+
+if (.Platform$OS.type == "windows") {
+  parent_dir  <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data"
+  gmt_dir     <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GSEA_genesets"
+  scripts_dir <- NULL
+  script_file <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/Scripts/R/Custom_Functions.R"
+} else {  # Linux/macOS (e.g., HPC)
+  parent_dir  <- "/hpc/home/kailasamms/scratch"
+  gmt_dir     <- "/hpc/home/kailasamms/projects/GSEA_genesets"
+  scripts_dir <- "/hpc/home/kailasamms/projects/scRNASeq/scripts"
+  script_file <- "/hpc/home/kailasamms/projects/scRNASeq/Custom_Functions.R"
+}
+
+if (file.exists(script_file)) {
+  source(script_file)
+} else{
+  stop(paste("Custom_Functions.R not found at:", script_file))
+}
+
+
+proj <- "Xinyi"
+species <- "Homo sapiens"
+contrasts <- c()
+
+parent_dir <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Past"
+gmt_dir <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/R-Scripts/GSEA_genesets"
+
+# DESeq2 overrides
+deseq2.override <- list(
+  contrasts     = contrasts,
+  #design        = "Comparisons",            # DESeq2 design formula or column name
+  #lfc.cutoff    = 0,                        # Log fold change cutoff for significance
+  #padj.cutoff   = 0.1,                      # Adjusted p-value cutoff for significance
+  batch.correct = FALSE                     # Boolean, whether to apply batch correction
+)
+
+# Heatmap overrides
+heatmap.override <- list(
+  #force.log        = TRUE,                  # Force log transformation
+  col.ann          = NULL,                  # Column annotation
+  #row.ann          = NULL,                  # Row annotation
+  #col.gaps         = NULL,                  # Column gaps
+  #row.gaps         = NULL,                  # Row gaps
+  col.cluster      = "all",                 # Column clustering
+  #row.cluster      = "all",                 # Row clustering
+  #palette         = "rdbu",                # Heatmap palette
+  #ann.palette     = "discrete",            # Annotation palette
+  #border.color    = NA,                    # Cell border color
+  #show.expr.legend = TRUE,                  # Show expression legend
+  #title           = "",                    # Heatmap title
+  format           = "tiff"                 # Output file format
+)
+
+# Volcano plot overrides
+volcano.override <- list(
+  #lfc.cutoff  = 0.58,                         # Minimum log2 fold-change to highlight
+  #padj.cutoff = 0.05,                      # Adjusted p-value cutoff
+  #color       = "vrds",                    # Color palette
+  #label.genes = c()                         # Genes to label on the plot
+)
+
 salmon_dir <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Past/Xinyi/salmon"
 proj_dir <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Past/Xinyi"
 txi <- prep_txi(salmon_dir = salmon_dir, 
@@ -1096,7 +1159,6 @@ txi <- prep_txi(salmon_dir = salmon_dir,
 
 metadata <- openxlsx::read.xlsx(file.path(proj_dir, "Xinyi_Metadata.xlsx"))
 raw_counts_mat <- NULL
-
 design      <- "Batch"
 deseq2_data <- prepare_deseq2_input(expr_mat = raw_counts_mat,
                                     txi      = txi, 
@@ -1129,6 +1191,13 @@ metadata_col <- dplyr::left_join(x = metadata %>% dplyr::mutate(Sample_ID = make
                                  y = cl %>% tibble::rownames_to_column("Sample_ID"),
                                  by = c("Sample_ID" = "Sample_ID"))
 
+df_c3 <- data.frame(SYMBOL = c3_genes, Category = "C3")
+df_scaffold <- data.frame(SYMBOL = scaffold_genes, Category = "Scaffold")
+df_cam <- data.frame(SYMBOL = cam_genes, Category = "CAM")
+df_ne <- data.frame(SYMBOL = ne_genes, Category = "Neuroendocrine")
+metadata_row <- rbind(df_c3, df_scaffold, df_cam, df_ne) %>%
+  dplyr::distinct(SYMBOL, .keep_all = TRUE)
+
 mat <- vsd_batch_corrected[rownames(vsd_batch_corrected) %in% c(c3_genes, scaffold_genes, cam_genes, ne_genes), ]
 
 ph <- plot_heatmap(expr_mat            = mat, 
@@ -1160,7 +1229,7 @@ openxlsx::saveWorkbook(wb, file = file.path(proj_dir,"Classification.xlsx"), ove
 
 wb <- openxlsx::createWorkbook()
 openxlsx::addWorksheet(wb, sheetName = "VST counts")
-openxlsx::writeData(wb, sheet = "VST counts", x = vsd_batch_corrected)
+openxlsx::writeData(wb, sheet = "VST counts", x = vsd_batch_corrected, rowNames = TRUE)
 openxlsx::saveWorkbook(wb, file = file.path(proj_dir,"Batch corrected VST counts.xlsx"), overwrite = TRUE)
 
 

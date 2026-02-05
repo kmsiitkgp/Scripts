@@ -25,11 +25,11 @@
 # CONFIGURATION
 # -----------------------------------------------------------------------------------------
 
-project="Xinyi"                  # Project name (used in output directory naming)
-#project="BBN_C57BL6"
+#project="Xinyi"                  # Project name (used in output directory naming)
+project="BBN_C57BL6"
 
 # Nextflow directory (where main.nf, nextflow.config, modules/, workflows/, projects/ are located)
-NF_DIR="$HOME/projects/nextflow"
+NF_DIR="$HOME/scripts/nextflow"
 
 # YAML file with project specific settings in projects folder
 YAML="${NF_DIR}/projects/${project}_project_info.yaml"
@@ -176,39 +176,69 @@ echo "All files are now Unix-friendly (UTF-8, LF, No BOM)."
 shopt -u nullglob
 
 # -----------------------------------------------------------------------------------------
-# LOAD REQUIRED MODULES
+# EXECUTION SETUP
 # -----------------------------------------------------------------------------------------
+
 # Load Nextflow and Singularity from HPC environment modules
 # Versions may vary by cluster - adjust as needed
-
 module load nextflow/24.10.5
 module load singularity-apptainer/1.1.8
 
+# Define a project-specific workspace within the scratch directory.
+# This isolation is CRITICAL for:
+#   1. Running multiple projects simultaneously without "Database Lock" errors.
+#   2. Keeping logs (.nextflow.log) and metadata (.nextflow/) organized by project.
+#   3. Preventing different runs from interfering with each other's cache/resume.
+mkdir -p "${WORK_DIR}/${project}"
+
+# Move into the project workspace.
+# By changing directory here, Nextflow will automatically create its internal
+# './work' folder and session database inside this unique project path.
+cd "${WORK_DIR}/${project}"
+
+# Remove any stale lock files from runs to prevent "Run name already used" error
+[ -f ".nextflow/lock" ] && rm -f ".nextflow/lock"
+
+# Create a unique run name using a timestamp.
+# This avoids the "Run name already used" error if a previous session crashed
+# or didn't release its lock. It allows for seamless -resume attempts while
+# keeping a unique record for every try in the 'nextflow log'.
+RUN_NAME="${project}_$(date +%Y-%m-%d_%H-%M)"
+
+echo "--------------------------------------------------------------------------------"
+echo "Lauch Dir : $(pwd)"
+echo "Work Dir  : ${WORK_DIR}/${project}/work"
+echo "Project   : ${project}"
+echo "YAML      : ${YAML}"
+echo "Run Name  : ${RUN_NAME}"
+echo "--------------------------------------------------------------------------------"
+
+# -----------------------------------------------------------------------------------------
+# PIPELINE EXECUTION
+# -----------------------------------------------------------------------------------------
+# -params-file    : Injects YAML settings (FASTQ paths, species, etc.)
+# -name           : Labels the run in 'nextflow log' and SGE (highly recommended)
+# -work-dir       : Explicitly sets the heavy data directory. We define this for SAFETY
+#                   to ensure task data stays in scratch even if the config changes.
+# -profile        : Sets executor to 'sge' (Sun Grid Engine)
+# -resume         : Uses cached results to skip successfully completed steps
+# --dynamic_binds : Passes calculated physical paths to Singularity containers
+# --stop.after    : RENAME_FASTQS, GENERATE_MD5, VALIDATE_INPUT, FASTQC_RAW, STAR_INDEX,
+#                 : EXTRACT_GENTROME, SALMON_INDEX, RSEQC_BED, SALMON_QUANT,
+#                 : STAR_ALIGN, SAMBAMBA_PREP, RSEQC, MULTIQC, CELLRANGER_COUNT
+nextflow run "${NF_DIR}/main.nf" \
+    -params-file "${YAML}" \
+    -name "${RUN_NAME}" \
+    -work-dir "${WORK_DIR}/${project}/work" \
+    -profile sge \
+    -resume \
+    --dynamic_binds "$BIND_FLAGS" \
+    --stop_after "END"
+#    --stop_after "GENERATE_MD5"
+#-preview
+
 # Optional: Clean previous failed runs (use with caution!)
 # nextflow clean -f
-
-# -----------------------------------------------------------------------------------------
-# EXECUTE NEXTFLOW PIPELINE
-# -----------------------------------------------------------------------------------------
-
-# Move to work directory before running
-# This prevents Nextflow from cluttering the current directory with temporary files
-# Temporary files created: _nf_config_*, .nextflow.log, .nextflow/
-mkdir -p "${WORK_DIR}"
-cd "${WORK_DIR}"
-
-# Run the pipeline
-# -params-file: Load configuration from YAML
-# -profile: Use SGE executor (see nextflow.config for other profiles)
-# -resume: Automatically resume from last successful checkpoint
-# --dynamic_binds: Custom parameter passing bind flags to Singularity (see nextflow.config)
-nextflow run "${NF_DIR}/main.nf" \
-  -params-file "${YAML}" \
-  -name "${project}" \
-  -profile sge \
-  -resume \
-  --dynamic_binds "$BIND_FLAGS"
-  #-preview
 
 # -----------------------------------------------------------------------------------------
 # NOTES ON SINGULARITY BIND MOUNT CHALLENGES

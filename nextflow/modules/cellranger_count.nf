@@ -43,16 +43,8 @@ process CELLRANGER_COUNT {
     // OUTPUT
     // =================================================================================
     output:
-    path("${sample_id}/outs/raw_feature_bc_matrix"),        emit: raw_matrix_dir       // Unfiltered matrix (all barcodes)
-    path("${sample_id}/outs/filtered_feature_bc_matrix"),   emit: filt_matrix_dir      // Filtered matrix (called cells only)
-    path("${sample_id}/outs/web_summary.html"),             emit: web_summary          // Interactive QC report
-    path("${sample_id}/outs/metrics_summary.csv"),          emit: metric_summary       // Key metrics (CSV format)
-    path("${sample_id}/outs/*.h5"),                         emit: h5_files             // HDF5 format matrices
-    path("${sample_id}/outs/*.cloupe"),                     emit: cloupe               // Loupe Browser file
-    path("${sample_id}/outs/*.json"),                       emit: run_info,            optional: true    // Run metadata
-    path("${sample_id}/outs/*.bam*"),                       emit: bam_files,           optional: true    // Aligned BAM + index
-    path("${sample_id}/outs/analysis"),                     emit: analysis_dir,        optional: true    // PCA, t-SNE, clustering
-    path("${sample_id}.CELLRANGER_COUNT.error.log"),        emit: error_log                              // Process log
+    path("${sample_id}/outs/**"),                             emit: result_files         // Unfiltered matrix (all barcodes)
+    path("${sample_id}.CELLRANGER_COUNT.error.log"),          emit: error_log            // Process log
 
     // =================================================================================
     // EXECUTION

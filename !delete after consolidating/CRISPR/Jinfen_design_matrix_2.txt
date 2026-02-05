@@ -1,0 +1,5 @@
+sample	Baseline	Comparison_4
+Ctrl_B_1	1	0
+Ctrl_B_2	1	0
+Day14_3D_1	1	1
+Day14_3D_2	1	1

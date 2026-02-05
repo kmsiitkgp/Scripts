@@ -1,0 +1,612 @@
+#******************************************************************************#
+#                          NOTES ON PATHWAY ANALYSIS                           #
+#******************************************************************************#
+
+# Enrichment analysis takes differential data from every measured gene and looks
+# for pathways displaying significantly coordinated shifts in those values.
+# https://www.biostars.org/p/12182/
+# https://www.biostars.org/p/17628/
+# https://www.reddit.com/r/bioinformatics/comments/11o7mrv/gene_set_enrichment_analysis_do_you_separate_out/?rdt=59356
+# https://groups.google.com/g/gsea-help/c/oXsBOAUYnH4
+# https://www.biostars.org/p/132575/
+# https://support.bioconductor.org/p/85681/
+
+#******************************************************************************#
+#                      NOTES ON RNA SEQ BATCH CORRECTION                       #
+#******************************************************************************#
+
+# NOTE: It is RECOMMENDED to perform batch correction ONLY if you know the batch
+# information for all the samples in meta_data.
+# https://support.bioconductor.org/p/76099/
+# https://support.bioconductor.org/p/9149116/
+# https://support.bioconductor.org/p/133222/#133225/
+# https://support.bioconductor.org/p/125386/#125387
+# https://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html#using-sva-with-deseq2
+
+# There are multiple approaches to batch correction:
+# (i) Modelling batch effect using DESeq2 design [RECOMMENDED]
+# Add Batch to design of DESEq2 like design=~Batch + id
+# (ii) Using combatseq to remove batch effects
+# Use combatseq to get batch corrected read counts and then use the corrected 
+# counts as input for DESeq2() and a design without batch variable (design=~ id)
+# (iii) Using sva to identify hidden batch variables and model them in DeSeq2
+# Use sva to find upto 2 surrogate variables that could be causing batch effects
+# and include them in the design of DESeq2 like design=~SV1 + SV2 + id
+
+# NOTE: I have tested (i) and (ii) and found that 
+# (a) Almost all DEGs identified as significant in (i) are present in (ii) 
+# (b) All significant DEGs with -ve log2FC from (i) also have -ve log2FC in (ii)
+# (c) All significant DEGs with +ve log2FC from (i) also have +ve log2FC in (ii)
+# (d) (ii) identifies many other significant DEGs missing in (i)
+# (e) log2FC from (ii) differs from (i) for all genes but difference is minimal
+# for most of the significant DEGs
+
+# NOTE: I have tested (i) and (iii) and found that
+# (a) Majority of significant DEGs in (iii) match with (i) but there are many
+# significant DEGs in (i) absent in (iii) and vice versa
+# (b) Significant DEGs with -ve log2FC from (i) also have -ve log2FC in (iii)
+# (c) Significant DEGs with +ve log2FC from (i) also have +ve log2FC in (iii) 
+# (d) (iii) identifies many other significant DEGs missing in (i) but (iii)
+# fails to identify many DEGs identified by (i)
+# (e) log2FC from (iii) differs from (i) for MOST genes to a great extent,
+# HOWEVER, DDR2KO samples had log2FC(DDR2) of -0.7 in (iii) but only -0.37 in 
+# (i) and (ii). So, sva might infact be removing batch effects and detecting 
+# true biological effects !!! 
+
+#******************************************************************************#
+#                         NOTES ON SINGLE CELL ANALYSIS                        #
+#******************************************************************************#
+
+# https://ggplot2.tidyverse.org/reference/guide_colourbar.html
+# https://stackoverflow.com/questions/56777529/how-to-pass-bash-variable-into-r-script
+# https://github.com/satijalab/seurat/issues/4082
+# Major changes in Seurat v5 
+# https://satijalab.org/seurat/articles/seurat5_integration
+# https://satijalab.github.io/azimuth/articles/run_azimuth_tutorial.html
+# https://satijalab.org/seurat/articles/integration_mapping
+# https://satijalab.org/seurat/articles/integration_introduction
+# https://satijalab.org/seurat/reference/integratelayers
+# https://rdrr.io/r/base/split.html
+# https://satijalab.org/seurat/reference/aggregateexpression
+# https://github.com/satijalab/seurat/issues/2101
+
+# # Indicate if data is from human or mice. We will adjust gene names accordingly.
+# species <- dplyr::case_when(proj %in% c("scRNASeq_Chen",
+#                                         "scRNASeq_Simon",
+#                                         "visium_GSE171351",
+#                                         "scRNASeq_HRA003620",
+#                                         "scRNASeq_GSE222315") ~ "Homo sapiens",
+#                             TRUE ~ "Mus musculus")
+
+#******************************************************************************#
+#        NORMALIZE DATA, IDENTIFY HIGHLY VARIABLE FEATURES, SCALE DATA,        # 
+#                PERFORM DIMENSIONAL REDUCTION USING PCA & UMAP                #
+#******************************************************************************#
+
+# Use the sctransform method as a more accurate method of normalizing, 
+# estimating the variance of the filtered data, and identifying the most 
+# variable genes. By default, sctransform accounts for cellular sequencing 
+# depth (i.e. nUMIs). Also, we can regress out variation from cell cycle genes
+# and mitochondrial genes if needed. 
+
+# Refer https://satijalab.org/seurat/articles/sctransform_vignette.html
+# The residuals (normalized values) are stored in pbmc[["SCT"]]@scale.data and 
+# used directly as input to PCA. Please note that this matrix is non-sparse, and
+# can therefore take up a lot of memory if stored for all genes. To save memory,
+# we store these values only for variable genes, by setting the 
+# return.only.var.genes=TRUE by default in the SCTransform().
+
+# To assist with visualization and interpretation, we also convert Pearson 
+# residuals back to ‘corrected’ UMI counts. You can interpret these as the UMI 
+# counts we would expect to observe if all cells were sequenced to the same depth.
+# The ‘corrected’ UMI counts are stored in pbmc[["SCT"]]@counts. 
+
+# The log-normalized versions of these corrected counts are stored in 
+# pbmc[["SCT"]]@data, which are very helpful for visualization.
+
+# You can use the corrected log-normalized counts for differential expression
+# and integration. However, in principle, it would be most optimal to perform
+# these calculations directly on the residuals (stored in the scale.data slot) 
+# themselves.
+
+#******************************************************************************#
+#               PREPARE THE DATA FOR INTEGRATION & INTEGRATE DATA              #
+#******************************************************************************#
+
+# As you see from the UMAP, the cells cluster differently in each sample. 
+# To find the same cell population (say macrophages) between 2 samples,
+# it is necessary for both samples to have similar clustering pattern in UMAP.
+# So, we have to integrate the samples. 
+
+# The goal of integration is to ensure that cell types of one 
+# condition/dataset align with the same cell types of the other 
+# conditions/datasets (e.g. macrophages in control samples align with 
+# macrophages in stimulated condition).
+
+# To integrate, we will use the shared highly variable genes from each 
+# condition identified using SCTransform, then, we will "integrate" or 
+# "harmonize" the conditions to overlay cells that are similar or have a 
+# "common set of biological features" between groups. 
+
+# STEP 7A: DECLARE REFERENCE SAMPLES FOR INTEGRATING THE DATA
+# STEP 7B: SELECT 3000 MOST VARIABLE GENES TO USE FOR INTEGRATING THE DATA
+# STEP 7C: FIND RESIDUALS FOR MISSING GENES
+# Each sample has different 3000 most variable genes. Gene X which is most 
+# variable among cells of "sample A" may not be one of the top 3000 most 
+# variable genes in "sample B". PrepSCTIntegration() will calculate Pearson 
+# residuals for missing genes so that all samples have the same 3000 genes
+
+# STEP 7D: FIND COMMON ANCHORS BETWEEN SAMPLES TO INTEGRATE THE DATA
+# NOTE: Data must be scaled & PCA must have been run before doing cca or rpca
+# in this step. cca is computationally intensive if more than 2 samples are 
+# integrated. In such cases, use "rpca". Also, using reference based integration
+# is faster.
+
+# (i) Perform canonical correlation analysis (CCA):
+# CCA identifies shared sources of variation between the conditions/groups. It
+# is a form of PCA, in that it identifies the greatest sources of variation in
+# the data, but only if it is shared or conserved across the conditions/groups
+# (using the 3000 most variant genes from each sample). This step roughly aligns
+# the cells using the greatest shared sources of variation.
+
+# NOTE: The shared highly variable genes are used because they are the most 
+# likely to represent those genes distinguishing the different cell types 
+# present.
+
+# (ii) Identify anchors or mutual nearest neighbors (MNNs) across datasets 
+# (sometimes incorrect anchors are identified): MNNs can be thought of as 
+# 'best buddies'. For each cell in one condition:   
+# (a) The cell's closest neighbor in the other condition is identified based on
+# gene expression values - it's 'best buddy'.
+# (b) The reciprocal analysis is performed, and if the two cells are 'best 
+# buddies' in both directions, then those cells will be marked as anchors to 
+# 'anchor' the two datasets together.
+
+# NOTE: The difference in expression values between cells in an MNN pair 
+# provides an estimate of the batch effect, which is made more precise by 
+# averaging across many such pairs. A correction vector is obtained and applied
+# to the expression values to perform batch correction."
+# 
+# (iii) Filter anchors to remove incorrect anchors:
+# Assess the similarity between anchor pairs by the overlap in their local 
+# neighborhoods (incorrect anchors will have low scores)
+
+# STEP 7E: FIND OPTIMUM k.weight FOR USE IN Seurat::IntegrateData()
+# k.weight MUST be less than number of anchors. Else, error will be thrown.
+
+# STEP 7F: INTEGRATE THE DATA
+# Use anchors and corresponding scores to transform the cell expression values,
+# allowing for the integration of the conditions/datasets (different samples, 
+# conditions, datasets, modalities)
+
+# NOTE: Transformation of each cell uses a weighted average of the two cells of 
+# each anchor across anchors of the datasets. Weights determined by cell 
+# similarity score (distance between cell and k nearest anchors) and anchor 
+# scores, so cells in the same neighborhood should have similar correction values.
+
+# If cell types are present in one dataset, but not the other, then the cells 
+# will still appear as a separate sample-specific cluster.
+
+# STEP 7G: RUN PCA USING 3000 INTEGRATION FEATURES & UMAP USING FIRST 40 PCs
+# You need to run PCA and UMAP after integration in order to visualize correctly
+# because IntegrateData() uses a different set of 3000 variable genes. So, new
+# PCs will need to be calculated.
+# Note: If you used SCTransform() before integration, you don't need to run 
+# ScaleData() after integration. However, if you ONLY used NormalizeData() 
+# before integration, you need to use ScaleData() after integration.
+
+#************************STEP 7B: INTEGRATE THE DATA*************************#
+
+# NOTE: The work of SelectIntegrationFeatures(), PrepSCTIntegration(), 
+# FindIntegrationAnchors() and IntegrateData() are done by IntegrateLayers().
+# Additionally, a new reduction which is equivalent of RunPCA() is also 
+# created after integration.
+
+# NOTE: RPCA needs proper kweight. Else, it throws error. I have not yet found
+# a way to calculate optimal kweight unlike seurat v3. If script gives error
+# regarding kweight, use the kweight it recommends in the error and re-run.
+
+#******************************************************************************#
+#                 CLUSTER THE CELLS & REMOVE SCARCE CLUSTERS                   #
+#******************************************************************************#
+
+# FindNeighbors() uses the user indicated "reduction" to calculate the k-nearest
+# neighbors and construct the SNN graph.
+# FindClusters() then performs graph-based clustering on the SNN graph. 
+
+# NOTE: It is recommended to adjust k.param of FindNeighbors() [default=20] to 
+# the same value as n.neighbors of UMAP() [default=30] 
+# https://github.com/satijalab/seurat/issues/2152
+
+#**************************STEP 8C: MERGE ALL LAYERS*************************#
+
+# Once integrative analysis is complete, you can rejoin the layers - which 
+# collapses the individual datasets together and recreates the original 
+# counts and data layers. You will need to do this before performing any 
+# differential expression analysis. However, you can always resplit the 
+# layers in case you would like to reperform integrative analysis.
+
+#******************************************************************************#
+
+# Example: If samples were isolated on different days & prepared using different
+# kits, "Batch" column must have values like "1_Ribo", "1_Poly-A", "2_Ribo", etc
+# NOTE: Make sure there are no white spaces in the Target and Reference columns
+# in excel file. R will change any white space (" ") to dot ("."). So, replace 
+# white space (" ") with underscore ("_") before importing into R.
+
+# DESeq2 automatically removes genes that have 0 counts but doesnt remove 
+# samples that have 0 counts for all genes (unlikely scenario). So, remove
+# such samples, else, the geometric mean will be 0 for all genes and DESeq2 
+# will halt execution.
+
+# Built-in PCA plot in DESeq2
+# Use getMethod("plotPCA", "DESeqTransform") to understand how DESeq2 makes 
+# PCA plot, it uses top 500 genes with highest variance and uses scale=FALSE
+# pcaData <- plotPCA(object = vsd, intgroup = "Sample_ID", returnData=TRUE)
+# percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+# Calculate Principal components
+# (i) PCA is performed across columns. So, have variables i.e. genes on columns.
+# (ii) "Error cannot rescale a constant/zero column to unit variance" is due  
+# to genes that have 0 expression across all samples. Remove them.
+# (iii) All NA must be replaced with 0
+# (iv) prcomp() is better than princomp()
+
+# Normalized counts are influenced by sizeFactors.
+# sizeFactors are affected by number of samples (all samples vs subset of samples)
+# sizeFactors are NOT affected by design formula.
+# sizeFactors MUST be estimated first before normalization.
+# Normalized counts from dds object are NOT batch corrected. We do this below.
+# https://www.biostars.org/p/490181/
+
+# design doesnt affect size factors. Hence, normalized counts are not affected by design
+# but vst counts are affected by design blind=TRUE vs blind=FALSE
+
+# AnnotationHub has SYMBOL-ENSEMBL_ID info ONLY.
+# AnnotationDbi has SYMBOL-ENSEMBL_ID as well as SYMBOL-ENTREZ_ID info.
+# hubCache(AnnotationHub()) to find location where cache is stored and delete
+# it and start fresh if you get errors like "Error: failed to load resource"
+# NOTE: mapIds can ONLY retrieve one of "EMSEMBL/SYMBOL/GENETYPE" at a time
+# mapping <- AnnotationDbi::mapIds(x=org.Hs.eg.db, 
+#                                  keys=keys(org.Hs.eg.db),
+#                                  keytype="ENTREZID", 
+#                                  column="SYMBOL") %>%
+#   as.data.frame(do.call(cbind, list(.))) %>%
+#   tibble::rownames_to_column("ENTREZID") %>%
+#   dplyr::rename(ENTREZID=identity(1), SYMBOL=identity(2))
+
+# Two types of analysis: 
+# (i) Gene Set Enrichment Analysis (GSEA)
+# (ii) Over Representation Analysis (ORA)
+# GSEA uses all DEGs ordered by fold change or other parameter
+# ORA uses ONLY significant DEGs and ignores fold change etc
+
+# NOTE: Genes MUST be ranked i.e. sorted in descending fold change. You can 
+# also rank based on log2FC & p value like: sign(df$log2fc)*(-log10(df$pval)))
+
+# NOTE: Genes MUST be stored in list format, not as a dataframe.
+
+# NOTE: No NA MUST be present in SYMBOL column. Else, fgsea::collapsePathways()
+# will give "Error in preparePathwaysAndStats(pathways, stats, minSize, maxSize, gseaParam,  : 
+# Not all stats values are finite numbers"
+# You can figure out using table(is.na(names(DEGs_list))), 
+# is.infinite(DEGs_df$log2FoldChange) or sapply(DEGs_df, class) to make sure
+# log2FoldChange and padj are numeric
+
+# NOTE: If your excel file has "inf" in padj or log2FoldChange columns, the
+# column will be read into R as character column instead of numeric. So, remove
+# text values from log2FoldChange and padj columns
+
+# Define score type in fgseaMultilevel() based on fold change values.
+# NOTE: Use "pos", if you are ONLY interested in activated pathways.
+# NOTE: Use "neg", if you are ONLY interested in inhibited pathways. 
+# NOTE: Else, use "std" for both activated & inhibited pathways. 
+
+# NOTE: If you run multiple gene sets like C5 and C2 together, padj will not 
+# be significant as there will be too many multiple comparisons. So, run
+# each gene set separately and merge results
+
+# If you ordered your gene list based on fold change, then +ve NES indicates
+# that the genes in this gene set are mostly at the top of your gene list
+# (hence, most of them are upregulated) and -ve NES indicates that the genes
+# in this gene set are mostly at the bottom of your gene list (hence, most 
+# of them are downregulated)
+
+# NOTE: Output of fgsea is a data.table & data.frame. 
+# "leadingEdge" column is a list of genes. 
+# So, DO NOT FORCE the output of fgsea to a dataframe as this will lead to 
+# data loss from "leadingEdge" column & affect plotting using fgsea::plotEnrichment()
+
+# NOTE: DO NOT USE labels for defining colors due to reasons below. 
+# RECOMMEND using a named vector.
+# NOTE: If using labels, sort labels in alphabetical order and then assign 
+# color because R by default will arrange the labels in alphabetical order 
+# first and then match them to colors indicated in values vector and then 
+# color the plot. The coloring in the legend is however dependent on the 
+# order of labels vector and values vector. To understand, create a plot first 
+# using the sort and then without the sort(). 
+
+
+#******************************************************************************#
+#               NOTES ON DESEQ2 & RNA SEQ BATCH CORRECTION                     #
+#******************************************************************************#
+
+# NOTE: coeff MUST match one of columns in resultsNames(dds)
+# betaPrior: default=FALSE, shrunken LFCs are obtained later using lfcShrink
+# Perform lfcshrinkage to account for variability between replicates
+# For ashr, if res is provided, then coef and contrast are ignored.
+# lfcshrinkage will not change the number of DEGs and affects only logFC
+
+# NOTE: It is RECOMMENDED to perform batch correction ONLY if you know the batch
+# information for all the samples in meta_data.
+# https://support.bioconductor.org/p/76099/
+# https://support.bioconductor.org/p/9149116/
+# https://support.bioconductor.org/p/133222/#133225/
+# https://support.bioconductor.org/p/125386/#125387
+# https://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html#using-sva-with-deseq2
+
+# There are multiple approaches to batch correction:
+# (i) Modelling batch effect using DESeq2 design [RECOMMENDED]
+# Add Batch to design of DESEq2 like design=~Batch + id
+# (ii) Using combatseq to remove batch effects
+# Use combatseq to get batch corrected read counts and then use the corrected 
+# counts as input for DESeq2() and a design without batch variable (design=~ id)
+# (iii) Using sva to identify hidden batch variables and model them in DeSeq2
+# Use sva to find upto 2 surrogate variables that could be causing batch effects
+# and include them in the design of DESeq2 like design=~SV1 + SV2 + id
+
+# NOTE: I have tested (i) and (ii) and found that 
+# (a) Almost all DEGs identified as significant in (i) are present in (ii) 
+# (b) All significant DEGs with -ve log2FC from (i) also have -ve log2FC in (ii)
+# (c) All significant DEGs with +ve log2FC from (i) also have +ve log2FC in (ii)
+# (d) (ii) identifies many other significant DEGs missing in (i)
+# (e) log2FC from (ii) differs from (i) for all genes but difference is minimal
+# for most of the significant DEGs
+
+# NOTE: I have tested (i) and (iii) and found that
+# (a) Majority of significant DEGs in (iii) match with (i) but there are many
+# significant DEGs in (i) absent in (iii) and vice versa
+# (b) Significant DEGs with -ve log2FC from (i) also have -ve log2FC in (iii)
+# (c) Significant DEGs with +ve log2FC from (i) also have +ve log2FC in (iii) 
+# (d) (iii) identifies many other significant DEGs missing in (i) but (iii)
+# fails to identify many DEGs identified by (i)
+# (e) log2FC from (iii) differs from (i) for MOST genes to a great extent,
+# HOWEVER, DDR2KO samples had log2FC(DDR2) of -0.7 in (iii) but only -0.37 in 
+# (i) and (ii). So, sva might infact be removing batch effects and detecting 
+# true biological effects !!! 
+
+#******************************************************************************#
+#                         NOTES ON SINGLE CELL ANALYSIS                        #
+#******************************************************************************#
+
+# https://ggplot2.tidyverse.org/reference/guide_colourbar.html
+# https://stackoverflow.com/questions/56777529/how-to-pass-bash-variable-into-r-script
+# https://github.com/satijalab/seurat/issues/4082
+# Major changes in Seurat v5 
+# https://satijalab.org/seurat/articles/seurat5_integration
+# https://satijalab.github.io/azimuth/articles/run_azimuth_tutorial.html
+# https://satijalab.org/seurat/articles/integration_mapping
+# https://satijalab.org/seurat/articles/integration_introduction
+# https://satijalab.org/seurat/reference/integratelayers
+# https://rdrr.io/r/base/split.html
+# https://satijalab.org/seurat/reference/aggregateexpression
+# https://github.com/satijalab/seurat/issues/2101
+
+# # Indicate if data is from human or mice. We will adjust gene names accordingly.
+# species <- dplyr::case_when(proj %in% c("scRNASeq_Chen",
+#                                         "scRNASeq_Simon",
+#                                         "visium_GSE171351",
+#                                         "scRNASeq_HRA003620",
+#                                         "scRNASeq_GSE222315") ~ "Homo sapiens",
+#                             TRUE ~ "Mus musculus")
+
+#******************************************************************************#
+#        NORMALIZE DATA, IDENTIFY HIGHLY VARIABLE FEATURES, SCALE DATA,        # 
+#                PERFORM DIMENSIONAL REDUCTION USING PCA & UMAP                #
+#******************************************************************************#
+
+# Use the sctransform method as a more accurate method of normalizing, 
+# estimating the variance of the filtered data, and identifying the most 
+# variable genes. By default, sctransform accounts for cellular sequencing 
+# depth (i.e. nUMIs). Also, we can regress out variation from cell cycle genes
+# and mitochondrial genes if needed. 
+
+# Refer https://satijalab.org/seurat/articles/sctransform_vignette.html
+# The residuals (normalized values) are stored in pbmc[["SCT"]]@scale.data and 
+# used directly as input to PCA. Please note that this matrix is non-sparse, and
+# can therefore take up a lot of memory if stored for all genes. To save memory,
+# we store these values only for variable genes, by setting the 
+# return.only.var.genes=TRUE by default in the SCTransform().
+
+# To assist with visualization and interpretation, we also convert Pearson 
+# residuals back to ‘corrected’ UMI counts. You can interpret these as the UMI 
+# counts we would expect to observe if all cells were sequenced to the same depth.
+# The ‘corrected’ UMI counts are stored in pbmc[["SCT"]]@counts. 
+
+# The log-normalized versions of these corrected counts are stored in 
+# pbmc[["SCT"]]@data, which are very helpful for visualization.
+
+# You can use the corrected log-normalized counts for differential expression
+# and integration. However, in principle, it would be most optimal to perform
+# these calculations directly on the residuals (stored in the scale.data slot) 
+# themselves.
+
+#******************************************************************************#
+#               PREPARE THE DATA FOR INTEGRATION & INTEGRATE DATA              #
+#******************************************************************************#
+
+# As you see from the UMAP, the cells cluster differently in each sample. 
+# To find the same cell population (say macrophages) between 2 samples,
+# it is necessary for both samples to have similar clustering pattern in UMAP.
+# So, we have to integrate the samples. 
+
+# The goal of integration is to ensure that cell types of one 
+# condition/dataset align with the same cell types of the other 
+# conditions/datasets (e.g. macrophages in control samples align with 
+# macrophages in stimulated condition).
+
+# To integrate, we will use the shared highly variable genes from each 
+# condition identified using SCTransform, then, we will "integrate" or 
+# "harmonize" the conditions to overlay cells that are similar or have a 
+# "common set of biological features" between groups. 
+
+# STEP 7A: DECLARE REFERENCE SAMPLES FOR INTEGRATING THE DATA
+# STEP 7B: SELECT 3000 MOST VARIABLE GENES TO USE FOR INTEGRATING THE DATA
+# STEP 7C: FIND RESIDUALS FOR MISSING GENES
+# Each sample has different 3000 most variable genes. Gene X which is most 
+# variable among cells of "sample A" may not be one of the top 3000 most 
+# variable genes in "sample B". PrepSCTIntegration() will calculate Pearson 
+# residuals for missing genes so that all samples have the same 3000 genes
+
+# STEP 7D: FIND COMMON ANCHORS BETWEEN SAMPLES TO INTEGRATE THE DATA
+# NOTE: Data must be scaled & PCA must have been run before doing cca or rpca
+# in this step. cca is computationally intensive if more than 2 samples are 
+# integrated. In such cases, use "rpca". Also, using reference based integration
+# is faster.
+
+# (i) Perform canonical correlation analysis (CCA):
+# CCA identifies shared sources of variation between the conditions/groups. It
+# is a form of PCA, in that it identifies the greatest sources of variation in
+# the data, but only if it is shared or conserved across the conditions/groups
+# (using the 3000 most variant genes from each sample). This step roughly aligns
+# the cells using the greatest shared sources of variation.
+
+# NOTE: The shared highly variable genes are used because they are the most 
+# likely to represent those genes distinguishing the different cell types 
+# present.
+
+# (ii) Identify anchors or mutual nearest neighbors (MNNs) across datasets 
+# (sometimes incorrect anchors are identified): MNNs can be thought of as 
+# 'best buddies'. For each cell in one condition:   
+# (a) The cell's closest neighbor in the other condition is identified based on
+# gene expression values - it's 'best buddy'.
+# (b) The reciprocal analysis is performed, and if the two cells are 'best 
+# buddies' in both directions, then those cells will be marked as anchors to 
+# 'anchor' the two datasets together.
+
+# NOTE: The difference in expression values between cells in an MNN pair 
+# provides an estimate of the batch effect, which is made more precise by 
+# averaging across many such pairs. A correction vector is obtained and applied
+# to the expression values to perform batch correction."
+# 
+# (iii) Filter anchors to remove incorrect anchors:
+# Assess the similarity between anchor pairs by the overlap in their local 
+# neighborhoods (incorrect anchors will have low scores)
+
+# STEP 7E: FIND OPTIMUM k.weight FOR USE IN Seurat::IntegrateData()
+# k.weight MUST be less than number of anchors. Else, error will be thrown.
+
+# STEP 7F: INTEGRATE THE DATA
+# Use anchors and corresponding scores to transform the cell expression values,
+# allowing for the integration of the conditions/datasets (different samples, 
+# conditions, datasets, modalities)
+
+# NOTE: Transformation of each cell uses a weighted average of the two cells of 
+# each anchor across anchors of the datasets. Weights determined by cell 
+# similarity score (distance between cell and k nearest anchors) and anchor 
+# scores, so cells in the same neighborhood should have similar correction values.
+
+# If cell types are present in one dataset, but not the other, then the cells 
+# will still appear as a separate sample-specific cluster.
+
+# STEP 7G: RUN PCA USING 3000 INTEGRATION FEATURES & UMAP USING FIRST 40 PCs
+# You need to run PCA and UMAP after integration in order to visualize correctly
+# because IntegrateData() uses a different set of 3000 variable genes. So, new
+# PCs will need to be calculated.
+# Note: If you used SCTransform() before integration, you don't need to run 
+# ScaleData() after integration. However, if you ONLY used NormalizeData() 
+# before integration, you need to use ScaleData() after integration.
+
+#************************STEP 7B: INTEGRATE THE DATA*************************#
+
+# NOTE: The work of SelectIntegrationFeatures(), PrepSCTIntegration(), 
+# FindIntegrationAnchors() and IntegrateData() are done by IntegrateLayers().
+# Additionally, a new reduction which is equivalent of RunPCA() is also 
+# created after integration.
+
+# NOTE: RPCA needs proper kweight. Else, it throws error. I have not yet found
+# a way to calculate optimal kweight unlike seurat v3. If script gives error
+# regarding kweight, use the kweight it recommends in the error and re-run.
+
+#******************************************************************************#
+#                 CLUSTER THE CELLS & REMOVE SCARCE CLUSTERS                   #
+#******************************************************************************#
+
+# FindNeighbors() uses the user indicated "reduction" to calculate the k-nearest
+# neighbors and construct the SNN graph.
+# FindClusters() then performs graph-based clustering on the SNN graph. 
+
+# NOTE: It is recommended to adjust k.param of FindNeighbors() [default=20] to 
+# the same value as n.neighbors of UMAP() [default=30] 
+# https://github.com/satijalab/seurat/issues/2152
+
+#**************************STEP 8C: MERGE ALL LAYERS*************************#
+
+# Once integrative analysis is complete, you can rejoin the layers - which 
+# collapses the individual datasets together and recreates the original 
+# counts and data layers. You will need to do this before performing any 
+# differential expression analysis. However, you can always resplit the 
+# layers in case you would like to reperform integrative analysis.
+
+#******************************************************************************#
+
+#****************************************************************************#
+#                      STEP 4: PERFORM BATCH CORRECTION                      #
+#****************************************************************************#
+
+# NOTE: It is RECOMMENDED to perform batch correction ONLY if you know the batch
+# information for all the samples in meta_data.
+# https://support.bioconductor.org/p/76099/
+# https://support.bioconductor.org/p/9149116/
+# https://support.bioconductor.org/p/133222/#133225/
+# https://support.bioconductor.org/p/125386/#125387
+# https://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html#using-sva-with-deseq2
+
+# There are multiple approaches to batch correction:
+# (i) Modelling batch effect using DESeq2 design [RECOMMENDED]
+# Add Batch to design of DESEq2 like design=~Batch + id
+# (ii) Using combatseq to remove batch effects
+# Use combatseq to get batch corrected read counts and then use the corrected 
+# counts as input for DESeq2() and a design without batch variable (design=~ id)
+
+# NOTE: I have tested (i) and (ii) and found that 
+# (a) Almost all DEGs identified as significant in (i) are present in (ii) 
+# (b) All significant DEGs with -ve log2FC from (i) also have -ve log2FC in (ii)
+# (c) All significant DEGs with +ve log2FC from (i) also have +ve log2FC in (ii)
+# (d) (ii) identifies many other significant DEGs missing in (i)
+# (e) log2FC from (ii) differs from (i) for all genes but difference is minimal
+# for most of the significant DEGs
+
+# (iii) Using sva to identify hidden batch variables and model them in DeSeq2
+# Use sva to find upto 2 surrogate variables that could be causing batch effects
+# and include them in the design of DESeq2 like design=~SV1 + SV2 + id
+
+# NOTE: I have tested (i) and (iii) and found that
+# (a) Majority of significant DEGs in (iii) match with (i) but there are many
+# significant DEGs in (i) absent in (iii) and vice versa
+# (b) Significant DEGs with -ve log2FC from (i) also have -ve log2FC in (iii)
+# (c) Significant DEGs with +ve log2FC from (i) also have +ve log2FC in (iii) 
+# (d) (iii) identifies many other significant DEGs missing in (i) but (iii)
+# fails to identify many DEGs identified by (i)
+# (e) log2FC from (iii) differs from (i) for MOST genes to a great extent,
+# HOWEVER, DDR2KO samples had log2FC(DDR2) of -0.7 in (iii) but only -0.37 in 
+# (i) and (ii). So, sva might infact be removing batch effects and detecting 
+# true biological effects !!! 
+
+
+# Enrichment analysis takes differential data from every measured gene and looks
+# for pathways displaying significantly coordinated shifts in those values.
+
+# https://www.biostars.org/p/12182/
+# https://www.biostars.org/p/17628/
+# https://www.reddit.com/r/bioinformatics/comments/11o7mrv/gene_set_enrichment_analysis_do_you_separate_out/?rdt=59356
+# https://groups.google.com/g/gsea-help/c/oXsBOAUYnH4
+# https://www.biostars.org/p/132575/
+# https://support.bioconductor.org/p/85681/
+
+# DEGs_df MUST contain columns "SYMBOL", "padj" & "log2FoldChange"
+# gmt_file MUST be the original unmodified filename of gmt_file with full 
+# path as downloaded from GSEA
+
+# Read this paper for survival analyis
+# https://doi.org/10.1093/jncimonographs/lgu024

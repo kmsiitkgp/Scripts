@@ -614,7 +614,7 @@ prep_txi <- function(salmon_dir, species, output_dir,
                              pattern    = "quant.sf$", 
                              recursive  = TRUE,
                              full.names = FALSE)
-  sample_names <- gsub(pattern = "-quant.sf", replacement = "", x = sample_names)
+  sample_names <- gsub(pattern = "\\.quant.sf$", replacement = "", x = sample_names)
   names(quant_files) <- make.names(sample_names)
   
   txi <- tximport::tximport(files           = quant_files, 
@@ -627,20 +627,28 @@ prep_txi <- function(salmon_dir, species, output_dir,
   file_extension <- ".rds"
   saveRDS(txi, file = file.path(output_dir, paste0(file_name, file_extension)))
   
-  # 1. Export Raw-ish Estimated Counts
-  write.csv(as.data.frame(txi$counts), 
-            file.path(output_dir, "Processed_Data_Counts.csv"), 
-            row.names = TRUE)
+  # Save the Raw Counts (The "Must-Have" for GEO)
+  txi$counts %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "GeneID") %>%
+    write.table(file.path(output_dir, "Processed_Raw_Gene_Counts.txt"), 
+                sep = "\t", quote = FALSE, row.names = FALSE)
   
-  # 2. Export TPMs
-  write.csv(as.data.frame(txi$abundance), 
-            file.path(output_dir, "Processed_Data_TPM.csv"), 
-            row.names = TRUE)
+  # Save the TPMs (The "Nice-to-Have" for Heatmaps/Reviewers)
+  txi$abundance %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "GeneID") %>%
+    write.table(file.path(output_dir, "Processed_TPM_Values.txt"), 
+                sep = "\t", quote = FALSE, row.names = FALSE)
 
   return(txi)
 }
 
 prepare_deseq2_input <- function(expr_mat, txi, metadata, design) {
+  
+  if (is.null(expr_mat) & !is.null(txi)){
+    expr_mat <- txi$counts
+  }
   
   # ---- ⚙️ Validate Input Parameters ----
   
@@ -682,24 +690,21 @@ prepare_deseq2_input <- function(expr_mat, txi, metadata, design) {
              msg    = glue::glue("Alignment lost {lost} samples. Check for naming mismatches (e.g. '-' vs '_')."))
   }
   
-  # ⚠️ Detect potential gene ID column in expr_mat
   
-  if (!is.null(expr_mat)){
-    
-    # Compute column sums
-    col_sums <- colSums(expr_mat, na.rm = TRUE)
-    first_col_name <- colnames(expr_mat)[1]
-    first_col <- expr_mat[,1]
-    
-    # Heuristic checks
-    is_numeric_outlier <- is.numeric(first_col) && col_sums[1] > 10 * median(col_sums[-1])
-    is_name_not_in_meta <- !(first_col_name %in% make.names(metadata$Sample_ID))
-    
-    if (is_numeric_outlier || is_name_not_in_meta) {
-      log_error(sample = "",
-                step    = "prepare_deseq2_input",
-                msg     = glue::glue("First column '{first_col_name}' looks like gene IDs (Entrez or SYMBOL), not sample counts."))
-    }
+  # ⚠️ Detect potential gene ID column in expr_mat
+  # Compute column sums
+  col_sums <- colSums(expr_mat, na.rm = TRUE)
+  first_col_name <- colnames(expr_mat)[1]
+  first_col <- expr_mat[,1]
+  
+  # Heuristic checks
+  is_numeric_outlier <- is.numeric(first_col) && col_sums[1] > 10 * median(col_sums[-1])
+  is_name_not_in_meta <- !(first_col_name %in% make.names(metadata$Sample_ID))
+  
+  if (is_numeric_outlier || is_name_not_in_meta) {
+    log_error(sample = "",
+              step    = "prepare_deseq2_input",
+              msg     = glue::glue("First column '{first_col_name}' looks like gene IDs (Entrez or SYMBOL), not sample counts."))
   }
   
   # ---- 📝️ Metadata Preparation & Design Validation ----
@@ -755,60 +760,55 @@ prepare_deseq2_input <- function(expr_mat, txi, metadata, design) {
   
   # ---- 🧮 Expression Matrix Cleaning & Filtering ----
   
-  if (!is.null(expr_mat)){
-    
-    # Convert column names to valid R names
-    colnames(expr_mat) <- make.names(colnames(expr_mat))
-    
-    # Retain ONLY samples in metadata for accurate zero count calculations
-    expr_mat <- expr_mat[, intersect(colnames(expr_mat), rownames(metadata)), drop = FALSE]
-    
-    # Remove rows with NA gene names
-    na_rows <- is.na(rownames(expr_mat))
-    expr_mat <- expr_mat[!na_rows, , drop = FALSE]
-    log_info(sample = "",
-             step   = "prepare_deseq2_input",
-             msg    = glue::glue("Removed {sum(na_rows)} rows with missing gene names."))
-    
-    # Replace missing counts with 0
-    expr_mat[is.na(expr_mat)] <- 0
-    
-    # Convert all columns to numeric safely
-    expr_mat <- matrix(as.numeric(as.matrix(expr_mat)),
-                       nrow = nrow(expr_mat),
-                       ncol = ncol(expr_mat),
-                       dimnames = dimnames(expr_mat))
-    
-    if (any(is.na(expr_mat))) {
-      log_error(sample = "",
-                step   = "plot_heatmap",
-                msg    = "`expr_mat` contains non-numeric values that could not be converted.")
-    }
-    
-    # Remove genes with zero counts across all samples
-    zero_genes   <- rownames(expr_mat)[which(rowSums(expr_mat) == 0)]
-    expr_mat <- expr_mat[rowSums(expr_mat) != 0, , drop = FALSE]
-    log_warn(sample = "",
-             step   = "prepare_deseq2_input",
-             msg    = glue::glue("Removed {length(zero_genes)} genes with zero counts across all samples."))
-    
-    # Remove samples with zero total reads
-    zero_samples <- colnames(expr_mat)[which(colSums(expr_mat) == 0)]
-    expr_mat <- expr_mat[, colSums(expr_mat) != 0, drop = FALSE]
-    log_warn(sample = "",
-             step   = "prepare_deseq2_input",
-             msg    = glue::glue("Removed {length(zero_samples)} samples with zero total counts."))
-  } 
+  # Convert column names to valid R names
+  colnames(expr_mat) <- make.names(colnames(expr_mat))
+  
+  # Retain ONLY samples in metadata for accurate zero count calculations
+  expr_mat <- expr_mat[, intersect(colnames(expr_mat), rownames(metadata)), drop = FALSE]
+  
+  # Remove rows with NA gene names
+  na_rows <- is.na(rownames(expr_mat))
+  expr_mat <- expr_mat[!na_rows, , drop = FALSE]
+  log_info(sample = "",
+           step   = "prepare_deseq2_input",
+           msg    = glue::glue("Removed {sum(na_rows)} rows with missing gene names."))
+  
+  # Replace missing counts with 0
+  expr_mat[is.na(expr_mat)] <- 0
+  
+  # Convert all columns to numeric safely
+  expr_mat <- matrix(as.numeric(as.matrix(expr_mat)),
+                     nrow = nrow(expr_mat),
+                     ncol = ncol(expr_mat),
+                     dimnames = dimnames(expr_mat))
+  
+  if (any(is.na(expr_mat))) {
+    log_error(sample = "",
+              step   = "plot_heatmap",
+              msg    = "`expr_mat` contains non-numeric values that could not be converted.")
+  }
+  
+  # Remove genes with zero counts across all samples
+  zero_genes   <- rownames(expr_mat)[which(rowSums(expr_mat) == 0)]
+  expr_mat <- expr_mat[rowSums(expr_mat) != 0, , drop = FALSE]
+  log_warn(sample = "",
+           step   = "prepare_deseq2_input",
+           msg    = glue::glue("Removed {length(zero_genes)} genes with zero counts across all samples."))
+  
+  # Remove samples with zero total reads
+  zero_samples <- colnames(expr_mat)[which(colSums(expr_mat) == 0)]
+  expr_mat <- expr_mat[, colSums(expr_mat) != 0, drop = FALSE]
+  log_warn(sample = "",
+           step   = "prepare_deseq2_input",
+           msg    = glue::glue("Removed {length(zero_samples)} samples with zero total counts."))
+  
   
   # ---- 🧩 Final Data Structuring for DESeq2 ----
   
   # Synchronize samples between expr_mat and metadata
-  if (!is.null(expr_mat)){
+  
   common_samples <- intersect(colnames(expr_mat), rownames(metadata))
   expr_mat <- expr_mat[              , common_samples, drop = FALSE]
-  } else{
-    common_samples <- intersect(colnames(txi$counts), rownames(metadata))
-  }
   metadata <- metadata[common_samples,               , drop = FALSE]
   
   if (length(common_samples) == 0) {
@@ -827,12 +827,16 @@ prepare_deseq2_input <- function(expr_mat, txi, metadata, design) {
   message("Structure of metadata after conversion:")
   str(metadata)
   
+  # Reset expr_mat to null
+  if (!is.null(txi)){
+    expr_mat <- NULL
+  }
+  
   # ---- 🪵 Log Output and Return Cleaned Data ----
   
   if (!is.null(expr_mat)) {
     n_genes   <- nrow(expr_mat)
     n_samples <- ncol(expr_mat)
-    
   } else if (!is.null(txi) && !is.null(txi$counts)) {
     n_genes   <- nrow(txi$counts)
     n_samples <- ncol(txi$counts)
@@ -9888,6 +9892,7 @@ progeny_analysis <- function(norm_counts, assay = "RNA", species = "Homo sapiens
     
   }
 }
+
 # ---- NOTES ----
 
 #******************************************************************************#

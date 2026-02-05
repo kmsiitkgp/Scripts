@@ -1,0 +1,49 @@
+# Remove the .tmp_download fodlers
+rm -R ~/common/EGAD00001007575/*/.tmp_download/
+rm -R ~/common/EGAD00001003977/*/.tmp_download/
+rm -R ~/common/EGAD00001004218/*/.tmp_download/
+
+# Move all fastq files to  parent folder EGAD00001007575
+ls ~/common/EGAD00001007575/*/*.fastq.gz
+mv ~/common/EGAD00001007575/*/*.fastq.gz ~/common/EGAD00001007575/
+ls ~/common/EGAD00001003977/*/*.fastq.gz
+mv ~/common/EGAD00001003977/*/*.fastq.gz ~/common/EGAD00001003977/
+ls ~/common/EGAD00001004218/*/*.fastq.gz
+mv ~/common/EGAD00001004218/*/*.fastq.gz ~/common/EGAD00001004218/
+
+# Confirm that trasfer was successful
+ls ~/common/EGAD00001007575/*/*.fastq.gz
+ls ~/common/EGAD00001003977/*/*.fastq.gz
+ls ~/common/EGAD00001004218/*/*.fastq.gz
+
+# Delete all subfolders in cyberduck or mobaxterm
+
+# Testing if renaming works on dummy files
+mkdir test
+cd test
+touch testfile_1.txt
+touch testfile_2.txt
+touch testfile_3.txt
+touch testfile_4.txt
+inputs=(~/test/*.txt)
+for i in ${inputs[*]}; do mv $i ${i//testfile_/}; done
+
+# Rename fastq files
+inputs=(~/common/EGAD00001007575/*.fastq.gz)
+for i in ${inputs[*]}; do mv $i ${i//wo29636_ngs_rna_targrna_rnaaccess_/}; done
+
+inputs=(~/common/EGAD00001003977/*.fastq.gz)
+for i in ${inputs[*]}; do mv $i ${i//GO29293_ngs_rna_targrna_/}; done
+inputs=(~/common/EGAD00001003977/rnaaccess_*.fastq.gz)
+for i in ${inputs[*]}; do mv $i ${i//rnaaccess_/}; done
+
+inputs=(~/common/EGAD00001004218/*.fastq.gz)
+for i in ${inputs[*]}; do mv $i ${i//GO29293_ngs_dna_targdna_/}; done
+inputs=(~/common/EGAD00001004218/*.fastq.gz)
+for i in ${inputs[*]}; do mv $i ${i//GO29293_ngs_dna_wes_sureselect_/}; done
+inputs=(~/common/EGAD00001004218/*.fastq.gz)
+for i in ${inputs[*]}; do mv $i ${i//go29293_ngs_dna_wes_sureselect_/}; done
+inputs=(~/common/EGAD00001004218/*.fastq.gz)
+for i in ${inputs[*]}; do mv $i ${i//go29293_ngs_dna_wes_/}; done
+inputs=(~/common/EGAD00001004218/*.fastq.gz)
+for i in ${inputs[*]}; do mv $i ${i//GO29293_ngs_dna_wes_/}; done

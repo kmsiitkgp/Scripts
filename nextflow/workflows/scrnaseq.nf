@@ -6,40 +6,15 @@ nextflow.enable.dsl=2        // Enable DSL2 syntax (modern Nextflow with explici
 // =========================================================================================
 // Modular architecture: Each process in separate file for maintainability
 
+include { RENAME_FASTQS }                from '../modules/rename_fastq.nf'
+include { GENERATE_MD5 }                 from '../modules/generate_md5.nf'
 include { VALIDATE_INPUT }               from '../modules/validate_input.nf'
 include { FASTQC as FASTQC_RAW }         from '../modules/fastqc.nf'
+include { FASTQC as FASTQC_TRIMMED }     from '../modules/fastqc.nf'           // Reusable process with alias
 include { CELLRANGER_COUNT }             from '../modules/cellranger_count.nf'
 include { MULTIQC }                      from '../modules/multiqc.nf'
-//include { TEST_INDEX }                   from '../modules/test_index.nf'  // Debugging utility
-
-// =========================================================================================
-// PIPELINE HEADER
-// =========================================================================================
-// Displays configuration for user verification before execution
-
-log.info """
-    ===========================================
-    SCRNA-SEQ PIPELINE
-    ===========================================
-    Project              : ${params.project}
-    Species              : ${params.species}
-    Genome               : ${params.genome_version}
-    Fasta File           : ${params.ref_fasta()}
-    GTF File             : ${params.ref_gtf()}
-    BED File             : ${params.ref_bed()}
-    Housekeeping         : ${params.housekeeping_bed()}
-
-    PATHS:
-    Reference Dir        : ${params.ref_dir()}
-    Project Dir          : ${params.proj_dir()}
-    Input (FastQ)        : ${params.fastq_dir()}
-    Input (Raw FastQ)    : ${params.raw_fastq_dir()}
-    Output (FastQC)      : ${params.fastqc_dir()}
-    Output (CellRanger)    : ${params.cellranger_dir()}
-    Output (MultiQC)     : ${params.multiqc_dir()}
-    Logs                 : ${params.log_dir()}
-    ===========================================
-    """
+//include { TEST_INDEX }                   from '../modules/test_index.nf'       // Debugging utility
+//include { TEST_PUBLISHDIR }              from '../modules/test_publishdir.nf'  // Debugging utility
 
 // =========================================================================================
 // MAIN WORKFLOW
@@ -49,15 +24,100 @@ log.info """
 
 workflow SCRNASEQ {
 
+    // =========================================================================================
+    // PIPELINE HEADER
+    // =========================================================================================
+    // Displays configuration for user verification before execution
+
+    log.info """
+        ===========================================
+        SCRNA-SEQ PIPELINE
+        ===========================================
+        Project              : ${params.project}
+        Species              : ${params.species}
+        Genome version       : ${params.genome_version}
+        Fasta File           : ${params.ref_fasta()}
+        GTF File             : ${params.ref_gtf()}
+        BED File             : ${params.ref_bed()}
+        Housekeeping         : ${params.housekeeping_bed()}
+        Mapping File         : ${params.map()}
+        10X Token            : ${params.cellranger_index_dir()}/${params.cellranger_count.tenx_cloud_token_path}
+
+        PATHS:
+        Reference Dir        : ${params.ref_dir()}
+        CellRanger Index     : ${params.cellranger_index_dir()}
+        Project Dir          : ${params.proj_dir()}
+        Input (FastQ)        : ${params.fastq_dir()}
+        Input (Raw FastQ)    : ${params.raw_fastq_dir()}
+        Output (FastQC)      : ${params.fastqc_dir()}
+        Output (CellRanger)  : ${params.cellranger_dir()}
+        Output (MultiQC)     : ${params.multiqc_dir()}
+        Logs                 : ${params.log_dir()}
+        ===========================================
+        """.stripIndent()
+    // =====================================================================================
+    // STEP : RENAME FASTQ FILES
+    // =====================================================================================
+
+    // Check if the map file actually exists on disk
+    map_file_path = params.map() ? file(params.map()) : null
+
+    if (map_file_path && map_file_path.exists()) {
+
+        srr_fastq_ch  = Channel.fromPath("${params.srr_fastq_dir()}/*.{fastq,fq}.gz")
+        map_ch        = Channel.value(map_file_path)
+
+        // CRITICAL: Use .collect() so all files go to ONE rename process
+        RENAME_FASTQS(srr_fastq_ch.collect(), map_ch)
+
+        // Use .flatten() here to break the list into 48 individual items
+        raw_fastq_ch = RENAME_FASTQS.out.renamed_fastqs.flatten()
+
+    } else {
+        log.info "No map file found. Passing raw FASTQs directly to validation."
+        raw_fastq_ch  = Channel.fromPath("${params.raw_fastq_dir()}/*.{fastq,fq}.gz")
+    }
+    if (params.stop_after == 'RENAME_FASTQS') {
+        log.info "Stopping pipeline after RENAME_FASTQS as requested."
+        System.exit(0)
+    }
+
+    // =====================================================================================
+    // STEP : GENERATE MD5
+    // =====================================================================================
+    // Validates naming conventions and creates organized sample channels
+
+    GENERATE_MD5(raw_fastq_ch)
+
+    // Merge all MD5 into one file and save it to your project dir
+    manifest_ch = GENERATE_MD5.out.md5_file.collectFile(
+            name: 'manifest_md5.txt',
+            newLine: true,
+            storeDir: "${params.raw_fastq_dir()}"
+        )
+    if (params.stop_after == 'GENERATE_MD5') {
+        manifest_ch.subscribe {
+            log.info "✅ Manifest created in ${params.raw_fastq_dir()}"
+            log.info "Stopping pipeline after GENERATE_MD5 as requested."
+            System.exit(0)
+        }
+    }
+
     // =====================================================================================
     // STEP 1: VALIDATE INPUT FASTQ FILES
     // =====================================================================================
     // Validates naming conventions and creates organized sample channels
 
-    VALIDATE_INPUT(params.raw_fastq_dir())
-    mode_ch         = VALIDATE_INPUT.out.mode.collect()         // [mode] → collected for RSeQC
-    sample_fastq_ch = VALIDATE_INPUT.out.grouped_samples_ch     // [sample_id, [R1, R2]]
-    sample_ch       = VALIDATE_INPUT.out.sample_names_ch        // [sample_id]
+    // Workflow can accept path strings like VALIDATE_INPUT(params.raw_fastq_dir())
+    // Here we pass the fastqs as channel instead
+    VALIDATE_INPUT(raw_fastq_ch.collect())
+    mode_ch          = VALIDATE_INPUT.out.mode.collect()          // [mode] → collected for RSeQC
+    sample_fastq_ch  = VALIDATE_INPUT.out.grouped_samples_ch      // [sample_id, [R1, R2]]
+    sample_ch        = VALIDATE_INPUT.out.sample_names_ch         // [sample_id]
+    if (params.stop_after == 'VALIDATE_INPUT') {
+        log.info "Stopping pipeline after VALIDATE_INPUT as requested."
+        System.exit(0)
+    }
 
     // =====================================================================================
     // STEP 2: QUALITY CONTROL ON RAW READS
@@ -67,6 +127,10 @@ workflow SCRNASEQ {
     // Add read_type tag to channel: [sample_id, [fastqs], "raw"]
     fastqc_ch = sample_fastq_ch.map { sample_id, fastqs -> tuple(sample_id, fastqs, "raw") }
     FASTQC_RAW(fastqc_ch)
+    if (params.stop_after == 'FASTQC_RAW') {
+        log.info "Stopping pipeline after FASTQC_RAW as requested."
+        System.exit(0)
+    }
 
     // =====================================================================================
     // STEP 3: CELLRANGER COUNT
@@ -78,6 +142,12 @@ workflow SCRNASEQ {
     raw_fastq_ch        = Channel.value(file(params.raw_fastq_dir(),        type: 'dir', checkIfExists: true))
     cellranger_index_ch = Channel.value(file(params.cellranger_index_dir(), type: 'dir', checkIfExists: true))
     CELLRANGER_COUNT(sample_ch, raw_fastq_ch, cellranger_index_ch, cellranger_args)
+    if (params.stop_after == 'CELLRANGER_COUNT') {
+        log.info "Stopping pipeline after CELLRANGER_COUNT as requested."
+        System.exit(0)
+    }
+
+    //TEST_PUBLISHDIR(CELLRANGER_COUNT.out.sample_dir, CELLRANGER_COUNT.out.error_log )
 
     // =====================================================================================
     // STEP 4: AGGREGATE QC REPORTS (MULTIQC)
@@ -86,14 +156,17 @@ workflow SCRNASEQ {
 
     multiqc_ch = Channel.empty()
         .mix(FASTQC_RAW.out.fastqc_zip)                     // FastQC reports
-        .mix(CELLRANGER_COUNT.out.web_summary)
-        .mix(CELLRANGER_COUNT.out.metric_summary)
+        .mix(CELLRANGER_COUNT.out.result_files.flatten()
+        .filter { it.name == "web_summary.html" || it.name == "metrics_summary.csv" })
         .collect()                                          // Wait for all samples
 
-    // CRITICAL: Convert closures to string and pass into process to  prevent cache invalidation
-    multiqc_title = params.multiqc_titlename()
-    multiqc_file  = params.multiqc_filename()
+    multiqc_title = "${params.project} MultiQC Report"
+    multiqc_file  = "${params.project}_MultiQC_Report"
     MULTIQC(multiqc_ch, multiqc_title, multiqc_file)
+    if (params.stop_after == 'MULTIQC') {
+        log.info "Stopping pipeline after MULTIQC as requested."
+        System.exit(0)
+    }
 }
 
 // =========================================================================================
@@ -110,8 +183,8 @@ workflow SCRNASEQ {
 // ├── 01.FastQ/raw/                      # Raw input FASTQs
 // ├── 02.FastQC/raw/                     # QC on raw reads
 // ├── 03.CellRanger/                     # Transcript quantification
-// │   ├── Sample1/                       # Full CellRanger output
-// │   └── Sample2/                       # Full CellRanger output
+// │   ├── Sample1/                       # Partial CellRanger output
+// │   └── Sample2/                       # Partial CellRanger output
 // ├── 06.MultiQC/
 // │   ├── Project_MultiQC_Report.html
 // │   └── Project_MultiQC_Report_data/

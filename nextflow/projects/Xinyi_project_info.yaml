@@ -39,24 +39,26 @@ assay: "RNA"                      # Assay type (metadata only)
 # Storing files directly in ref_dir (without species subfolder) will ERROR!
 # -----------------------------------------------------------------------------------------
 
-species: "Human"                  # Must match folder name in ref_dir: "Human", "Mouse", etc.
-genome_version: "GRCh38"          # For documentation: "GRCh38", "GRCm39", etc.
 reference:
   ref_dir: "/hpc/home/kailasamms/NGSTools/Reference_Genomes"
   fasta_file: "Homo_sapiens.GRCh38.dna.primary_assembly.fa"
   gtf_file: "Homo_sapiens.GRCh38.113.gtf"
+  species: "Human"           # Must match folder name in ref_dir: "Human", "Mouse", etc.
+  genome_version: "GRCh38"   # For documentation: "GRCh38", "GRCm39", etc.
 
-# Mouse example (uncomment to switch):
-# species: "Mouse"
-# genome_version: "GRCm39"
+# # Mouse example (uncomment to switch):
 # reference:
 #   ref_dir: "/hpc/home/kailasamms/NGSTools/Reference_Genomes"
 #   fasta_file: "Mus_musculus.GRCm39.dna.primary_assembly.fa"
 #   gtf_file: "Mus_musculus.GRCm39.113.gtf"
+#   species: "Mouse"
+#   genome_version: "GRCm39"
 
 # -----------------------------------------------------------------------------------------
 # INPUT/OUTPUT DIRECTORIES
 # -----------------------------------------------------------------------------------------
+
+map_file: "/hpc/home/kailasamms/scripts/nextflow/projects/Xinyi_map.txt"
 
 # Input: Directory containing raw FASTQ files
 # Expected naming: *_R1.fq.gz, *_R2.fq.gz (or _r1, _r2, .fastq.gz)
@@ -68,7 +70,7 @@ read_dir: "/hpc/home/kailasamms/scratch/RNASeq/Xinyi/01.FastQ/raw"
 base_dir: "/hpc/home/kailasamms/scratch"
 
 # Work: Nextflow intermediate files (enables -resume, can delete after completion)
-work_dir: "/hpc/home/kailasamms/scratch/work"
+work_dir: "/hpc/home/kailasamms/scratch/nf_work"
 
 # Cache: Container image storage (can be shared across projects)
 cache_dir: "/hpc/home/kailasamms/NGSTools/singularity_cache"
@@ -110,10 +112,14 @@ star_align:
 # =========================================================================================
 # These are passed to Salmon quantification. Defaults enable bias corrections.
 # For parameter details, see: docs/salmon_quant.md
+#
+# Advanced users: Modify values as needed
+# Standard users: Leave defaults unchanged
 # =========================================================================================
 
 salmon_quant:
-  libType: "A"      # Auto-detect library type (strand orientation)
+  libType: "IU"      # Forced to Unstranded (IU) instead of Auto-detect (A)
+ # libType: "A"      # Auto-detect library type (strand orientation)
   gcBias: true      # Correct GC content bias (~5% improvement)
   seqBias: true     # Correct hexamer priming bias (~3% improvement)
   posBias: true     # Correct positional bias (~2% improvement)

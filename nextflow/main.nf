@@ -12,10 +12,10 @@ include { SCRNASEQ }     from './workflows/scrnaseq'
 // ===============================
 workflow {
 
-    if (params.expt == 'RNASeq') {
+    if (params.expt == "RNASeq") {
         RNASEQ()
     }
-    else if (params.expt == 'scRNASeq') {
+    else if (params.expt == "scRNASeq") {
         SCRNASEQ()
     }
     else {
