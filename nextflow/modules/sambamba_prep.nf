@@ -25,17 +25,21 @@ process SAMBAMBA_PREP {
     tag "Indexing and subsampling ${raw_bam.name}"
     label 'process_medium'                  // Moderate resources: 4-8GB RAM, 4 cores
 
+    //publishDir { "${params.proj_dir()}/${species}_${type}/04.STAR/bam" },    mode: 'copy',    pattern: "*.{bam,bam.bai}",    saveAs: { filename -> filename.contains('.1M') ? null : filename }
+    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },        mode: 'copy',    pattern: "*.SAMBAMBA_PREP.error.log"
+
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(sample_id), path(raw_bam)  // [sample_id, unsorted_bam_from_STAR]
+    tuple val(species), val(type), val(sample_id), path(raw_bam)  // [species, sample_id, sorted_bam_from_STAR]
 
     // =================================================================================
     // OUTPUT
     // =================================================================================
     output:
-    tuple val(sample_id),
+    tuple val(species), val(type),
+        val(sample_id),
         path("${sample_id}.bam"),                                        // Renamed full BAM
         path("${sample_id}.bam.bai"),                                    // Full BAM index
         path("${sample_id}.1M.bam"),                                     // Subsampled BAM (1M reads)

@@ -26,26 +26,40 @@ process RSEQC {
     tag "RSeQC on ${sample_id}"
     label 'process_medium'                          // 4 cores, 12GB RAM typical
 
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/01_read_distribution" },      mode: 'copy',    pattern: "*.read_distribution*"
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/02_inner_distance" },         mode: 'copy',    pattern: "*.inner_distance*"
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/03_junction_annotation" },    mode: 'copy',    pattern: "*.{splice*pdf,junction_summary.txt,junction_plot.r,junction.bed,junction.xls}"
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/04_junction_saturation" },    mode: 'copy',    pattern: "*junctionSaturation*"
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/05_deletion_profile" },       mode: 'copy',    pattern: "*.deletion_profile*"
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/06_mismatch_profile" },       mode: 'copy',    pattern: "*.mismatch_profile*"
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/07_insertion_profile" },      mode: 'copy',    pattern: "*.insertion_profile*"
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/08_clipping_profile" },       mode: 'copy',    pattern: "*.clipping_profile*"
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/09_gene_body_coverage" },     mode: 'copy',    pattern: "*.geneBodyCoverage*"
+    publishDir { "${params.proj_dir()}/${species}_${type}/05.RSEQC/07.Logs" },                   mode: 'copy',    pattern: "*.RSEQC.error.log"
+
+
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(sample_id),
+    tuple val(species), val(type),
+        val(sample_id),
         path(bam),
         path(bai),
         path(bam_1M),
         path(bai_1M),
-        path(read_len_file)                          // Sample BAM files and metadata
-    path(ref_bed)                                    // Gene annotation in BED12 format
-    path(housekeeping_bed)                           // Housekeeping genes for gene body coverage
-    val(mode)                                        // "SINGLE_END" or "PAIRED_END" (as list from .collect())
+        path(read_len_file),                          // Sample BAM files and metadata
+        path(ref_bed),                                // Gene annotation in BED12 format
+        path(housekeeping_bed)                        // Housekeeping genes for gene body coverage
+    val(mode)                                         // "SINGLE_END" or "PAIRED_END" (as list from .collect())
 
     // =================================================================================
     // OUTPUT
     // =================================================================================
     output:
+    tuple val(species), val(type), val(sample_id), path("${sample_id}*.{txt,log,r,xls}"),
+                                                    emit: rseqc_logs,      optional: true      // Data files and logs
     path("${sample_id}*.{pdf,jpeg,png,tiff}"),      emit: rseqc_plots,     optional: true      // Visualization plots
-    path("${sample_id}*.{txt,log,r,xls}"),          emit: rseqc_logs,      optional: true      // Data files and logs
     path("${sample_id}*.bed"),                      emit: rseqc_beds,      optional: true      // Junction BED files
     path("${sample_id}.RSEQC.error.log"),           emit: error_log                            // Process log
     // Note: optional: true prevents errors when PE-only files don't exist for SE data

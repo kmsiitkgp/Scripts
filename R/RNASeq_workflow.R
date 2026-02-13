@@ -33,6 +33,8 @@ if (file.exists(script_file)) {
 }
 
 # Define these 4 variables in project specific script
+# proj
+# species
 # contrasts <- c()
 # deseq2.override <- list()
 # heatmap.override <- list()
@@ -357,18 +359,21 @@ for (contrast in contrasts) {
   # Keep only samples present in vst
   common_samples <- base::intersect(contrast_samples, colnames(vst_counts))
   
-  plot_pathway(pathway_df = top_gsea, 
-               method     = "GSEA",
-               expr_mat   = vst_counts[, common_samples], 
-               metadata   = metadata,
-               output_dir = pathway_dir)
+  if (nrow(top_gsea) > 0) {
+    plot_pathway(pathway_df = top_gsea, 
+                 method     = "GSEA",
+                 expr_mat   = vst_counts[, common_samples], 
+                 metadata   = metadata,
+                 output_dir = pathway_dir)
+  }
+  if (nrow(top_ora) > 0) {
+    plot_pathway(pathway_df = top_ora, 
+                 method     = "ORA",
+                 expr_mat   = vst_counts[, common_samples], 
+                 metadata   = metadata,
+                 output_dir = pathway_dir)
+  }
   
-  plot_pathway(pathway_df = top_ora, 
-               method     = "ORA",
-               expr_mat   = vst_counts[, common_samples], 
-               metadata   = metadata,
-               output_dir = pathway_dir)
- 
 
   # ---- 📡 Regulatory Network Analysis ----
   

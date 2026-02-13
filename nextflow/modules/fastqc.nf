@@ -17,14 +17,25 @@
 
 process FASTQC {
 
-    tag { "FastQC on ${sample_id} (${read_type})" }
+    tag { "FastQC on ${species} sample ${sample_id} (${read_type})" }
     label 'process_low'                                      // FastQC needs ~250MB RAM, 1-2 CPUs
 
     // =================================================================================
     // INPUT
     // =================================================================================
+
+    publishDir { "${params.proj_dir()}/${species}_${type}/02.FastQC/${read_type}" },    mode: 'copy',    pattern: "*.html"
+    publishDir { "${params.proj_dir()}/${species}_${type}/02.FastQC/${read_type}" },    mode: 'copy',    pattern: "*.zip"
+    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },                   mode: 'copy',    pattern: "*.FASTQC.error.log"
+
+
+    // =================================================================================
+    // INPUT
+    // =================================================================================
     input:
-    tuple val(sample_id), path(fastq_files), val(read_type)
+    tuple val(species), val(type), val(sample_id), path(fastq_files), val(read_type)
+    // species      : Human or Mouse
+    // type         : full or split
     // sample_id    : Sample identifier (e.g., "Sample1")
     // fastq_files  : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
     // read_type    : "raw" or "trimmed" (determines output directory)
@@ -33,9 +44,8 @@ process FASTQC {
     // OUTPUT
     // =================================================================================
     output:
-    path("*_fastqc.zip"),                emit: fastqc_zip        // Data for MultiQC aggregation
-    path("*_fastqc.html"),               emit: fastqc_html       // Individual HTML reports
-    path("*.FASTQC.error.log"),          emit: error_log         // Process log
+    tuple val(species), val(type), path("*_fastqc.zip"), path("*_fastqc.html"),    emit: fastqc_results        // Data for MultiQC aggregation
+    path("*.FASTQC.error.log"),                                         emit: error_log         // Process log
 
     // =================================================================================
     // EXECUTION

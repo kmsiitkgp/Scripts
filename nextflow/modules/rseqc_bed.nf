@@ -27,15 +27,17 @@ process RSEQC_BED {
     // INPUT
     // =================================================================================
     input:
-    path(ref_gtf)    // Gene annotation GTF file
+    tuple val(species), path(ref_fasta), path(ref_gtf), val(genome_version)
 
     // =================================================================================
     // OUTPUT
     // =================================================================================
     output:
-    path("${ref_gtf.baseName}.bed"),                        emit: ref_bed              // Full BED12 file
-    path("${ref_gtf.baseName}.housekeeping.bed"),           emit: housekeeping_bed     // Subset for fast QC
-    path("RSEQC_BED.error.log"),                            emit: error_log            // Process log
+    tuple val(species),
+    path("${ref_gtf.baseName}.bed"),                 // Full BED12 file
+    path("${ref_gtf.baseName}.housekeeping.bed"),    // Subset for quicker QC
+    emit: rseqc_bed_tuple
+    //path("RSEQC_BED.error.log"),              emit: error_log            // Process log
 
     // =================================================================================
     // EXECUTION

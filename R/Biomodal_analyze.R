@@ -192,15 +192,15 @@ sig_dmr_hmc <- dmr_hmc_21 %>%
   dplyr::mutate(mean_mod_group_1 = ifelse(mean_mod_group_1 == 0, 1e-6, mean_mod_group_1),
                 mean_mod_group_2 = ifelse(mean_mod_group_2 == 0, 1e-6, mean_mod_group_2),
                 mod_fold_change = mean_mod_group_2 / mean_mod_group_1,
-                mod_fold_change = log2(mod_fold_change)) %>%
-  dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_fold_change) >= 0.58, !is.na(Name))
+                mod_lfc = log2(mod_fold_change)) %>%
+  dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_lfc) >= 0.58, !is.na(Name))
 
 sig_dmr_mc <- dmr_mc_21 %>% 
   dplyr::mutate(mean_mod_group_1 = ifelse(mean_mod_group_1 == 0, 1e-6, mean_mod_group_1),
                 mean_mod_group_2 = ifelse(mean_mod_group_2 == 0, 1e-6, mean_mod_group_2),
                 mod_fold_change = mean_mod_group_2 / mean_mod_group_1,
-                mod_fold_change = log2(mod_fold_change)) %>% 
-  dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_fold_change) >= 0.58, !is.na(Name))
+                mod_lfc = log2(mod_fold_change)) %>% 
+  dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_lfc) >= 0.58, !is.na(Name))
 
 # Remove normal DMR 
 tumor_DMR_hmc <- sig_dmr_hmc %>%
@@ -209,7 +209,7 @@ tumor_DMR_hmc <- sig_dmr_hmc %>%
   dplyr::mutate(key = paste(Chromosome, Start, End, Name, Annotation, sep = "_"))
 
 tumor_DMR_mc <- sig_dmr_mc %>%
-  inner_join(normal_dmr_mc, by = c("Name"="Name", "Annotation"="Annotation")) %>%
+  anti_join(normal_dmr_mc, by = c("Name"="Name", "Annotation"="Annotation")) %>%
   arrange(Annotation, Name) %>%
   dplyr::mutate(key = paste(Chromosome, Start, End, Name, Annotation, sep = "_"))
 
@@ -254,10 +254,9 @@ mc_mat[mc_mat == 0] <- epsilon
 mc_mat[mc_mat == 1] <- 1 - epsilon
 logit_mc <- log(mc_mat / (1 - mc_mat)) %>% as.matrix()
 
-filename <- "PCA_hmc"
-plot_pca(expr_mat = logit_hmc, metadata, top_n_genes = 5000, skip_plot = FALSE, filename, output_dir = path)
-filename <- "PCA_mc"
-plot_pca(expr_mat = logit_mc, metadata, top_n_genes = 5000, skip_plot = FALSE, filename, output_dir = path)
+
+plot_pca(expr_mat = logit_hmc, txi = NULL, metadata = metadata, top_n_genes = 5000, skip_plot = FALSE, filename = "PCA_hmc", output_dir = path)
+plot_pca(expr_mat = logit_mc, txi = NULL, metadata = metadata, top_n_genes = 5000, skip_plot = FALSE, filename = "PCA_mc", output_dir = path)
 
 filename <- "UMAP_hmc"
 plot_umap(expr_mat = logit_hmc, metadata, n_pcs = 50, n_neighbors = NULL, filename, output_dir = path)
@@ -392,48 +391,54 @@ addWorksheet(wb, "mc")
 writeData(wb, sheet = "mc", frac_mc)
 saveWorkbook(wb, file.path(path, "Biomodal_final_results.xlsx"), overwrite = TRUE)
 
-# Overlap with Felix Fang data
+# ---- Overlap with Felix Fang data ----
 path <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Biomodal"
 ff_data <- read.xlsx(file.path(path, "can-24-0890_supplementary_tables_suppst.xlsx"),
                      sheet = "supplementary_table_s3",
                      startRow = 2) %>%
-  dplyr::filter(feature %in% c("Promoter", "5' UTR"))
+  dplyr::mutate(bin = case_when(feature %in% c("Promoter") ~ "Promoter",
+                                feature %in% c("5' UTR", "Exon", "Intron", "3' UTR") ~ "GeneBody",
+                                TRUE ~ "Other"))
 
-# 5hmc up genes in promoter in biomodal
-biomodal_5hmc_up <- read.xlsx(file.path(path, "Biomodal_final_results_.xlsx"),
-                              sheet = "hmc") %>%
-  dplyr::filter(Annotation %in% c("Promoter"), FC > 1) %>%
-  dplyr::pull(Name) %>%
-  unique()
+hmc_up <- sig_dmr_hmc %>%
+  dplyr::mutate(bin = case_when(Annotation %in% c("Promoter", "TSS") ~ "Promoter",
+                                Annotation %in% c("Gene") ~ "GeneBody",
+                                TRUE ~ "Other")) %>%
+  dplyr::filter(mod_lfc > 0)
 
-biomodal_5hmc_down <-  read.xlsx(file.path(path, "Biomodal_final_results_.xlsx"),
-                                 sheet = "hmc") %>%
-  dplyr::filter(Annotation %in% c("Promoter"), FC < 1) %>%
-  dplyr::pull(Name) %>%
-  unique()
+mc_up <- sig_dmr_mc %>%
+  dplyr::mutate(bin = case_when(Annotation %in% c("Promoter", "TSS") ~ "Promoter",
+                                Annotation %in% c("Gene") ~ "GeneBody",
+                                TRUE ~ "Other")) %>%
+  dplyr::filter(mod_lfc > 0)
 
-biomodal_5mc_up <- read.xlsx(file.path(path, "Biomodal_final_results_.xlsx"),
-                              sheet = "mc") %>%
-  dplyr::filter(Annotation %in% c("Promoter"), FC > 1) %>%
-  dplyr::pull(Name) %>%
-  unique()
+hmc_down <- sig_dmr_hmc %>%
+  dplyr::mutate(bin = case_when(Annotation %in% c("Promoter", "TSS") ~ "Promoter",
+                                Annotation %in% c("Gene") ~ "GeneBody",
+                                TRUE ~ "Other")) %>%
+  dplyr::filter(mod_lfc < 0)
 
-biomodal_5mc_down <-  read.xlsx(file.path(path, "Biomodal_final_results_.xlsx"),
-                                 sheet = "mc") %>%
-  dplyr::filter(Annotation %in% c("Promoter"), FC < 1) %>%
-  dplyr::pull(Name) %>%
-  unique()
+mc_down <- sig_dmr_mc %>%
+  dplyr::mutate(bin = case_when(Annotation %in% c("Promoter", "TSS") ~ "Promoter",
+                                Annotation %in% c("Gene") ~ "GeneBody",
+                                TRUE ~ "Other")) %>%
+  dplyr::filter(mod_lfc < 0)
 
-sig_genes_up_5hmc <- intersect(ff_data$gene, biomodal_5hmc_up)
-sig_genes_down_5hmc <- intersect(ff_data$gene, biomodal_5hmc_down)
+genes_up_5hmc <- intersect(ff_data$gene, hmc_up$Name)
+genes_down_5hmc <- intersect(ff_data$gene, hmc_down$Name)
 
-sig_genes_up_5mc <- intersect(ff_data$gene, biomodal_5mc_up)
-sig_genes_down_5mc <- intersect(ff_data$gene, biomodal_5mc_down)
+genes_up_5mc <- intersect(ff_data$gene, mc_up$Name)
+genes_down_5mc <- intersect(ff_data$gene, mc_down$Name)
 
-sig_genes_up <- union(sig_genes_up_5hmc, sig_genes_down_5mc)
-sig_genes_down <- union(sig_genes_down_5hmc, sig_genes_up_5mc)
+genes_up <- union(genes_up_5hmc, genes_down_5mc)
+genes_down <- union(genes_down_5hmc, genes_up_5mc)
+
+common <- intersect(genes_up, genes_down)
+uniq_genes_up <- setdiff(genes_up, common)
+uniq_genes_down <- setdiff(genes_down, common)
 
 gmt_dir <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GSEA_genesets"
+species <- "Homo sapiens"
 gmt_files <- list.files(file.path(gmt_dir, species), full.names = TRUE)
 # Initialize result dataframes 
 fgsea_df         <- data.frame()
@@ -451,19 +456,19 @@ for (gmt_file in gmt_files) {
   colnames(pathway_gene_df) <- c("genes", "pathways")
   pathway_gene_df <- pathway_gene_df[, c("pathways", "genes")] # Reorder
   
-  ora_res_up <- clusterProfiler::enricher(gene          = sig_genes_up,
+  ora_res_up <- clusterProfiler::enricher(gene          = uniq_genes_up,
                                           universe      = NULL,
                                           TERM2GENE     = pathway_gene_df,
-                                          minGSSize     = 15,
+                                          minGSSize     = 1, #reduced from 15
                                           maxGSSize     = 500,
                                           pvalueCutoff  = 0.05,
                                           pAdjustMethod = "BH",
                                           qvalueCutoff  = 0.2)
   
-  ora_res_down <- clusterProfiler::enricher(gene          = sig_genes_down,
+  ora_res_down <- clusterProfiler::enricher(gene          = uniq_genes_down,
                                           universe      = NULL,
                                           TERM2GENE     = pathway_gene_df,
-                                          minGSSize     = 15,
+                                          minGSSize     = 1, #reduced from 15
                                           maxGSSize     = 500,
                                           pvalueCutoff  = 0.05,
                                           pAdjustMethod = "BH",

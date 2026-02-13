@@ -20,13 +20,19 @@ process STAR_ALIGN {
     tag "Aligning fastqs of ${sample_id}"
     label 'process_high'                            // STAR requires 30-50GB RAM for human
 
+    publishDir { "${params.proj_dir()}/${species}_${type}/04.STAR/gene_counts" },        mode: 'copy',    pattern: "*.ReadsPerGene.out.tab"
+    publishDir { "${params.proj_dir()}/${species}_${type}/04.STAR/splice_junction" },    mode: 'copy',    pattern: "*.SJ.out.tab"
+    publishDir { "${params.proj_dir()}/${species}_${type}/04.STAR/alignment_stats" },    mode: 'copy',    pattern: "*.Log.final.out"
+    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },                    mode: 'copy',    pattern: "*.STAR_ALIGN.error.log"
+
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(sample_id), path(fastq_files)         // sample_id    : Sample identifier (e.g., "Sample1")
-                                                    // fastq_files  : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
-    path(star_index_dir)                            // Pre-built STAR index directory
+    tuple val(species), val(type), val(sample_id), path(fastq_files), path(star_index_dir)
+    // sample_id        : Sample identifier (e.g., "Sample1")
+    // fastq_files      : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
+    // star_index_dir   : Pre-built STAR index directory
     val(star_args)                                  // Pre-joined STAR ARGS
     // Never do ${params.STAR_ARGS().join(' ')} inside process. It changes hash on
     // every run and resume fails. So, .join() in main.nf and pass as an argument.
@@ -35,13 +41,14 @@ process STAR_ALIGN {
     // OUTPUT
     // =================================================================================
     output:
-    tuple val(sample_id),
-        path("${sample_id}.Aligned.sortedByCoord.out.bam"),
-        emit: bam_unindexed                                      // Sorted BAM file
+    tuple val(species), val(type),
+        val(sample_id),
+        path("${sample_id}.Aligned.sortedByCoord.out.bam"),    // Sorted BAM file
+        path("${sample_id}.ReadsPerGene.out.tab"),             // Gene counts
+        path("${sample_id}.SJ.out.tab"),                       // Splice junctions
+        path("${sample_id}.Log.final.out"),                    // Alignment stats
+        emit: star_results
 
-    path("${sample_id}.ReadsPerGene.out.tab"),      emit: gene_counts   // Gene counts
-    path("${sample_id}.SJ.out.tab"),                emit: sj_tab        // Splice junctions
-    path("${sample_id}.Log.final.out"),             emit: star_log      // Alignment stats
     path("${sample_id}.STAR_ALIGN.error.log"),      emit: error_log     // Process log
 
     // =================================================================================

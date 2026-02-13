@@ -1,0 +1,159 @@
+# =========================================================================================
+# PROJECT CONFIGURATION FILE
+# =========================================================================================
+# This YAML file configures the RNA-seq pipeline. The pipeline reads this file to:
+#   1. Locate mapping file (map_file) [OPTIONAL]
+#   2. Locate input FASTQ files (read_dir)
+#   3. Set output locations (base_dir, work_dir)
+#   4. Set download locations (ref_dir, cache_dir)
+#   5. Configure alignment/quantification tools (star_align, salmon_quant)
+#
+# Usage:
+#   nextflow run main.nf -params-file project_info.yaml
+#
+# Quick Start:
+#   1. Set experiment type, project name, species
+#   2. Set read_dir to your FASTQ location
+#   3. Set ref_dir to download reference genome
+#   4. Set cache_dir to download singularity images
+#   5. Set base_dir to store analysis results
+#   6. Set work_dir to store intermediate results
+#   7. Leave STAR/Salmon defaults unchanged (unless specific needs)
+# =========================================================================================
+
+# -----------------------------------------------------------------------------------------
+# PROJECT METADATA
+# -----------------------------------------------------------------------------------------
+
+expt: "RNASeq"                     #   Experiment type (determines output structure)
+#species: "Human"                   #   "Human", "Mouse", "Xenograft"
+#species: "Mouse"
+species: "Xenograft"
+project: "Manish_22Rv1_Xeno"   #   Project name (used in output directory naming)
+
+# -----------------------------------------------------------------------------------------
+# INPUT DIRECTORIES
+# -----------------------------------------------------------------------------------------
+
+# Input: Directory containing raw FASTQ files
+# Expected naming: *_R1.fq.gz, *_R2.fq.gz (or _r1, _r2, .fastq.gz)
+# See docs/validate_input.md for file naming requirements
+read_dir: "/hpc/home/kailasamms/scratch/RNASeq_Xenograft_Manish_22Rv1_Xeno/input"
+
+map_file: "/hpc/home/kailasamms/scripts/nextflow/projects/Manish_22Rv1_Xeno_map.txt"
+
+# -----------------------------------------------------------------------------------------
+# OUTPUT DIRECTORIES
+# -----------------------------------------------------------------------------------------
+
+# Output: Base directory for all pipeline results
+base_dir: "/hpc/home/kailasamms/scratch"
+
+# Work: Nextflow intermediate files (enables -resume, can delete after completion)
+work_dir: "/hpc/home/kailasamms/scratch/nf_work"
+
+# Cache: Container image storage (can be shared across projects)
+cache_dir: "/hpc/home/kailasamms/NGSTools/singularity_cache"
+
+# Reference: Reference genome storage (can be shared across projects)
+ref_dir: "/hpc/home/kailasamms/NGSTools/Reference_Genomes"
+
+# OUTPUT DIRECTORY STRUCTURE:
+#${base_dir}
+#└──${expt}/
+#   └──${project}/
+#      ├── 01.FastQ/              #      Raw input FASTQs
+#      │   ├── srr/
+#      │   ├── raw/
+#      │   └── trimmed/
+#      ├── 02.FastQC/             #      QC on raw reads
+#      │   ├── raw
+#      │   └── trimmed
+#      ├── 03.Salmon/                 #      Transcript quantification
+#      │   ├── Sample1/               #      Full Salmon output
+#      │   ├── Sample2/               #      Full Salmon output
+#      │   └── quant_files/           #      Collected quant.sf files
+#      ├── 04.STAR/                   #      Alignment outputs
+#      │   ├── gene_counts/           #      ReadsPerGene.out.tab files
+#      │   ├── splice_junction/       #      SJ.out.tab files
+#      │   ├── alignment_stats/       #      Log.final.out files
+#      │   └── bam/                   #      BAM + BAI files
+#      ├── 05.RSEQC/                  #      Organized by analysis type
+#      │   ├── 01_read_distribution/
+#      │   ├── 02_inner_distance/
+#      │   ├── 03_junction_annotation/
+#      │   └── ... (09 subdirectories total)
+#      ├── 06.MultiQC/
+#      │   ├── Project_MultiQC_Report.html
+#      │   └── Project_MultiQC_Report_data/
+#      └── 07.Logs/                   #      All error logs + reports
+#          ├── trace.txt
+#          ├── report.html
+#          └── timeline.html
+
+# REFERENCE DIRECTORY STRUCTURE:
+#${ref_dir}
+#└──${species}/
+#   ├── star_index_dir/
+#   ├── salmon_index_dir/
+#   ├── cellranger_index_dir/
+#   ├── *.fa
+#   ├── *.gtf
+#   ├── *.bed
+#   ├── *.housekeeping.bed
+#   ├── decoy.txt
+#   ├── gentrome.fa
+#   ├── EXTRACT_GENTROME.error.log
+#   ├── RSEQC_BED.error.log
+#   ├── SALMON_INDEX.error.log
+#   └── STAR_INDEX.error.log
+
+# Cloud storage examples:
+# base_dir: "s3://my-nextflow-bucket"
+# work_dir: "s3://my-nextflow-bucket/work"
+
+# =========================================================================================
+# ALIGNMENT PARAMETERS
+# =========================================================================================
+# These are passed to STAR alignment. Defaults work well for standard RNA-seq.
+# For parameter details, see: docs/star_align.md
+#
+# Advanced users: Modify values as needed
+# Standard users: Leave defaults unchanged
+# =========================================================================================
+
+star_align:
+  runMode: "alignReads"
+  twopassMode: "Basic"                        #   Novel junction discovery (2-5% better mapping)
+  quantMode: "GeneCounts"                     #   Generate gene counts for DESeq2/edgeR
+  sjdbOverhang: 100                           #   ReadLength - 1 (100 works for 75-150bp reads)
+  readFilesCommand: "zcat"                    #   For .gz files
+  outFilterMultimapNmax: 10                   #   Allow reads mapping to ≤10 loci
+  outFilterMismatchNmax: 999                  #   Use percentage filter (below)
+  outFilterMismatchNoverReadLmax: 0.04        #   Max 4% mismatches per read
+  outFilterType: "BySJout"                    #   Filter low-confidence junctions
+  alignEndsType: "Local"                      #   Allow soft-clipping at ends
+  alignIntronMin: 20                          #   Min intron size (gaps <20bp = deletions)
+  alignIntronMax: 1000000                     #   Max intron size (1 Mb)
+  alignMatesGapMax: 1000000                   #   Max distance between PE mates
+  outSAMattributes: "NH HI AS nM MD"          #   MD tag needed for RSeQC
+  outSAMunmapped: "Within"                    #   Include unmapped reads in BAM
+  outSAMtype: ["BAM", "SortedByCoordinate"]   # Sorted BAM output
+  limitSjdbInsertNsj: 1500000
+
+# =========================================================================================
+# QUANTIFICATION PARAMETERS
+# =========================================================================================
+# These are passed to Salmon quantification. Defaults enable bias corrections.
+# For parameter details, see: docs/salmon_quant.md
+#
+# Advanced users: Modify values as needed
+# Standard users: Leave defaults unchanged
+# =========================================================================================
+
+salmon_quant:
+ #libType: "IU"  #   Forced to Unstranded (IU) instead of Auto-detect (A)
+  libType: "A"   #   Auto-detect library type (strand orientation)
+  gcBias: true   #   Correct GC content bias (~5% improvement)
+  seqBias: true  #   Correct hexamer priming bias (~3% improvement)
+  posBias: true  #   Correct positional bias (~2% improvement)

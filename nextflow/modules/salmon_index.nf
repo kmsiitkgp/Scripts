@@ -1,57 +1,4 @@
 // =============================================================================
-// PROCESS: EXTRACT_GENTROME
-// =============================================================================
-// Purpose: Creates gentrome (transcriptome + genome) for Salmon indexing
-//
-// What it does:
-//   1. Extracts chromosome names as decoy list
-//   2. Extracts transcript sequences from genome using GTF
-//   3. Concatenates transcripts + genome (order matters!)
-//
-// For detailed explanation of gentrome strategy, see: docs/salmon_index.md
-// =============================================================================
-
-process EXTRACT_GENTROME {
-
-    tag "Extracting gentrome from ${ref_fasta.name}"
-    label 'process_high'                  // Moderate resources: ~8GB RAM, 4+ cores
-
-    input:
-    path(ref_fasta)  // Genome FASTA
-    path(ref_gtf)    // Gene annotation GTF
-
-    output:
-    path("decoy.txt"),                          emit: decoy      // Chromosome names for decoy marking
-    path("gentrome.fa"),                        emit: gentrome   // Combined transcriptome + genome
-    path("EXTRACT_GENTROME.error.log"),         emit: error_log  // Process log
-
-    script:
-
-    def LOG = "EXTRACT_GENTROME.error.log"
-
-    """
-    # Step 1: Extract chromosome names from FASTA headers
-    # Example: ">1 dna:chromosome..." → "1"
-    grep "^>" "${ref_fasta}" | cut -d " " -f1 | sed 's/>//' > decoy.txt
-
-    # Step 2: Extract transcript sequences using GTF coordinates
-    # gffread -g: genome FASTA, -w: write transcript sequences
-    gffread "${ref_gtf}" \
-        -g "${ref_fasta}" \
-        -w transcriptome.fa
-
-    # Step 3: Create gentrome (transcripts FIRST, then genome)
-    # Order is critical: Salmon uses position to distinguish targets vs decoys
-    cat transcriptome.fa "${ref_fasta}" > gentrome.fa \
-        2>> "${LOG}" \
-        || { echo "❌ ERROR: Gentrome creation failed" | tee -a "${LOG}" >&2; exit 1; }
-
-    echo "✅ SUCCESS: Gentrome creation completed" >> "${LOG}"
-    """
-}
-
-
-// =============================================================================
 // PROCESS: SALMON_INDEX
 // =============================================================================
 // Purpose: Builds Salmon k-mer index for fast transcript quantification
@@ -76,15 +23,14 @@ process SALMON_INDEX {
     // INPUT
     // =================================================================================
     input:
-    path(gentrome)  // Gentrome FASTA (transcriptome + genome as decoys)
-    path(decoy)     // Text file with chromosome names (one per line)
+    tuple val(species), path(decoy), path(gentrome), val(genome_version)
 
     // =================================================================================
     // OUTPUT
     // =================================================================================
     output:
-    path("salmon_index_dir"),               emit: salmon_index_dir  // K-mer index directory
-    path("SALMON_INDEX.error.log"),            emit: log               // Process log
+    tuple val(species), path("salmon_index_dir_${genome_version}"),    emit: salmon_index_tuple  // K-mer index directory
+    //path("SALMON_INDEX.error.log"),                                  emit: log               // Process log
 
     // =================================================================================
     // EXECUTION
@@ -92,6 +38,7 @@ process SALMON_INDEX {
     script:
 
     def LOG = "SALMON_INDEX.error.log"
+    def index_dir = "salmon_index_dir_${genome_version}"
 
     """
     # Build Salmon index with decoy-aware mode
@@ -105,7 +52,7 @@ process SALMON_INDEX {
         --decoys ${decoy} \
         --threads "${task.cpus}" \
         --kmerLen 31 \
-        --index salmon_index_dir \
+        --index "${index_dir}" \
         1>> "${LOG}" 2>&1 \
         || { echo "❌ ERROR: SALMON index generation failed" | tee -a "${LOG}" >&2; exit 1; }
 

@@ -34,8 +34,8 @@ workflow SCRNASEQ {
         SCRNA-SEQ PIPELINE
         ===========================================
         Project              : ${params.project}
-        Species              : ${params.species}
-        Genome version       : ${params.genome_version}
+        Species              : ${params.species()}
+        Genome version       : ${params.genome_version()}
         Fasta File           : ${params.ref_fasta()}
         GTF File             : ${params.ref_gtf()}
         BED File             : ${params.ref_bed()}

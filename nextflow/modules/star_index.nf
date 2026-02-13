@@ -24,15 +24,14 @@ process STAR_INDEX {
     // INPUT
     // =================================================================================
     input:
-    path(ref_fasta)  // Genome FASTA file (e.g., Homo_sapiens.GRCh38.dna.primary_assembly.fa)
-    path(ref_gtf)    // Gene annotation GTF file (e.g., Homo_sapiens.GRCh38.113.gtf)
+    tuple val(species), path(ref_fasta), path(ref_gtf), val(genome_version)
 
     // =================================================================================
     // OUTPUT
     // =================================================================================
     output:
-    path("star_index_dir"),          emit: star_index_dir        // STAR genome index
-    path("STAR_INDEX.error.log"),    emit: error_log             // Process log
+    tuple val(species), path("star_index_dir_${genome_version}"),    emit: star_index_tuple    // STAR genome index
+    //path("STAR_INDEX.error.log"),              emit: error_log         // Process log
 
     // =================================================================================
     // EXECUTION
@@ -40,10 +39,11 @@ process STAR_INDEX {
     script:
 
     def LOG = "STAR_INDEX.error.log"
+    def index_dir = "star_index_dir_${genome_version}"
 
     """
     # Create output directory
-    mkdir -p star_index_dir
+    mkdir -p "${index_dir}"
 
     # Build STAR index
     # --runMode genomeGenerate: Index creation mode (not alignment)
@@ -56,7 +56,7 @@ process STAR_INDEX {
 
     STAR --runMode genomeGenerate \
         --runThreadN "${task.cpus}" \
-        --genomeDir star_index_dir \
+        --genomeDir "${index_dir}" \
         --genomeFastaFiles "${ref_fasta}" \
         --sjdbGTFfile "${ref_gtf}" \
         --sjdbOverhang 100 \

@@ -193,49 +193,6 @@ log_section <- function(section_name) {
 # VALID CHARACTERS: Only letters, numbers, dots (.), and underscores (_).
 # MUST START WITH: A letter or a dot (if not followed by a number).
 
-
-# # Copy and paste in wrapper for "User Override Project Directories & Parameters"
-# proj <- ""
-# species <- ""
-# contrasts <- c("Treatment1-Control1",
-#                "Treatment2-Control2")
-# 
-# parent_dir <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data"
-# gmt_dir <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/R-Scripts/GSEA_genesets"
-# 
-# # DESeq2 overrides
-# deseq2.override <- list(
-#   contrasts     = contrasts
-#   #design        = "Comparisons",            # DESeq2 design formula or column name
-#   #lfc.cutoff    = 0,                        # Log fold change cutoff for significance
-#   #padj.cutoff   = 0.1,                      # Adjusted p-value cutoff for significance
-#   #batch_correct = FALSE                     # Boolean, whether to apply batch correction
-# )
-# 
-# # Heatmap overrides
-# heatmap.override <- list(
-#   #force_log        = TRUE,                  # Force log transformation
-#   col.ann          = NULL,                  # Column annotation
-#   #row.ann          = NULL,                  # Row annotation
-#   col.gaps         = NULL,                  # Column gaps
-#   #row.gaps         = NULL,                  # Row gaps
-#   col.cluster      = "all",                 # Column clustering
-#   #row.cluster      = "all",                 # Row clustering
-#   #palette         = "rdbu",                # Heatmap palette
-#   #annotation_palette     = "discrete",            # Annotation palette
-#   #border.color    = NA,                    # Cell border color
-#   #show_expr_legend = TRUE,                  # Show expression legend
-#   #title           = "",                    # Heatmap title
-#   #format           = "tiff"                 # Output file format
-# )
-# 
-# # Volcano plot overrides
-# volcano.override <- list(
-#   #lfc_cutoff  = 0.58,                         # Minimum log2 fold-change to highlight
-#   #padj_cutoff = 0.05,                      # Adjusted p-value cutoff
-#   #color       = "vrds",                    # Color palette
-#   label_genes = c()                         # Genes to label on the plot
-# )
 # # Setup project
 # proj.params <- setup_project(
 #   proj = proj,
@@ -290,8 +247,8 @@ setup_project <- function(proj, species, contrasts,
     border_color       = NA,          # Color of heatmap cell borders (default NA i.e. no border)
     force_log          = FALSE,       # Force log transform (default FALSE i.e. auto detect)
     show_expr_legend   = TRUE,        # Show expression legend (set FALSE if annotations overlap)
-    save_plot          = FALSE,       # Save the heatmap plot as pdf (default FALSE i.e. no save)
-    save_matrix        = FALSE        # Save the heatmap matrix as xlsx (default FALSE i.e. no save)
+    save_plot          = FALSE,        # Save the heatmap plot as pdf (default FALSE i.e. no save)
+    save_matrix        = FALSE         # Save the heatmap matrix as xlsx (default FALSE i.e. no save)
   )
   
   # Default Volcano Parameters
@@ -597,11 +554,13 @@ prep_txi <- function(salmon_dir, species, output_dir,
   
   # Download the appropriate Ensembldb database
   ensdb <- hub_db[[latest_id]]
-
+  
   # Extract transcript and gene info
   tx2gene <- GenomicFeatures::transcripts(x = ensdb) %>%
     as.data.frame() %>%
-    dplyr::select("tx_id", "gene_id")
+    dplyr::select("tx_id", "gene_id") %>%
+    data.frame()
+  
   
   # Get the salmon files
   quant_files <- list.files(path       = salmon_dir, 
@@ -640,7 +599,7 @@ prep_txi <- function(salmon_dir, species, output_dir,
     rownames_to_column(var = "GeneID") %>%
     write.table(file.path(output_dir, "Processed_TPM_Values.txt"), 
                 sep = "\t", quote = FALSE, row.names = FALSE)
-
+  
   return(txi)
 }
 
@@ -1041,15 +1000,18 @@ get_deseq2_results <- function(dds, contrast, output_dir,
   
   # ---- 📊 Data Formatting & Export ----
   
-  # Consolidate duplicate symbols if any (using mean values)
+  # Consolidate duplicate symbols if any (using lowest padj value)
   DEGs_df <- res %>%
     as.data.frame() %>%
     tibble::rownames_to_column("ID") %>%
     add_annotation() %>% 
     dplyr::filter(!is.na(SYMBOL)) %>%
     dplyr::group_by(SYMBOL) %>%
-    dplyr::summarize(across(.cols = where(is.numeric), .fns = mean, na.rm = TRUE), .groups = "drop") %>%
-    dplyr::mutate(padj = ifelse(padj == 0, min(padj[padj > 0], na.rm = TRUE), padj))
+    dplyr::slice_min(order_by = padj, n = 1, with_ties = FALSE) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(padj = case_when(is.na(padj) ~ 1,
+                                   padj == 0   ~ min(padj[padj > 0]),
+                                   TRUE        ~ padj))
   
   save_xlsx(DEGs_df, file.path(output_dir, "DEGs.xlsx"), "DEGs", row_names = FALSE)
   
@@ -1370,8 +1332,8 @@ plot_heatmap <- function(expr_mat,
                          border_color        = NA,
                          force_log           = FALSE,
                          show_expr_legend    = TRUE,
-                         save_plot           = TRUE,
-                         save_matrix         = TRUE) {
+                         save_plot           = FALSE,
+                         save_matrix         = FALSE) {
   
   # ---- ⚙️ Validate Input Parameters ----
   
@@ -3048,6 +3010,50 @@ add_annotation <- function(df, ann_list = NULL, remove_ann_col = TRUE) {
   return(annotated_df)
 }
 
+fit_sva <- function(dds, condition_col) {
+  
+  # ---- ⚙️ Prepare Data ----
+  # SVA requires normalized counts (transformed to stabilize variance)
+  dat <- counts(dds, normalized = TRUE)
+  
+  # Filter out very low power genes for SVA speed (Standard Practice)
+  idx  <- rowMeans(dat) > 1
+  dat  <- dat[idx, ]
+  
+  # Create the Model Matrices
+  # Full model: includes the biological variable of interest
+  # Null model: ignores the biological variable
+  mod  <- model.matrix(as.formula(glue::glue("~ {condition_col}")), colData(dds))
+  mod0 <- model.matrix(~ 1, colData(dds))
+  
+  # ---- 🔍 Identify Surrogate Variables ----
+  log_info(sample = "", step = "SVA", msg = "Estimating number of surrogate variables...")
+  n.sv <- sva::num.sv(dat, mod, method = "leek")
+  
+  if (n.sv == 0) {
+    log_warn(sample = "", step = "SVA", msg = "No surrogate variables found. Proceeding with standard model.")
+    return(dds)
+  }
+  
+  log_info(sample = "", step = "SVA", msg = glue::glue("Found {n.sv} surrogate variables. Estimating..."))
+  svobj <- sva::sva(dat, mod, mod0, n.sv = n.sv)
+  
+  # ---- 🤝 Integrate into DDS ----
+  # Add the SVs to the metadata (colData)
+  for (i in 1:n.sv) {
+    colData(dds)[[paste0("SV", i)]] <- svobj$sv[, i]
+  }
+  
+  # Update the DESeq2 Design Formula to account for hidden batches
+  # New formula: ~ SV1 + SV2 + ... + condition
+  sv_names <- paste0("SV", 1:n.sv)
+  new_formula <- as.formula(paste("~", paste(c(sv_names, condition_col), collapse = " + ")))
+  design(dds) <- new_formula
+  
+  log_info(sample = "", step = "SVA", msg = glue::glue("Updated design formula to: {format(new_formula)}"))
+  
+  return(dds)
+}
 
 norm_counts_DESeq2 <- function(metadata, read_data, proj.params) {
   

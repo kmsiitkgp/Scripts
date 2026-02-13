@@ -25,8 +25,11 @@
 # CONFIGURATION
 # -----------------------------------------------------------------------------------------
 
+#project="BBN_C57BL6"
 #project="Xinyi"                  # Project name (used in output directory naming)
-project="BBN_C57BL6"
+project="Manish_22Rv1_ARCaPM"
+#project="Manish_22Rv1_Xeno"
+#project="Manish_22Rv1_Xeno2"
 
 # Nextflow directory (where main.nf, nextflow.config, modules/, workflows/, projects/ are located)
 NF_DIR="$HOME/scripts/nextflow"
@@ -203,7 +206,7 @@ cd "${WORK_DIR}/${project}"
 # This avoids the "Run name already used" error if a previous session crashed
 # or didn't release its lock. It allows for seamless -resume attempts while
 # keeping a unique record for every try in the 'nextflow log'.
-RUN_NAME="${project}_$(date +%Y-%m-%d_%H-%M)"
+RUN_NAME="${project}_$(date +%Y-%m-%d_%H-%M-%S)"
 
 echo "--------------------------------------------------------------------------------"
 echo "Lauch Dir : $(pwd)"
@@ -226,7 +229,11 @@ echo "--------------------------------------------------------------------------
 # --stop.after    : RENAME_FASTQS, GENERATE_MD5, VALIDATE_INPUT, FASTQC_RAW, STAR_INDEX,
 #                 : EXTRACT_GENTROME, SALMON_INDEX, RSEQC_BED, SALMON_QUANT,
 #                 : STAR_ALIGN, SAMBAMBA_PREP, RSEQC, MULTIQC, CELLRANGER_COUNT
-nextflow run "${NF_DIR}/main.nf" \
+
+#screen -S "${project}" -d -m \
+nextflow \
+    -log "${WORK_DIR}/${project}.nextflow.log" \
+    run "${NF_DIR}/main.nf" \
     -params-file "${YAML}" \
     -name "${RUN_NAME}" \
     -work-dir "${WORK_DIR}/${project}/work" \
@@ -237,8 +244,25 @@ nextflow run "${NF_DIR}/main.nf" \
 #    --stop_after "GENERATE_MD5"
 #-preview
 
-# Optional: Clean previous failed runs (use with caution!)
-# nextflow clean -f
+# See logs live
+# tail -f "${WORK_DIR}/${project}.nextflow.log"
+
+# Reattach screen session if needed
+# screen -r "${project}"
+
+# Detach screen session if needed
+# Press Ctrl+A fist, release and press D
+
+# -----------------------------------------------------------------------------------------
+# DELETE WORD DIRS FROM FAILED RUNS (RUN AFTER SUCCESSFUL COMPLETION OF PROJECT)
+# -----------------------------------------------------------------------------------------
+
+# Dry run first — see what would be deleted
+#nextflow log -q -f status | grep -v 'OK' | cut -f1 | xargs -n 1 -I {} echo nextflow clean {} -f
+
+# If looks good, actually delete
+#nextflow log -q -f status | grep -v 'OK' | cut -f1 | xargs -n 1 -I {} nextflow clean {} -f
+
 
 # -----------------------------------------------------------------------------------------
 # NOTES ON SINGULARITY BIND MOUNT CHALLENGES

@@ -25,21 +25,23 @@ process MULTIQC {
     tag "Aggregating all QC reports"
     label 'process_low'                                              // Lightweight (file parsing only)
 
+    publishDir { "${params.proj_dir()}/${species}_${type}/06.MULTIQC" },    mode: 'copy',    pattern: "*.html"
+    publishDir { "${params.proj_dir()}/${species}_${type}/06.MULTIQC" },    mode: 'copy',    pattern: "*_data"
+    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },       mode: 'copy',    pattern: "*.MULTIQC.error.log"
+
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    path(all_reports)        // All QC files from upstream processes
-    val(multiqc_title)       // Report title as a string
-    val(multiqc_filename)    // Report filename as a string
+    tuple val(species), val(type), path(all_reports)        // All QC files from upstream processes
 
     // =================================================================================
     // OUTPUT
     // =================================================================================
     output:
-    path("${multiqc_filename}.html"),      emit: multiqc_html  // HTML report
-    path("${multiqc_filename}_data"),      emit: multiqc_dir   // Data directory
-    path("MULTIQC.error.log"),             emit: error_log     // Process log
+    path("*.html"),    emit: multiqc_html  // HTML report
+    path("*_data"),    emit: multiqc_dir   // Data directory
+    path("MULTIQC.error.log"),                            emit: error_log     // Process log
 
     // =================================================================================
     // EXECUTION
@@ -47,6 +49,8 @@ process MULTIQC {
     script:
 
     def LOG = "MULTIQC.error.log"
+    def multiqc_title    = "${species} ${type} ${params.project} QC Report"
+    def multiqc_filename = "${species}_${type}_${params.project}_multiqc"
 
     """
     # Run MultiQC to consolidate all QC reports

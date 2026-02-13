@@ -26,13 +26,18 @@ process SALMON_QUANT {
     tag "Quantifying ${sample_id}"
     label 'process_medium'                          // 4 cores, 12GB RAM typical
 
+    publishDir { "${params.proj_dir()}/${species}_${type}/03.Salmon" },                mode: 'copy',    pattern: "${sample_id}"
+    publishDir { "${params.proj_dir()}/${species}_${type}/03.Salmon/quant_files" },    mode: 'copy',    pattern: "*.quant.sf"
+    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },                  mode: 'copy',    pattern: "*.SALMON_QUANT.error.log"
+
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(sample_id), path(fastq_files)              // sample_id    : Sample identifier (e.g., "Sample1")
-                                                         // fastq_files  : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
-    path(salmon_index_dir)                               // Pre-built Salmon index directory
+    tuple val(species), val(type), val(sample_id), path(fastq_files), path(salmon_index_dir)
+    // sample_id        : Sample identifier (e.g., "Sample1")
+    // fastq_files      : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
+    // salmon_index_dir : Pre-built Salmon index directory
     val(salmon_args)                                     // Pre-joined SALMON ARGS from config
     // Never do ${params.SALMON_ARGS().join(' ')} inside process. It changes hash on
     // every run and resume fails. So, .join() in main.nf and pass as an argument.
@@ -41,10 +46,9 @@ process SALMON_QUANT {
     // OUTPUT
     // =================================================================================
     output:
-    tuple val(sample_id),
-        path(sample_id),                            emit: salmon_quant_dir      // Full output directory
-    path("${sample_id}.quant.sf"),                  emit: salmon_quant_file     // Transcript abundances (TPM, counts)
-    path("${sample_id}.SALMON_QUANT.error.log"),    emit: error_log             // Process log
+    tuple val(species), val(type), val(sample_id), path(sample_id),   emit: salmon_quant_dir      // Full output directory
+    tuple val(species), path("${sample_id}.quant.sf"),     emit: salmon_quant_file     // Transcript abundances (TPM, counts)
+    path("${sample_id}.SALMON_QUANT.error.log"),           emit: error_log             // Process log
 
     // =================================================================================
     // EXECUTION
@@ -84,7 +88,7 @@ process SALMON_QUANT {
 
     # Copy quant.sf to sample-named file for easy collection
     # This enables gathering all quant.sf files for tximport without complex glob patterns
-    cp ${sample_id}/quant.sf ${sample_id}.quant.sf \
+    cp "${sample_id}/quant.sf" ${sample_id}.quant.sf \
         || { echo "❌ ERROR: Failed to copy quant.sf for ${sample_id}" | tee -a "${LOG}" >&2; exit 1; }
 
     echo "✅ SUCCESS: Salmon quantification completed for ${sample_id}" >> "${LOG}"
