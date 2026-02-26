@@ -46,9 +46,9 @@ process SALMON_QUANT {
     // OUTPUT
     // =================================================================================
     output:
-    tuple val(species), val(type), val(sample_id), path(sample_id),   emit: salmon_quant_dir      // Full output directory
-    tuple val(species), path("${sample_id}.quant.sf"),     emit: salmon_quant_file     // Transcript abundances (TPM, counts)
-    path("${sample_id}.SALMON_QUANT.error.log"),           emit: error_log             // Process log
+    tuple val(species), val(type), val(sample_id), path(sample_id),    emit: salmon_quant_dir      // Full output directory
+    tuple val(species), path("${sample_id}.quant.sf"),                 emit: salmon_quant_file     // Transcript abundances (TPM, counts)
+    path("${sample_id}.SALMON_QUANT.error.log"),                       emit: error_log             // Process log
 
     // =================================================================================
     // EXECUTION

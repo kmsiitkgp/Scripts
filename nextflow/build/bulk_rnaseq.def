@@ -1,0 +1,105 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%labels
+    Author kailasamms
+    Version 1.0
+    Description "Bulk RNA-seq Elite: 4.4.3 Pinned + HPC-Safe Caching + Paranoid Verification"
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+    export CRAN_REPO="https://cloud.r-project.org"
+
+    # 1. Install Build Tools + System Libraries
+    apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates gnupg software-properties-common locales \
+        libcurl4-openssl-dev libssl-dev libxml2-dev libgsl-dev \
+        libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
+        libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
+        libcairo2-dev libxt-dev pkg-config cmake libmagick++-dev \
+        libbz2-dev liblzma-dev build-essential pandoc procps gfortran \
+        libgit2-dev libudunits2-dev
+
+    locale-gen en_US.UTF-8
+    update-locale LANG=en_US.UTF-8
+
+    # 2. Setup Pinned R 4.4.3 (Using wildcard for build-revision safety)
+    curl -fsSL https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | \
+        gpg --dearmor -o /usr/share/keyrings/cran-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/cran-archive-keyring.gpg] https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" \
+        > /etc/apt/sources.list.d/cran.list
+    
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        r-base-core=4.4.3* \
+        r-base-dev=4.4.3*
+    
+    apt-mark hold r-base-core r-base-dev
+
+    # 3. Install R Packages
+    R -e "options(repos='$CRAN_REPO'); install.packages('BiocManager', Ncpus=2)"
+    R -e "BiocManager::install(version='3.20', ask=FALSE)"
+    
+    # Block A: General & Plotting
+    R -e "BiocManager::install(c('dplyr','tibble','stringr','purrr','readr','tidyr','openxlsx','crayon','glue','rlang','httr','remotes','ggplot2','ggrepel','ggpubr','pheatmap','VennDiagram','UpSetR','cowplot','viridis','RColorBrewer','colorspace','umap','uwot','survival','survminer'), ask=FALSE, update=FALSE, Ncpus=2)"
+    
+    # Block B: Bulk RNA-seq Core
+    R -e "BiocManager::install(c('DESeq2','edgeR','limma','sva','tximport','ashr','apeglm','rtracklayer','AnnotationHub','ensembldb','org.Hs.eg.db','org.Mm.eg.db','fgsea','decoupleR','OmnipathR','ComplexHeatmap','GSVA','GEOquery'), ask=FALSE, update=FALSE, Ncpus=2)"
+
+    # 4. SLIM DOWN
+    apt-mark unhold r-base-dev
+    apt-get purge -y --auto-remove r-base-dev build-essential cmake gfortran pkg-config
+    apt-get clean
+    
+    # Surgical cleanup (safe for Singularity mounts)
+    rm -rf /var/lib/apt/lists/*
+    rm -rf /tmp/Rtmp*
+    rm -rf /tmp/downloaded_packages
+
+%environment
+    export LC_ALL=en_US.UTF-8
+    export LANG=en_US.UTF-8
+    export R_VERSION=4.4.3
+
+    # Elite HPC-Safe Logic: Prefer $SCRATCH if defined, else fallback to $HOME
+    if [ -n "${SCRATCH}" ]; then
+        export CACHE_BASE="${SCRATCH}/.bioc_cache"
+    else
+        export CACHE_BASE="${HOME}/.cache"
+    fi
+
+    export XDG_CACHE_HOME="${CACHE_BASE}"
+    export R_USER_CACHE_DIR="${CACHE_BASE}/R"
+    export ANNOTATIONHUB_CACHE="${CACHE_BASE}/annotationhub"
+    export EXPERIMENTHUB_CACHE="${CACHE_BASE}/experimenthub"
+    export OMNIPATHR_CONFIG_PATH="${CACHE_BASE}/omnipathr.yml"
+
+%test
+    # Verification script using library() to force-load compiled objects
+    R -e "pkgs <- c( \
+        'BiocManager', 'remotes', 'AnnotationHub', 'ensembldb', 'org.Hs.eg.db', \
+        'org.Mm.eg.db', 'fgsea', 'DESeq2', 'sva', 'GSVA', 'tximport', 'ashr', \
+        'openxlsx', 'dplyr', 'tibble', 'stringr', 'purrr', 'ggplot2', \
+        'ggrepel', 'ggpubr', 'pheatmap', 'VennDiagram', 'survival', \
+        'survminer', 'UpSetR', 'umap', 'cowplot', 'viridis', \
+        'RColorBrewer', 'colorspace', 'ComplexHeatmap', 'GEOquery', \
+        'httr', 'decoupleR', 'OmnipathR', 'crayon', 'uwot' \
+    ); \
+    failed <- c(); \
+    for (p in pkgs) { \
+        message('Testing: ', p); \
+        # library() will error out if compiled code cannot find its dependencies
+        tryCatch({ \
+            library(p, character.only = TRUE); \
+            message('✅ ', p, ' (', packageVersion(p), ') - LOADED OK') \
+        }, error = function(e) { \
+            message('❌ ERROR LOADING ', p, ': ', e$message); \
+            failed <<- c(failed, p) \
+        }) \
+    }; \
+    if (length(failed) > 0) { \
+        stop(paste('\nCRITICAL FAILURE: The following packages failed to load properly:', \
+             paste(failed, collapse = ', '))) \
+    } else { \
+        message('\n✅ TOTAL SUCCESS: All packages installed and verified via full library load.') \
+    }"

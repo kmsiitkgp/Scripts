@@ -9,25 +9,37 @@ nextflow.enable.dsl=2        // Enable DSL2 syntax (modern Nextflow with explici
 include { RENAME_FASTQS }                from '../modules/rename_fastq.nf'
 include { GENERATE_MD5 }                 from '../modules/generate_md5.nf'
 include { VALIDATE_INPUT }               from '../modules/validate_input.nf'
+
 include { FASTQC as FASTQC_RAW }         from '../modules/fastqc.nf'
 include { FASTQC as FASTQC_TRIMMED }     from '../modules/fastqc.nf'           // Reusable process with alias
+
 include { FETCH_ENSEMBL_VERSIONS }       from '../modules/fetch_ensembl_versions.nf'
 include { DOWNLOAD_ENSEMBL_REF }         from '../modules/download_ensembl_ref.nf'
-//include { PREPARE_XENOGRAFT_REF }        from '../modules/prepare_xenograft_ref.nf'
+
 include { XENGSORT_INDEX }               from '../modules/xengsort_index.nf'
 include { XENGSORT_CLASSIFY }            from '../modules/xengsort_classify.nf'
+
 include { STAR_INDEX }                   from '../modules/star_index.nf'
 include { EXTRACT_GENTROME }             from '../modules/extract_gentrome.nf'
 include { SALMON_INDEX }                 from '../modules/salmon_index.nf'
 include { RSEQC_BED }                    from '../modules/rseqc_bed.nf'
+
+include { CREATE_TX2GENE }               from '../modules/create_tx2gene.nf'
+include { CREATE_TXI }                   from '../modules/create_txi.nf'
 include { SALMON_QUANT }                 from '../modules/salmon_quant.nf'
+
 include { STAR_ALIGN }                   from '../modules/star_align.nf'
 include { SAMBAMBA_PREP }                from '../modules/sambamba_prep.nf'
+
 include { RSEQC }                        from '../modules/rseqc.nf'
 include { MULTIQC }                      from '../modules/multiqc.nf'
+
+include { MERGE_STAR_COUNTS }            from '../modules/merge_star_counts.nf'
+include { CREATE_DDS }                   from '../modules/create_dds.nf'
+
 //include { TEST_INDEX }                   from '../modules/test_index.nf'       // Debugging utility
 //include { TEST_PUBLISHDIR }              from '../modules/test_publishdir.nf'  // Debugging utility
-
+//include { PREPARE_XENOGRAFT_REF }        from '../modules/prepare_xenograft_ref.nf'
 // =========================================================================================
 // MAIN WORKFLOW
 // =========================================================================================
@@ -206,6 +218,13 @@ workflow RNASEQ {
         return
     }
 
+    // tx2gene for DESeq2
+    CREATE_TX2GENE(ref_ch)
+    if (params.stop_after == 'CREATE_TX2GENE') {
+        log.info "Stopping pipeline after CREATE_TX2GENE as requested."
+        return
+    }
+
     // =================================================================================
     // STEP 6: SPECIES SEPARATION & MAPPING PREPARATION
     // =================================================================================
@@ -302,6 +321,45 @@ workflow RNASEQ {
         return
     }
 
+    create_txi_input_ch = SALMON_QUANT.out.salmon_quant_dir
+        .map { species, type, sample_id, sample_dir -> 
+            tuple(species, type, sample_dir) 
+        }
+        .groupTuple(by: [0, 1])
+        .combine(CREATE_TX2GENE.out.tx2gene_tuple, by: 0)
+
+    CREATE_TXI(create_txi_input_ch)
+
+    if (params.stop_after == 'CREATE_TXI') {
+        log.info "Stopping pipeline after CREATE_TXI as requested."
+        return
+    }
+    
+    // 1. RAW DATA (Input from SALMON_QUANT.out)
+    // Structure: [species, type, id, path]
+    // [human, split, H_S1, /path/H_S1_dir]
+    // [human, split, H_S2, /path/H_S2_dir]
+    // [mouse, split, M_S1, /path/M_S1_dir]
+    // [mouse, split, M_S2, /path/M_S2_dir]
+
+    // 2. AFTER .map { species, type, id, dir -> [species, type, dir] }
+    // (ID is dropped, but the directory path /path/H_S1_dir remains)
+    // [human, split, /path/H_S1_dir]
+    // [human, split, /path/H_S2_dir]
+    // [mouse, split, /path/M_S1_dir]
+    // [mouse, split, /path/M_S2_dir]
+
+    // 3. AFTER .groupTuple(by: [0, 1])
+    // (Nextflow bundles paths into two distinct groups based on the unique Species+Type keys)
+    // [human, split, [/path/H_S1_dir, /path/H_S2_dir]]
+    // [mouse, split, [/path/M_S1_dir, /path/M_S2_dir]]
+
+    // 4. AFTER .combine(CREATE_TX2GENE.out.tx2gene_tuple, by: 0)
+    // (Matches the "human" key to human.csv and "mouse" key to mouse.csv)
+    // Structure: [species, type, [paths], csv]
+    // [human, split, [/path/H_S1_dir, /path/H_S2_dir], tx2gene_human.csv]
+    // [mouse, split, [/path/M_S1_dir, /path/M_S2_dir], tx2gene_mouse.csv]
+
     // =====================================================================================
     // STEP 9: GENOME ALIGNMENT (STAR)
     // =====================================================================================
@@ -372,6 +430,18 @@ workflow RNASEQ {
         log.info "Stopping pipeline after MULTIQC as requested."
         return
     }
+
+    // Differential Expression Analysis
+    merge_star_counts_input_ch = STAR_ALIGN.out.star_results
+      .map {species, type, sample_id, bam, gene_counts, sj_out, log -> tuple(species, type, gene_counts) }
+      .groupTuple(by: [0,1])
+    MERGE_STAR_COUNTS(merge_star_counts_input_ch)
+
+    // Create a channel for the metadata file
+    metadata_ch = Channel.fromPath(params.metadata_file, checkIfExists: true).collect()
+    CREATE_DDS(CREATE_TXI.out.txi, metadata_ch, params.deseq2.design)
+
+
 }
 
 // =========================================================================================

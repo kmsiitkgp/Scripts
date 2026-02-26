@@ -46,10 +46,9 @@
 #     sudo apt install -y apptainer
 #
 # Step 3: Navigate to build directory
-#   Access your Windows files from WSL:
-#     cd "/mnt/c/Users/YOUR_USERNAME/path/to/build/directory"
-#   Example:
-#     cd "/mnt/c/Users/kailasamms/Desktop/build"
+#    cmd
+#    wsl
+#    cd "/mnt/c/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/build"
 #
 # Step 4: Verify files are present
 #     ls -lh
@@ -57,6 +56,7 @@
 #
 # Step 5: Build the image
 #     sudo apptainer build cellranger_10.0.0.sif cellranger.def
+#     sudo apptainer build bulk_rnaseq_2026.02.19.sif bulk_rnaseq.def
 #   Note: This may take 15-30 minutes
 #
 # Step 6: Verify image

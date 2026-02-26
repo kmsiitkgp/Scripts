@@ -73,16 +73,17 @@ custom_theme <- ggplot2::theme_classic() +
 
 custom_palette <- c(
   "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
-  "#393b79", "#637939", "#8c6d31", "#843c39", "#7b4173", "#5254a3", "#6b6ecf", "#333333", "#cedb9c", "#8ca252",
-  "#a55194", "#e5e56f", "#66a61e", "#e6ab02", "#a6761d", "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ffff33",
-  "#f781bf", "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3", "#1e90ff",
-  "#ff4500", "#32cd32", "#ff0000", "#8a2be2", "#a0522d", "#ff66cc", "#9c9ede", "#adff2f", "#00ced1", "#ffd700",
-  "#6699cc", "#cc6644", "#66aa66", "#cc6666", "#9966cc", "#996633", "#cc99cc", "#99cc44", "#66cccc", "#cccc66",
-  "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5", "#c49c94", "#f7b6d2", "#c7c7c7", "#dbdb8d", "#9edae5",
-  "#ffffcc", "#e7ba52", "#ce6dbd", "#d6616b", "#b5cf6b", "#dbdb5c", "#e7cb94", "#ad494a", "#bd9e39", "#de9ed6",
+  "#ffd92f", "#393b79", "#e6ab02", "#999999", "#cccc66", "#ad494a", "#de9ed6", "#9edae5", "#d95f02", "#e7298a", 
+  "#637939", "#8c6d31", "#843c39", "#7b4173", "#5254a3", "#cedb9c", "#333333", "#8ca252", "#6b6ecf",
+  "#a55194", "#e5e56f", "#a6761d", "#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ffff33",
+  "#f781bf", "#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#e5c494", "#b3b3b3",
+  "#66a61e", "#8a2be2", "#a0522d", "#ff66cc", "#9c9ede", "#adff2f", "#00ced1", "#ffd700",
+  "#6699cc", "#cc6644", "#66aa66", "#cc6666", "#9966cc", "#996633", "#cc99cc", "#99cc44", "#66cccc", 
+  "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5", "#c49c94", "#f7b6d2", "#c7c7c7", "#dbdb8d", 
+  "#ffffcc", "#e7ba52", "#ce6dbd", "#d6616b", "#b5cf6b", "#dbdb5c", "#e7cb94", "#bd9e39", 
   "#e7969c", "#33a02c", "#b2df8a", "#fdbf6f", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928", "#8dd3c7", "#ffffb3",
   "#bebada", "#fb8072", "#80b1d3", "#fdb462", "#b3de69", "#fccde5", "#d9d9d9", "#bc80bd", "#ccebc5", "#ffed6f",
-  "#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#999999"
+  "#ff4500", "#32cd32", "#ff0000", "#1e90ff", "#1b9e77", "#7570b3"
 )
 
 tab_palettes <- c(
@@ -273,7 +274,13 @@ setup_project <- function(proj, species, contrasts,
   # Bulk RNA-seq Directories
   counts_dir    <- file.path(proj_dir, "counts")               # Directory containing count files
   salmon_dir    <- file.path(proj_dir, "salmon")               # Directory containing salmon quant.sf files
-  contrast_dir  <- file.path(proj_dir, contrasts)              # Directory to store results for each contrast
+  valid_contrasts <- contrasts |> 
+    gsub(pattern = "/", replacement = "_over_") |> 
+    gsub(pattern = "\\+", replacement = "_plus_") |> 
+    gsub(pattern = "-", replacement = "_vs_") |> 
+    gsub(pattern = "[[:space:][:punct:]]+", replacement = "_") |> 
+    gsub(pattern = "(^_+|_+$)", replacement = "")
+  contrast_dir  <- file.path(proj_dir, valid_contrasts)              # Directory to store results for each contrast
   pathway_dir   <- file.path(contrast_dir, "Pathway_Analysis") # Directory to store Pathway analysis results
   tf_dir        <- file.path(contrast_dir, "TF_Analysis")      # Directory to store TF analysis results
   
@@ -391,115 +398,112 @@ merge_counts <- function(counts_dir, filename = NULL, output_dir) {
   validate_inputs(counts_dir = counts_dir, filename = filename, output_dir = output_dir)
   
   # ---- 🔎 Identify Count Files ----
-  
+
   # Pattern matches STAR (ReadsPerGene.out.tab) or standard HTSeq .txt files
   count_files <- list.files(path = counts_dir, 
                             pattern = "\\.txt$|ReadsPerGene\\.out\\.tab$", 
                             full.names = TRUE)
   
   if (length(count_files) == 0) {
-    log_warn(sample = "", 
-             step    = "merge_counts", 
-             msg     = glue::glue("No count files found in: '{counts_dir}'.
-                                 Provide raw counts as excel for analysis."))
+    log_warn(sample = "", step = "merge_counts", msg = "No count files found.")
     return(NULL)
   }
   
-  # ---- 🧪 Initialize Containers ----
-  
-  all_counts <- list()
-  gene_lists <- list()
-  sample_ids <- character()
+  # ---- 🔄 Parse Files and Detect Strandedness ----
   
   # Define metadata rows to exclude (HTSeq/STAR stats)
   special_counters <- c("__no_feature", "__ambiguous", "__too_low_aQual", 
                         "__not_aligned", "__alignment_not_unique", "__assignment_counts",
                         "N_unmapped", "N_multimapping", "N_noFeature", "N_ambiguous")
-  
-  # ---- 🔄 Parse Files and Detect Strandedness ----
+
+  all_counts <- list()
   
   for (count_file in count_files) {
-    
+    # Extract Sample ID from filename
     sample_id <- gsub("\\..*$|ReadsPerGene\\.out\\.tab", "", basename(count_file))
     
-    # Read count file
+    # Read count file and name columns
+    #read.table(file = count_file, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
     df <- tryCatch({
-      read.table(file = count_file, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+      readr::read_tsv(file = count_file, 
+                      col_names = FALSE, 
+                      show_col_types = FALSE) %>%
+        dplyr::rename(gene_id    = 1, 
+                      unstranded = 2, 
+                      forward    = 3, 
+                      reverse    = 4)
     }, error = function(e) {
-      log_error(sample = sample_id, 
-                step   = "merge_counts", 
-                msg    = glue::glue("Error reading file: {e$message}"))
+      log_error(sample = sample_id, step = "merge_counts", msg = glue::glue("Error: {e$message}"))
+      return(NULL)
     })
     
-    if (ncol(df) < 4) {
-      log_error(sample = sample_id, 
-                step = "merge_counts", 
-                msg ="STAR/HTSeq count file does not have expected 4 columns.")
+    if (is.null(df) || ncol(df) < 4) next
+
+    # Filter metadata/stats rows
+    df <- df %>% dplyr::filter(!(gene_id %in% special_counters))
+
+    
+    # ---- 🧬 Strandedness Logic ----
+    fwd_sum <- sum(df$forward, na.rm = TRUE)
+    rev_sum <- sum(df$reverse, na.rm = TRUE)
+    total   <- fwd_sum + rev_sum
+    
+    if (total == 0) {
+      log_error(sample = sample_id, step = "merge_counts", msg = "CRITICAL: Total counts are zero. Sample excluded.")
+      next 
     }
     
-    # Remove special counters/metadata rows
-    df <- df %>% dplyr::filter(!(.[[1]] %in% special_counters))
+    prop_fwd <- fwd_sum / total
     
-    gene_ids <- df[[1]]
-    strand_sums <- colSums(df[2:4], na.rm = TRUE)
-    
-    # Logic to determine strandedness based on column sums
-    # Col 2: Unstranded 
-    # Col 3: Forward 
-    # Col 4: Reverse
-    if (abs((strand_sums[1]/strand_sums[2]) - (strand_sums[1]/strand_sums[3])) < 2) {
-      log_info(sample = sample_id, step = "merge_counts", msg ="Detected unstranded library.")
-      counts <- df[[2]]
-    } else if (strand_sums[2] > 3 * strand_sums[3]) {
-      log_info(sample = sample_id, step = "merge_counts", msg ="Detected positively stranded library.")
-      counts <- df[[3]]
-    } else if (strand_sums[3] > 3 * strand_sums[2]) {
-      log_info(sample = sample_id, step = "merge_counts", msg ="Detected negatively stranded library.")
-      counts <- df[[4]]
+    # Determine the column to keep
+    if (prop_fwd > 0.8) {
+      log_info(sample = sample_id, step = "merge_counts", msg = "Detected: Forward Stranded")
+      sample_df <- df %>% dplyr::select(ID = gene_id, !!sample_id := forward)
+      
+    } else if (prop_fwd < 0.2) {
+      log_info(sample = sample_id, step = "merge_counts", msg = "Detected: Reverse Stranded")
+      sample_df <- df %>% dplyr::select(ID = gene_id, !!sample_id := reverse)
+      
     } else {
-      log_error(sample = sample_id, 
-                step = "merge_counts", 
-                msg ="Could not confidently determine strandedness.")
+      # Handle Unstranded (~0.5) and Ambiguous (e.g. 0.7)
+      msg <- if(abs(prop_fwd - 0.5) < 0.1) "Detected: Unstranded" else glue::glue("Ambiguous ({round(prop_fwd, 2)}). Using Unstranded.")
+      log_info(sample = sample_id, step = "merge_counts", msg = msg)
+      sample_df <- df %>% dplyr::select(ID = gene_id, !!sample_id := unstranded)
     }
     
-    all_counts[[sample_id]] <- counts
-    gene_lists[[sample_id]] <- gene_ids
-    sample_ids <- c(sample_ids, sample_id)
+    all_counts[[sample_id]] <- sample_df
   }
   
-  # ---- ⚖️ Check Gene Consistency ----
-  
-  ref_genes <- gene_lists[[1]]
-  for (i in seq_along(gene_lists)) {
-    if (!identical(ref_genes, gene_lists[[i]])) {
-      log_error(sample = names(gene_lists)[i], 
-                step = "merge_counts", 
-                msg ="Gene ID mismatch. Ensure all samples were mapped to the same reference.")
-    }
+  if (length(all_counts) == 0) {
+    log_error(sample = "", step = "merge_counts", msg = "No valid samples remained after filtering.")
+    return(NULL)
   }
   
-  # ---- 📊 Build and Filter Count Matrix ----
+  # ---- 📊 Build Count Matrix ----
   
-  count_matrix <- do.call(cbind, all_counts)
-  colnames(count_matrix) <- sample_ids
-  count_matrix <- data.frame(SYMBOL = ref_genes, count_matrix, stringsAsFactors = FALSE)
+  # purrr::reduce handles merging multiple dataframes efficiently
+  count_matrix <- all_counts %>% 
+    purrr::reduce(dplyr::full_join, by = "ID") 
+  
+  # Replace any NAs from full_join with 0
+  count_matrix[is.na(count_matrix)] <- 0
   
   # Remove genes with 0 counts across all samples
-  count_matrix <- count_matrix[rowSums(count_matrix[,-1]) > 0, , drop = FALSE]
-  rownames(count_matrix) <- NULL    # Reset row names after subsetting so they are sequential (1, 2, 3, ...)
-  
+  count_matrix <- count_matrix %>%
+    dplyr::filter(rowSums(dplyr::select(., -ID), na.rm = TRUE) > 0)
+ 
   # Remove samples with 0 counts across all genes
   count_matrix <- count_matrix[, c(TRUE, colSums(count_matrix[,-1]) > 0), drop = FALSE]
-  
+
   # ---- 💾 Export to Excel ----
   
   file_name <- file.path(output_dir, paste0(filename, "_Raw_counts.xlsx"))
   
-  wb <- openxlsx::createWorkbook()
-  openxlsx::addWorksheet(wb = wb, sheetName = "Raw_counts")
-  openxlsx::writeData(wb = wb, sheet = "Raw_counts", x = count_matrix)
-  openxlsx::saveWorkbook(wb = wb, file = file_name, overwrite = TRUE)
-  
+  openxlsx::write.xlsx(x = count_matrix, 
+                       sheetName = "Raw_counts", 
+                       file = file_name, 
+                       overwrite = TRUE)
+
   # ---- 🪵 Log Output and Return Count Matrix ----
   
   log_info(sample = "", 
@@ -509,96 +513,128 @@ merge_counts <- function(counts_dir, filename = NULL, output_dir) {
   return(invisible(count_matrix))
 }
 
-prep_txi <- function(salmon_dir, species, output_dir, 
-                     db_version = NULL, filename = NULL){
+salmon_to_txi <- function(species, ensembl_assembly, ensembl_release, salmon_dir, output_dir) {
+  
+  # ---- 1. Normalize and Resolve Species ----
+  
+  # Remove underscores and convert to lowercase (e.g., "Homo_sapiens" -> "homo sapiens")
+  clean_species <- gsub(pattern = "_", replacement = " ", x = tolower(species))
+  
+  # Define the mapping
+  if (grepl(pattern = "human|homo|hsap", x = clean_species)) {
+    formal_species <- "Homo sapiens"
+  } else if (grepl(pattern = "mouse|mus|mmus", x = clean_species)) {
+    formal_species <- "Mus musculus"
+  } else if (grepl(pattern = "xeno", x = clean_species)) {
+    formal_species <- "Homo sapiens"   # usually interested in graft data
+    log_warn(sample = species, 
+             step = "salmon_to_txi", 
+             msg = "Xeno detected: Defaulting to Homo sapiens graft.")
+  } else {
+    # Fallback: if it's something else, just use the cleaned string
+    formal_species <- clean_species
+  }
+  
+  log_info(sample = species, 
+           step = "salmon_to_txi", 
+           msg = paste("Resolved to:", formal_species))
+  
+  # ---- 2. Fetch Annotation ----
+  
+  log_info(sample = species, 
+           step = "salmon_to_txi", 
+           msg = "Fetching Ensembl Database...")
   
   # Connect to AnnotationHub 
   hub <- AnnotationHub::AnnotationHub()
   
-  # ---- 🔍 Query Database ----
-  
-  log_info(sample = species, 
-           step   = "prep_txi", 
-           msg    = "Fetching Ensembl Database...")
-  
-  hub_db <- AnnotationHub::query(x           = hub, 
-                                 pattern     = c("EnsDb", species), 
+  # Query for required species
+  hub_db <- AnnotationHub::query(x = hub, 
+                                 pattern = c("EnsDb", formal_species), 
                                  ignore.case = TRUE)
   
-  # Glimpse of hub_db
-  print(hub_db %>%
-          mcols() %>%
-          as.data.frame() %>%
-          dplyr::select(title, species, genome, rdatadateadded, sourcetype))
+  # Convert mcols to dataframe once for easier filtering
+  df_hub <- as.data.frame(mcols(hub_db))
   
-  # Acquire the latest version available in the hub
-  latest_id <- hub_db %>%
-    mcols() %>%
-    as.data.frame() %>%
-    { 
-      if (!is.null(db_version)) {
-        filter(., grepl(db_version, .data$title))
-      } else {
-        .
-      }
-    } %>%
-    dplyr::arrange(desc(rdatadateadded)) %>%
-    head(n = 1) %>%
-    rownames()
+  # ---- Smart Filtering Logic ----
+  filtered_db <- df_hub
   
-  if (length(latest_id) == 0) {
-    log_error(sample = species, 
-              step   = "prep_txi", 
-              msg    = "Could not find a valid EnsDb in AnnotationHub.")
+  # 1. Filter by Assembly if provided (e.g., "GRCh38")
+  if (!is.null(ensembl_assembly)) {
+    filtered_db <- filtered_db %>% dplyr::filter(genome == ensembl_assembly)
   }
   
-  # Download the appropriate Ensembldb database
-  ensdb <- hub_db[[latest_id]]
+  # 2. Filter by Release if provided (e.g., "113")
+  if (!is.null(ensembl_release)) {
+    filtered_db <- filtered_db %>% 
+      dplyr::filter(grepl(paste("Ensembl", ensembl_release), title))
+  }
+  
+  # 3. Check if we found a match, otherwise Fallback to Latest
+  if (nrow(filtered_db) > 0) {
+    hub_id <- filtered_db %>%
+      # Sort to get the most recent record (just in case of duplicates)
+      dplyr::arrange(desc(rdatadateadded)) %>%
+      head(1) %>%
+      rownames()
+    
+    log_info(sample = species, step = "salmon_to_txi", 
+             msg = glue::glue("Found matching Ensembl Db: {filtered_db[hub_id, 'title']}"))
+  } else {
+    # ABSOLUTE FALLBACK: Get the newest available for this species
+    hub_id <- df_hub %>%
+      dplyr::arrange(desc(rdatadateadded)) %>%
+      head(1) %>%
+      rownames()
+    
+    latest_title <- df_hub[hub_id, "title"]
+    log_warn(sample = species, step = "salmon_to_txi", 
+             msg = glue::glue("Requested version not found. Falling back to latest available: {latest_title}"))
+  }
+  
+  # Download the appropriate Ensembl database
+  ensdb <- hub_db[[hub_id]]
   
   # Extract transcript and gene info
   tx2gene <- GenomicFeatures::transcripts(x = ensdb) %>%
     as.data.frame() %>%
-    dplyr::select("tx_id", "gene_id") %>%
+    dplyr::select(tx_id, gene_id) %>%
     data.frame()
   
+  # ---- 2. Locate Salmon Files ----
   
-  # Get the salmon files
   quant_files <- list.files(path       = salmon_dir, 
                             pattern    = "quant.sf$", 
-                            recursive  = TRUE,
+                            recursive  = TRUE, 
                             full.names = TRUE)
   
-  # Name the files using sample IDs
-  sample_names <- list.files(path       = salmon_dir, 
-                             pattern    = "quant.sf$", 
-                             recursive  = TRUE,
-                             full.names = FALSE)
-  sample_names <- gsub(pattern = "\\.quant.sf$", replacement = "", x = sample_names)
-  names(quant_files) <- make.names(sample_names)
+  # Extract folder names as Sample IDs
+  # basename(dirname()) is the cleanest way to get the folder name
+  names(quant_files) <- make.names(basename(dirname(quant_files)))
+  
+  # ---- 3. Import Data ----
   
   txi <- tximport::tximport(files           = quant_files, 
                             type            = "salmon", 
                             tx2gene         = tx2gene,  
                             ignoreTxVersion = TRUE)
   
-  # txi is your tximport object
-  file_name <- paste("txi", filename, sep = "_")
-  file_extension <- ".rds"
-  saveRDS(txi, file = file.path(output_dir, paste0(file_name, file_extension)))
+  # ---- 4. Save Results ----
   
-  # Save the Raw Counts (The "Must-Have" for GEO)
-  txi$counts %>%
-    as.data.frame() %>%
-    rownames_to_column(var = "GeneID") %>%
-    write.table(file.path(output_dir, "Processed_Raw_Gene_Counts.txt"), 
-                sep = "\t", quote = FALSE, row.names = FALSE)
+  if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
   
-  # Save the TPMs (The "Nice-to-Have" for Heatmaps/Reviewers)
-  txi$abundance %>%
-    as.data.frame() %>%
-    rownames_to_column(var = "GeneID") %>%
-    write.table(file.path(output_dir, "Processed_TPM_Values.txt"), 
-                sep = "\t", quote = FALSE, row.names = FALSE)
+  # Function to save tables (Fixed the \t tab issue)
+  save_txi_table <- function(data, name) {
+    data %>%
+      as.data.frame() %>%
+      tibble::rownames_to_column(var = "GeneID") %>%
+      write.table(file.path(output_dir, name), 
+                  sep = "\t", quote = FALSE, row.names = FALSE)
+  }
+  
+  save_txi_table(txi$counts, "Salmon_Gene_Counts.txt")
+  save_txi_table(txi$abundance, "Salmon_TPM_Values.txt")
+  saveRDS(txi, file = file.path(output_dir, paste0(species, "_txi.rds")))
   
   return(txi)
 }
@@ -1075,8 +1111,12 @@ plot_ma <- function(dds, output_dir, filename = NULL) {
   
   # ---- 💾 Save Plots ----
   
+  # Replaces any non-alphanumeric character with an underscore
+  filename <- gsub("[^[:alnum:]]+", "_", filename) |> 
+    gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
+  
   file_extension <- ".pdf"
-  file_name <- file.path(output_dir, paste0("MA_Plot_", filename, file_extension))
+  file_name <- file.path(output_dir, paste0("MA_Plot_", file_extension)) #filename, 
   
   # Open multi-page PDF
   grDevices::pdf(file = file_name, width = 8, height = 11.5, onefile = TRUE)  
@@ -1110,6 +1150,10 @@ plot_dispersion <- function(dds, output_dir, filename = NULL) {
   validate_inputs(dds = dds, output_dir = output_dir, filename = filename)
   
   # ---- 💾 Save Plots ----
+  
+  # Replaces any non-alphanumeric character with an underscore
+  filename <- gsub("[^[:alnum:]]+", "_", filename) |> 
+    gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
   
   file_extension <- ".pdf"
   file_name <- file.path(output_dir, paste0("Dispersion_Plot_", filename, file_extension))
@@ -1293,6 +1337,10 @@ plot_volcano <- function(res_df, output_dir, filename = NULL,
   
   # ---- 💾 Save Plots ----
   
+  # Replaces any non-alphanumeric character with an underscore
+  filename <- gsub("[^[:alnum:]]+", "_", filename) |> 
+    gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
+  
   file_extension <- ".pdf"
   file_name <- file.path(output_dir,
                          paste0("Volcano_Plot_", filename, file_extension))
@@ -1331,6 +1379,7 @@ plot_heatmap <- function(expr_mat,
                          annotation_palette  = "discrete",
                          border_color        = NA,
                          force_log           = FALSE,
+                         force_scale         = FALSE,
                          show_expr_legend    = TRUE,
                          save_plot           = FALSE,
                          save_matrix         = FALSE) {
@@ -1560,46 +1609,79 @@ plot_heatmap <- function(expr_mat,
               msg    = "`expr_mat` contains non-numeric values that could not be converted.")
   }
   
-  # Remove genes with zero counts across all samples
-  zero_genes   <- rownames(expr_mat)[which(rowSums(expr_mat) == 0)]
-  expr_mat <- expr_mat[rowSums(expr_mat) != 0, , drop = FALSE]
-  log_info(sample = "",
-           step   = "plot_heatmap",
-           msg    = glue::glue("Removed {length(zero_genes)} genes with zero counts across all samples."))
+  # Remove genes/pathways where EVERY entry is exactly 0
+  # abs() prevents negative and positive values from canceling each other out when 
+  # matrix contains NES scores
+  zero_genes <- rownames(expr_mat)[which(rowSums(abs(expr_mat)) == 0)]
+  expr_mat   <- expr_mat[rowSums(abs(expr_mat)) != 0, , drop = FALSE]
+  if(length(zero_genes) > 0){
+    log_info(sample = "",
+             step   = "plot_heatmap",
+             msg    = glue::glue("Removed {length(zero_genes)} genes with zero counts across all samples."))
+  }
   
   # Remove samples with zero total reads
-  zero_samples <- colnames(expr_mat)[which(colSums(expr_mat) == 0)]
-  expr_mat <- expr_mat[, colSums(expr_mat) != 0, drop = FALSE]
-  log_info(sample = "",
-           step   = "plot_heatmap",
-           msg    = glue::glue("Removed {length(zero_samples)} samples with zero total counts."))
+  zero_samples <- colnames(expr_mat)[which(colSums(abs(expr_mat)) == 0)]
+  expr_mat     <- expr_mat[, colSums(abs(expr_mat)) != 0, drop = FALSE]
+  if (length(zero_samples) > 0){
+    log_info(sample = "",
+             step   = "plot_heatmap",
+             msg    = glue::glue("Removed {length(zero_samples)} samples with zero total counts."))
+  }
   
   # Handle duplicate gene symbols if any
   if (any(duplicated(rownames(expr_mat)))) {
     expr_mat <- expr_mat %>%
       tibble::rownames_to_column("SYMBOL") %>%  
-      dplyr::mutate(total_expr = rowSums(across(-SYMBOL))) %>%  # Sum across all samples
+      # Use absolute sum to capture the most 'active' row for NES or counts
+      dplyr::mutate(total_expr = rowSums(across(-SYMBOL, abs))) %>%  
+      # Keep row with highest total expression
       dplyr::group_by(SYMBOL) %>%
-      dplyr::slice_max(order_by = total_expr, n = 1, with_ties = FALSE) %>% # Keep row with highest total expression
+      dplyr::slice_max(order_by = total_expr, n = 1, with_ties = FALSE) %>% 
       dplyr::ungroup() %>%
       tibble::column_to_rownames("SYMBOL") %>%
-      dplyr::select(-total_expr)                                # Drop the temporary column
+      dplyr::select(-total_expr)
   }
   
   # Convert rownames and colnames to valid R names
   rownames(expr_mat) <- make.names(rownames(expr_mat))
   colnames(expr_mat) <- make.names(colnames(expr_mat))
   
-  # Check for high dynamic range to trigger log transform
-  quantiles <- stats::quantile(x = as.vector(as.matrix(expr_mat)), probs = c(0, 0.01, 0.99, 1), na.rm = TRUE)
-  huge_range <- (quantiles[4] - quantiles[1]) > 100   # Range of values greater than 100
-  only_pos <- quantiles[1] >= 0                       # Min value greater than 0
-  if ((huge_range & only_pos) | force_log){
+  # Identify and handle negative values correctly
+  # NES matrices are centered at 0; we check the minimum value
+  min_val <- min(expr_mat, na.rm = TRUE)
+  
+  # Smart Log Transform Check
+  quantiles <- stats::quantile(as.vector(expr_mat), probs = c(0, 0.99), na.rm = TRUE)
+  huge_range <- (quantiles[2] - quantiles[1]) > 100
+  
+  # NEVER log transform if there are negative values (like NES)
+  if (min_val >= 0 && (huge_range || force_log)) {
     expr_mat <- log2(1 + expr_mat)
+  } else {
+    log_info(sample = "", step = "plot_heatmap", msg = "NES/Negative values detected. Skipping log transform.")
   }
   
-  # Perform Z-score scaling (across rows i.e. genes)
-  expr_mat_scaled <- expr_mat %>% t() %>% scale() %>% t() 
+  # ---- ⚖️ Smart Scaling Section ----
+  
+  # Detect if the data is already centered/contains negatives (like NES or LFC)
+  has_negatives <- min(expr_mat, na.rm = TRUE) < 0
+  
+  if (force_scale) {
+    # If user explicitly says TRUE, do it regardless
+    log_info(sample = "", step = "plot_heatmap", msg = "Force scaling enabled. Applying Z-score.")
+    expr_mat_scaled <- expr_mat %>% t() %>% scale() %>% t()
+  } else if (has_negatives) {
+    # Smart skip: Data already has negatives (likely NES), so keep raw values
+    log_info(sample = "", step = "plot_heatmap", msg = "Negative values (NES/LFC) detected. Skipping Z-score to preserve absolute values.")
+    expr_mat_scaled <- expr_mat
+  } else {
+    # Default behavior for positive-only data (Counts/VST): Scale it
+    log_info(sample = "", step = "plot_heatmap", msg = "Positive-only data detected. Applying Z-score for visualization.")
+    expr_mat_scaled <- expr_mat %>% t() %>% scale() %>% t()
+  }
+  
+  # Final cleanup for any NAs produced by scaling (e.g., zero-variance rows)
   expr_mat_scaled[is.na(expr_mat_scaled)] <- 0
   
   # ---- 🏷️ Prepare Annotations & Colors ----
@@ -1933,9 +2015,10 @@ plot_heatmap <- function(expr_mat,
   # ---- 💾 Save Plots ----
   
   if (save_plot){
+   
     file_extension <- ".pdf"
     file_name <- file.path(output_dir,
-                           paste0("Heatmap_Plot_", filename, file_extension))
+                           paste0("Heatmap_Plot", file_extension))
     
     # Open multi-page PDF
     grDevices::cairo_pdf(filename = file_name, width = 10, height = 11.5, onefile = TRUE) 
@@ -1947,9 +2030,10 @@ plot_heatmap <- function(expr_mat,
   }
   
   if (save_matrix){
+    
     file_extension <- ".xlsx"
     file_name <- file.path(output_dir,
-                           paste0("Heatmap_Matrix_", filename, file_extension))
+                           paste0("Heatmap_Matrix", file_extension))
     
     wb <- openxlsx::createWorkbook()
     openxlsx::addWorksheet(wb, sheetName = "Heatmap_matrix")
@@ -2270,7 +2354,7 @@ analyze_tf <- function(expr_mat, res_df, species, output_dir,
   
   # ---- ⚙️ Validate Input Parameters ----
   
-  validate_inputs(expr_mat = expr_mat, res_df = res_df) 
+  validate_inputs(expr_mat = expr_mat, res_df = res_df, output_dir = output_dir) 
   
   if (!species %in% c("Homo sapiens", "Mus musculus")) {
     log_error(sample = "", 
@@ -2340,13 +2424,15 @@ analyze_tf <- function(expr_mat, res_df, species, output_dir,
   # Calculate Pathway Activity
   pathway_df <- decoupleR::decouple(mat        = input_mat,
                                     network    = progeny_pathway_net,
-                                    statistics = stats, 
+                                    statistics = stats,
+                                    consensus_score = TRUE,
                                     minsize    = minsize)
   
   # Calculate Transcription Factor Activity
   tf_df <- decoupleR::decouple(mat        = input_mat, 
                                network    = collectri_tf_net,
-                               statistics = stats, 
+                               statistics = stats,
+                               consensus_score = TRUE,
                                minsize    = minsize)
   
   # tf_df <- decoupleR::decouple(mat        = input_mat,
@@ -2576,6 +2662,10 @@ plot_pathway <- function(pathway_df, expr_mat, metadata, method, output_dir){
       # Save stored heatmaps as pdf
       if (length(heatmap_plots) > 0) {
         
+        # Replaces any non-alphanumeric character with an underscore
+        filename <- gsub("[^[:alnum:]]+", "_", filename) |> 
+          gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
+        
         file_extension <- ".pdf"
         file_name <- file.path(output_dir, paste0("Heatmap_", collection, "_", method, file_extension))
         
@@ -2596,6 +2686,10 @@ plot_pathway <- function(pathway_df, expr_mat, metadata, method, output_dir){
   summary_plots <- base::list(Bar = bar_plots, Dot = dot_plots)
   
   for (type in names(summary_plots)) {
+    
+    # Replaces any non-alphanumeric character with an underscore
+    filename <- gsub("[^[:alnum:]]+", "_", filename) |> 
+      gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
     
     file_extension <- ".pdf"
     file_name <- file.path(output_dir, paste0(type, "_plot_pathways_", method, file_extension))
@@ -2753,8 +2847,12 @@ plot_tf <- function(tf_df, metadata, output_dir,
   # Export Heatmaps
   if (length(heatmap_plots) > 0) {
     
+    # Replaces any non-alphanumeric character with an underscore
+    filename <- gsub("[^[:alnum:]]+", "_", contrast) |> 
+      gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
+    
     file_extension <- ".pdf"
-    file_name <- file.path(output_dir, paste0("Heatmap_TF_Activity_", contrast, file_extension))
+    file_name <- file.path(output_dir, paste0("Heatmap_TF_Activity_", filename, file_extension))
     
     # Open multi-page PDF
     grDevices::cairo_pdf(filename = file_name, width = 8, height = 11.5, onefile = TRUE) 
@@ -2769,8 +2867,12 @@ plot_tf <- function(tf_df, metadata, output_dir,
   # Export Bar Plots
   if (length(bar_plots) > 0) {
     
+    # Replaces any non-alphanumeric character with an underscore
+    filename <- gsub("[^[:alnum:]]+", "_", contrast) |> 
+      gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
+    
     file_extension <- ".pdf"
-    file_name <- file.path(output_dir, paste0("Bar_plot_TF_Activity", contrast, file_extension))
+    file_name <- file.path(output_dir, paste0("Bar_plot_TF_Activity", filename, file_extension))
     ggplot2::ggsave(filename = file_name,
                     plot     = cowplot::plot_grid(plotlist = bar_plots, align = "hv", ncol = 1),
                     device   = grDevices::cairo_pdf,
@@ -3271,6 +3373,11 @@ validate_inputs <- function(sample = NULL,
   # ---- 4️⃣ 'filename' Check ----
   
   if (!is.null(filename)) {
+    
+    # Replaces any non-alphanumeric character with an underscore
+    filename <- gsub("[^[:alnum:]]+", "_", filename) |> 
+      gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
+    
     if (!is.character(filename) || length(filename) != 1 || nchar(filename) == 0) {
       log_error(sample  = sample,
                 step    = step, 
@@ -3386,6 +3493,18 @@ validate_inputs <- function(sample = NULL,
   # ---- 8️⃣ 'output_dir' Check ----
   
   if (!is.null(output_dir)) {
+    
+    # 1. Separate the parent directory from the final folder name
+    parent_dir <- dirname(output_dir)
+    folder_name <- basename(output_dir)
+    
+    # 2. Sanitize ONLY the folder name (the part with math symbols)
+    # This keeps "C:/Users/..." intact but fixes "(SPB_1+SPB_2)/2"
+    clean_folder <- gsub("[[:space:][:punct:]]+", "_", folder_name)
+    clean_folder <- gsub("(^_+|_+$)", "", clean_folder)
+    
+    # 3. Reconstruct the full path
+    output_dir <- file.path(parent_dir, clean_folder)
     
     # Check 1: Directory must exist
     if (!dir.exists(output_dir)) {
@@ -5648,6 +5767,10 @@ plot_seurat <- function(integrated_seurat, reduction, features, filename, output
   }
   
   # ---- 💾 Save Combined Plot ----
+  
+  # Replaces any non-alphanumeric character with an underscore
+  filename <- gsub("[^[:alnum:]]+", "_", filename) |> 
+    gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
   
   file_extension <- ".pdf"
   file_name <- file.path(output_dir, paste0(filename, file_extension))
@@ -9170,7 +9293,7 @@ plot_pca <- function(expr_mat, txi, metadata, filename, output_dir,
       ggplot2::geom_point(size = 3, shape = 16) +
       ggrepel::geom_text_repel(ggplot2::aes(label = Sample_ID), show.legend = FALSE) +
       theme_classic() +
-      coord_fixed(ratio = 1) +
+      #coord_fixed(ratio = 1) +
       ggplot2::labs(color = var, 
                     x = paste0("PC1: ", percentVar[1], "% variance"),
                     y = paste0("PC2: ", percentVar[2], "% variance"), 
@@ -9186,6 +9309,10 @@ plot_pca <- function(expr_mat, txi, metadata, filename, output_dir,
   }
   
   # ---- 💾 Save Plots ----
+  
+  # Replaces any non-alphanumeric character with an underscore
+  filename <- gsub("[^[:alnum:]]+", "_", filename) |> 
+    gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
   
   file_extension <- ".pdf"
   file_name <- file.path(output_dir, paste0("PCA_Plot_", filename, file_extension))
@@ -9292,6 +9419,10 @@ plot_umap <- function(expr_mat, metadata, n_pcs = 50, n_neighbors = NULL,
   }
   
   # ---- 💾 Save Plot ----
+  
+  # Replaces any non-alphanumeric character with an underscore
+  filename <- gsub("[^[:alnum:]]+", "_", filename) |> 
+    gsub(pattern = "(^_+|_+$)", replacement = "", x = _)
   
   file_extension <- ".pdf"
   file_name <- file.path(output_dir, paste0("UMAP_Plot_", filename,  file_extension))

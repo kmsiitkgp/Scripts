@@ -1,8 +1,8 @@
 #!/bin/bash
 
-FINAL_OUT="STAR_Summary.txt"
+FINAL_OUT="STAR_Master_Summary.txt"
 
-# 1. Header
+# 1. Header (Expanded with QC metrics)
 HEADER="Directory_ID\tSample\tPurity (%)"
 HEADER="$HEADER\tTotal (%)\tMulti (%)\tUnmapped (%)\tUnique (%)"
 HEADER="$HEADER\t\tFeature U (%)\tAmbiguous U (%)\tNoFeature U (%)"
@@ -24,6 +24,7 @@ PROJECT_DIRS=$(find "$CWD" -type d -name "gene_counts" | sed 's/\/gene_counts//g
 
 # --- PRE-SCAN FOR TOTAL READS (FULL) ---
 declare -A FULL_TOTAL_READS
+echo "Scanning for baselines..."
 
 for BDIR in $PROJECT_DIRS; do
     LOWER=$(echo "$BDIR" | tr '[:upper:]' '[:lower:]')
@@ -40,7 +41,7 @@ for BDIR in $PROJECT_DIRS; do
     fi
 done
 
-echo "Generating report with Purity (Total Split / Total Full)..."
+echo "Generating Master STAR Report (Expanded QC)..."
 
 for BDIR in $PROJECT_DIRS; do
     DIR_ID=$(echo "$BDIR" | sed "s|$CWD/||g")
@@ -107,4 +108,4 @@ for BDIR in $PROJECT_DIRS; do
     echo -e "$spacer" >> "$FINAL_OUT"
 done
 
-echo "Report generated! Purity column = (Total Reads / Full Library Total Reads) * 100"
+echo "Master Report generated: $FINAL_OUT"
