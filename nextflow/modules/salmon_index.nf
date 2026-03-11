@@ -23,13 +23,13 @@ process SALMON_INDEX {
     // INPUT
     // =================================================================================
     input:
-    tuple val(species), path(decoy), path(gentrome), val(genome_version)
+    tuple val(species), path(decoy), path(gentrome), val(genome_version), val(assembly), val(release)
 
     // =================================================================================
     // OUTPUT
     // =================================================================================
     output:
-    tuple val(species), path("salmon_index_dir_${genome_version}"),    emit: salmon_index_tuple  // K-mer index directory
+    tuple val(species), path("salmon_index_dir_${assembly}.${release}"),    emit: salmon_index_tuple  // K-mer index directory
     //path("SALMON_INDEX.error.log"),                                  emit: log               // Process log
 
     // =================================================================================
@@ -38,7 +38,7 @@ process SALMON_INDEX {
     script:
 
     def LOG = "SALMON_INDEX.error.log"
-    def index_dir = "salmon_index_dir_${genome_version}"
+    def index_dir = "salmon_index_dir_${assembly}.${release}"
 
     """
     # Build Salmon index with decoy-aware mode

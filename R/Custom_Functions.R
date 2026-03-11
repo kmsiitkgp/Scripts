@@ -1602,13 +1602,13 @@ plot_heatmap <- function(expr_mat,
                      nrow = nrow(expr_mat),
                      ncol = ncol(expr_mat),
                      dimnames = dimnames(expr_mat))
-  
+
   if (any(is.na(expr_mat))) {
     log_error(sample = "",
               step   = "plot_heatmap",
               msg    = "`expr_mat` contains non-numeric values that could not be converted.")
   }
-  
+
   # Remove genes/pathways where EVERY entry is exactly 0
   # abs() prevents negative and positive values from canceling each other out when 
   # matrix contains NES scores
@@ -1710,7 +1710,7 @@ plot_heatmap <- function(expr_mat,
       mutate(across(where(is.factor), as.character))
   } else NULL
   
-  # Generate Annotation Palette
+  # ---- Generate Annotation Palette ----
   # This is an example of how ann_colors should be specified
   ann_colors <- list(CellType = c(CT1 = "#1B9E77", CT2 = "#D95F02"),
                      GeneClass = c(Path1 = "#7570B3", Path2 = "#E7298A", Path3 = "#66A61E"))
@@ -2281,8 +2281,8 @@ analyze_pathway <- function(res_df = NULL, gene_list = NULL, gene_direction = "U
       dplyr::mutate(leading_edge_size = length(unlist(stringr::str_split(geneID, "/")))) %>%
       dplyr::ungroup() %>%
       as.data.frame() %>%
-      dplyr::select(Collection, Description, leading_edge_size, K, padj, NES, Direction, everything(), -geneID, geneID) %>%
-      dplyr::filter(padj <= 0.05)
+      dplyr::select(Collection, Description, leading_edge_size, K, padj, NES, Direction, everything(), -geneID, geneID)# %>%
+      #dplyr::filter(padj <= 0.05)
     
     # Generate separate column for each gene in enriched pathways
     max_len <- max(df$leading_edge_size, na.rm = TRUE)

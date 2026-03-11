@@ -24,13 +24,13 @@ process STAR_INDEX {
     // INPUT
     // =================================================================================
     input:
-    tuple val(species), path(ref_fasta), path(ref_gtf), val(genome_version)
+    tuple val(species), path(ref_fasta), path(ref_gtf), val(genome_version), val(assembly), val(release)
 
     // =================================================================================
     // OUTPUT
     // =================================================================================
     output:
-    tuple val(species), path("star_index_dir_${genome_version}"),    emit: star_index_tuple    // STAR genome index
+    tuple val(species), path("star_index_dir_${assembly}.${release}"),    emit: star_index_tuple    // STAR genome index
     //path("STAR_INDEX.error.log"),              emit: error_log         // Process log
 
     // =================================================================================
@@ -39,7 +39,7 @@ process STAR_INDEX {
     script:
 
     def LOG = "STAR_INDEX.error.log"
-    def index_dir = "star_index_dir_${genome_version}"
+    def index_dir = "star_index_dir_${assembly}.${release}"
 
     """
     # Create output directory

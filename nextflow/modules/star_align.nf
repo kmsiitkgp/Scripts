@@ -20,16 +20,16 @@ process STAR_ALIGN {
     tag "Aligning fastqs of ${sample_id}"
     label 'process_high'                            // STAR requires 30-50GB RAM for human
 
-    publishDir { "${params.proj_dir()}/${species}_${type}/04.STAR/gene_counts" },        mode: 'copy',    pattern: "*.ReadsPerGene.out.tab"
-    publishDir { "${params.proj_dir()}/${species}_${type}/04.STAR/splice_junction" },    mode: 'copy',    pattern: "*.SJ.out.tab"
-    publishDir { "${params.proj_dir()}/${species}_${type}/04.STAR/alignment_stats" },    mode: 'copy',    pattern: "*.Log.final.out"
-    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },                    mode: 'copy',    pattern: "*.STAR_ALIGN.error.log"
+    publishDir { "${params.proj_dir()}/${species}/04.STAR/gene_counts" },        mode: 'copy',    pattern: "*.ReadsPerGene.out.tab"
+    publishDir { "${params.proj_dir()}/${species}/04.STAR/splice_junction" },    mode: 'copy',    pattern: "*.SJ.out.tab"
+    publishDir { "${params.proj_dir()}/${species}/04.STAR/alignment_stats" },    mode: 'copy',    pattern: "*.Log.final.out"
+    publishDir { "${params.proj_dir()}/${species}/07.Logs" },                    mode: 'copy',    pattern: "*.STAR_ALIGN.error.log"
 
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(species), val(type), val(sample_id), path(fastq_files), path(star_index_dir)
+    tuple val(species), val(sample_id), path(fastq_files), path(star_index_dir)
     // sample_id        : Sample identifier (e.g., "Sample1")
     // fastq_files      : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
     // star_index_dir   : Pre-built STAR index directory
@@ -41,7 +41,7 @@ process STAR_ALIGN {
     // OUTPUT
     // =================================================================================
     output:
-    tuple val(species), val(type),
+    tuple val(species),
         val(sample_id),
         path("${sample_id}.Aligned.sortedByCoord.out.bam"),    // Sorted BAM file
         path("${sample_id}.ReadsPerGene.out.tab"),             // Gene counts

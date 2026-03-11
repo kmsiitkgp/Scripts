@@ -9,22 +9,37 @@ suppressPackageStartupMessages({
   library(tximport)
 })
 
-# ---- 🛠️ 2. Smart Setup (ONLY runs in Nextflow) ----
 
-if (!interactive()) {
+
+# ---- 🛠️ 2. Smart Setup (Find & source UTILS.R) ----
+
+get_utils_path <- function() {
+  # 1. Windows dev machine
+  if (.Platform$OS.type == "windows") {
+    return("C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/Scripts/nextflow/modules/UTILS.R")
+  }
   
-  # Source the custom functions from utils.R
+  # 2. Interactive Linux / macOS (HPC interactive session)
+  if (interactive()) {
+    # Assume project root is current working directory
+    return(file.path(getwd(), "modules", "UTILS.R"))
+  }
+  
+  # 3. Non-interactive (Nextflow / Rscript)
   initial.options <- commandArgs(trailingOnly = FALSE)
-  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
-  source(file.path(dirname(script.name), "UTILS.R"))
-  
-  # Capture command line arguments
-  args <- commandArgs(trailingOnly = TRUE)
+  file_arg <- grep("--file=", initial.options, value = TRUE)
+  if (length(file_arg) == 0) stop("Cannot detect script path for UTILS.R!")
+  script_dir <- dirname(sub("--file=", "", file_arg))
+  return(file.path(script_dir, "UTILS.R"))
 }
+
+utils_path <- get_utils_path()
+if (!file.exists(utils_path)) stop(paste("❌ UTILS.R not found at:", utils_path))
+source(utils_path)
 
 # ---- 🧬 3. Function Definition (Always Runs) ----
 
-create_txi <- function(species, salmon_dir, output_dir, tx2gene_csv = NULL, ensembl_assembly = NULL, ensembl_release = NULL) {
+create_txi <- function(species, salmon_dir, output_dir, tx2gene_csv_path = NULL, ensembl_assembly = NULL, ensembl_release = NULL) {
   
   # ---- 🧬 Normalize and Resolve Species ----
   
@@ -55,13 +70,13 @@ create_txi <- function(species, salmon_dir, output_dir, tx2gene_csv = NULL, ense
   
   # ---- 🔍 Fetch or Load Annotation (tx2gene) ----
   
-  if (!is.null(tx2gene_csv) && file.exists(tx2gene_csv)) {
+  if (!is.null(tx2gene_csv_path) && file.exists(tx2gene_csv_path)) {
     # CASE 1: User provided a CSV
     log_info(sample = species,
              step = "create_txi",
-             msg = glue::glue("✔ FOUND User-provided CSV: {basename(tx2gene_csv)}"))
+             msg = glue::glue("✔ FOUND User-provided CSV: {basename(tx2gene_csv_path)}"))
     
-    tx2gene <- readr::read_csv(tx2gene_csv, show_col_types = FALSE) %>% 
+    tx2gene <- readr::read_csv(tx2gene_csv_path, show_col_types = FALSE) %>% 
       dplyr::select(1:2)
     
   } else {
@@ -173,22 +188,23 @@ create_txi <- function(species, salmon_dir, output_dir, tx2gene_csv = NULL, ense
   return(invisible(txi))
 }
 
-# ---- 🚀 4. Smart Execution (ONLY runs in Nextflow) ----
+# ---- 🚀 4. Smart Execution (Nextflow Only) ----
 
 if (!interactive()) {
+  args <- commandArgs(trailingOnly = TRUE)
   
-  get_arg <- function(idx) {
-    if (idx > length(args)) return(NULL) # Safety if fewer args provided
+  get_arg <- function(idx, default = NULL) {
+    if (idx > length(args)) return(default)
     val <- args[idx]
-    if (is.na(val) || val == "" || val == "null") return(NULL)
+    if (is.na(val) || val == "" || val == "null" || val == "NULL") return(default)
     return(val)
   }
-  
+
   create_txi(
     species          = get_arg(1),
     salmon_dir       = get_arg(2),
     output_dir       = get_arg(3),
-    tx2gene_csv      = get_arg(4), 
+    tx2gene_csv_path = get_arg(4), 
     ensembl_assembly = get_arg(5),
     ensembl_release  = get_arg(6)
   )

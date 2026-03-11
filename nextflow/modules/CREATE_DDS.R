@@ -11,53 +11,56 @@ suppressPackageStartupMessages({
   library(DESeq2)
 })
 
-# ---- 🛠️ 2. Smart Setup(ONLY runs in Nextflow) ----
+# ---- 🛠️ 2. Smart Setup (Find & source UTILS.R) ----
 
-if (!interactive()) {
+get_utils_path <- function() {
+  # 1. Windows dev machine
+  if (.Platform$OS.type == "windows") {
+    return("C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/Scripts/nextflow/modules/UTILS.R")
+  }
   
-  # Source the custom functions from utils.R
+  # 2. Interactive Linux / macOS (HPC interactive session)
+  if (interactive()) {
+    # Assume project root is current working directory
+    return(file.path(getwd(), "modules", "UTILS.R"))
+  }
+  
+  # 3. Non-interactive (Nextflow / Rscript)
   initial.options <- commandArgs(trailingOnly = FALSE)
-  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
-  source(file.path(dirname(script.name), "UTILS.R"))
-  
-  # Capture command line arguments
-  args <- commandArgs(trailingOnly = TRUE)
+  file_arg <- grep("--file=", initial.options, value = TRUE)
+  if (length(file_arg) == 0) stop("Cannot detect script path for UTILS.R!")
+  script_dir <- dirname(sub("--file=", "", file_arg))
+  return(file.path(script_dir, "UTILS.R"))
 }
+
+utils_path <- get_utils_path()
+if (!file.exists(utils_path)) stop(paste("❌ UTILS.R not found at:", utils_path))
+source(utils_path)
 
 # ---- 🧬 3. Function Definition (Always Runs) ----
 
-create_dds <- function(txi_file_path, meta_file_path, output_dir, design = 1, expr_mat_file_path = NULL) {
+create_dds <- function(txi, metadata, tx2gene, output_dir, design = 1, expr_mat = NULL) {
   
   # Load the actual data objects using the paths
-  metadata <- openxlsx::read.xlsx(meta_file_path)
-  txi      <- NULL
-  expr_mat <- NULL
+  metadata <- load_smart(metadata)
+  txi      <- load_smart(txi)
+  expr_mat <- load_smart(expr_mat)
+  tx2gene  <- load_smart(tx2gene) 
   
-  if (!is.null(txi_file_path)) {
-    txi <- readRDS(txi_file_path)
-    
-    log_info(sample = "", step = "create_dds", msg = "txi loaded.")
-  } 
-  
-  if (!is.null(expr_mat_file_path)) {
-    temp_mat <- openxlsx::read.xlsx(expr_mat_file_path)
-    
-    # Use the first column as rownames
-    rownames(temp_mat) <- make.names(temp_mat[[1]])
-    
-    # Remove the first column (the IDs) so only numeric counts remain
-    expr_mat <- temp_mat[, -1, drop = FALSE]
-    
-    log_info(sample = "", step = "create_dds", msg = "Matrix loaded and Gene IDs assigned to rownames.")
+  # Remove the first column (the IDs) so only numeric counts remain
+  if (!is.null(expr_mat)) {
+    rownames(expr_mat) <- make.names(expr_mat[[1]])
+    expr_mat           <- expr_mat[, -1, drop = FALSE]
   }
-  
+
   # ---- 🧪 SECTION 1: DESIGN FORMULA ----
   
   # Standardize DESeq2 design formula
   if (inherits(design, "formula")) {
     design_formula <- design
     
-  } else if (is.numeric(design) && length(design) == 1 && design == 1) {
+  } else if ( (is.numeric(design) || design == "1") && length(design) == 1 ) {
+    # Check if it is the number 1 OR the string "1"
     # Intercept-only model (used for QC or SVA)
     design_formula <- stats::as.formula("~ 1")
     
@@ -77,7 +80,8 @@ create_dds <- function(txi_file_path, meta_file_path, output_dir, design = 1, ex
   # Remove "sizeFactor" column if present and filter out missing Sample_IDs
   metadata <- metadata %>%
     dplyr::select(-any_of("sizeFactor")) %>%
-    dplyr::filter(!is.na(Sample_ID))
+    dplyr::filter(!is.na(Sample_ID)) %>%
+    as.data.frame()  # cannot set rownames on tibble. R wont error, just warn.
   
   # Assign valid "Sample_ID" column as row names for DESeq2
   rownames(metadata) <- make.names(metadata$Sample_ID)
@@ -274,12 +278,50 @@ create_dds <- function(txi_file_path, meta_file_path, output_dir, design = 1, ex
            step = "create_dds", 
            msg = glue::glue("DESeq2 model built using '{fit_type}' fit."))
   
+  # ---- 📊 COUNT MATRIX EXTRACTION ----
+  
+  # --- Median-of-Ratios Normalized Counts ---
+  # DESeq2 size-factor normalization (median of ratios method).
+  # Corrects for library size differences across samples.
+  # USE ONLY FOR: violin plots, box plots, etc visualization of raw expression
+  norm_counts_mat <- DESeq2::counts(dds, normalized = TRUE)
+  norm_counts     <- process_counts(norm_counts_mat, tx2gene)
+  
+  # --- Log2 Transformed Normalized Counts ---
+  # log2(median-of-ratios normalized counts + 1) via DESeq2::normTransform().
+  # The +1 pseudo-count prevents log(0) and stabilizes low-count genes.
+  # USE ONLY FOR: violin plots, box plots, etc visualization of log expression;
+  #               TF activity inference (VIPER, DoRothEA, decoupleR)
+  log_norm_counts_mat <- DESeq2::normTransform(dds) %>%
+    SummarizedExperiment::assay()
+  log_norm_counts     <- process_counts(log_norm_counts_mat, tx2gene)
+  
+  # --- VST — Blind ---
+  # VST computed without awareness of the experimental design (blind = TRUE).
+  # Stabilizes variance across the mean-expression range for visualization.
+  # Blind = TRUE is appropriate for QC steps where you do not want design
+  # information to influence the transformation (e.g., checking for outliers).
+  # USE ONLY FOR: QC plots, PCA, sample correlation / heatmaps.
+  vst_blind_mat    <- DESeq2::vst(dds, blind = TRUE) %>%
+    SummarizedExperiment::assay()
+  vst_blind_counts <- process_counts(vst_blind_mat, tx2gene)
   
   # ---- 💾 Save Results ----
   
   if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
   
   saveRDS(dds, file = file.path(output_dir, "DESeq2_dds.rds"))
+  openxlsx::write.xlsx(x         = list("Norm_Counts" = norm_counts),
+                       file      = file.path(output_dir, "Norm_Counts_ExpressionPlots.xlsx"),
+                       overwrite = TRUE)
+  
+  openxlsx::write.xlsx(x         = list("Log_Norm_Counts" = log_norm_counts),
+                       file      = file.path(output_dir, "Log_Norm_Counts_ExpressionPlots_TFAnalysis.xlsx"),
+                       overwrite = TRUE)
+  
+  openxlsx::write.xlsx(x         = list("VST_Blind" = vst_blind_counts),
+                       file      = file.path(output_dir, "VST_Blind_Counts_QC_PCA_Correlation.xlsx"),
+                       overwrite = TRUE)
   
   # ---- 🪵 Log Output and Return ----
   
@@ -290,22 +332,24 @@ create_dds <- function(txi_file_path, meta_file_path, output_dir, design = 1, ex
   return(invisible(dds))
 }
 
-# ---- 🚀 4. Smart Execution (ONLY runs in Nextflow) ----
+# ---- 🚀 4. Smart Execution (Nextflow Only) ----
 
 if (!interactive()) {
+  args <- commandArgs(trailingOnly = TRUE)
   
-  get_arg <- function(idx) {
-    if (idx > length(args)) return(NULL) # Safety if fewer args provided
+  get_arg <- function(idx, default = NULL) {
+    if (idx > length(args)) return(default)
     val <- args[idx]
-    if (is.na(val) || val == "" || val == "null") return(NULL)
+    if (is.na(val) || val == "" || val == "null" || val == "NULL") return(default)
     return(val)
   }
   
   create_dds(
-    txi_file_path      = get_arg(1),
-    meta_file_path     = get_arg(2),
-    output_dir         = get_arg(3),
-    design             = get_arg(4), 
-    expr_mat_file_path = get_arg(5)
+    txi        = get_arg(1),
+    metadata   = get_arg(2),
+    tx2gene    = get_arg(3),
+    output_dir = get_arg(4, "."),
+    design     = get_arg(5, "1"), 
+    expr_mat   = get_arg(6)
   )
 }

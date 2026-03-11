@@ -24,18 +24,17 @@ process FASTQC {
     // INPUT
     // =================================================================================
 
-    publishDir { "${params.proj_dir()}/${species}_${type}/02.FastQC/${read_type}" },    mode: 'copy',    pattern: "*.html"
-    publishDir { "${params.proj_dir()}/${species}_${type}/02.FastQC/${read_type}" },    mode: 'copy',    pattern: "*.zip"
-    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },                   mode: 'copy',    pattern: "*.FASTQC.error.log"
+    publishDir { "${params.proj_dir()}/${species}/02.FastQC/${read_type}" },    mode: 'copy',    pattern: "*.html"
+    publishDir { "${params.proj_dir()}/${species}/02.FastQC/${read_type}" },    mode: 'copy',    pattern: "*.zip"
+    publishDir { "${params.proj_dir()}/${species}/07.Logs" },                   mode: 'copy',    pattern: "*.FASTQC.error.log"
 
 
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(species), val(type), val(sample_id), path(fastq_files), val(read_type)
+    tuple val(species), val(sample_id), path(fastq_files), val(read_type)
     // species      : Human or Mouse
-    // type         : full or split
     // sample_id    : Sample identifier (e.g., "Sample1")
     // fastq_files  : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
     // read_type    : "raw" or "trimmed" (determines output directory)
@@ -44,7 +43,7 @@ process FASTQC {
     // OUTPUT
     // =================================================================================
     output:
-    tuple val(species), val(type), path("*_fastqc.zip"), path("*_fastqc.html"),    emit: fastqc_results        // Data for MultiQC aggregation
+    tuple val(species), path("*_fastqc.zip"), path("*_fastqc.html"),    emit: fastqc_results        // Data for MultiQC aggregation
     path("*.FASTQC.error.log"),                                         emit: error_log         // Process log
 
     // =================================================================================

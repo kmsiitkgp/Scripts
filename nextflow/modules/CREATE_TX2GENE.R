@@ -11,30 +11,45 @@ suppressPackageStartupMessages({
   library(GenomicFeatures)
 })
 
-# ---- 🛠️ 2. Smart Setup(ONLY runs in Nextflow) ----
+# ---- 🛠️ 2. Smart Setup (Find & source UTILS.R) ----
 
-if (!interactive()) {
-
-  # Source the custom functions from utils.R
-  initial.options <- commandArgs(trailingOnly = FALSE)
-  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
-  source(file.path(dirname(script.name), "UTILS.R"))
+get_utils_path <- function() {
+  # 1. Windows dev machine
+  if (.Platform$OS.type == "windows") {
+    return("C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/Scripts/nextflow/modules/UTILS.R")
+  }
   
-  # Capture command line arguments
-  args <- commandArgs(trailingOnly = TRUE)
+  # 2. Interactive Linux / macOS (HPC interactive session)
+  if (interactive()) {
+    # Assume project root is current working directory
+    return(file.path(getwd(), "modules", "UTILS.R"))
+  }
+  
+  # 3. Non-interactive (Nextflow / Rscript)
+  initial.options <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("--file=", initial.options, value = TRUE)
+  if (length(file_arg) == 0) stop("Cannot detect script path for UTILS.R!")
+  script_dir <- dirname(sub("--file=", "", file_arg))
+  return(file.path(script_dir, "UTILS.R"))
 }
+
+utils_path <- get_utils_path()
+if (!file.exists(utils_path)) stop(paste("❌ UTILS.R not found at:", utils_path))
+source(utils_path)
 
 # ---- 🧬 3. Function Definition (Always Runs) ----
 
-create_tx2gene <- function(output_dir, gtf_file_path = NULL, species = NULL, ensembl_assembly = NULL, ensembl_release = NULL) {
+create_tx2gene <- function(output_dir, ref_gtf_path = NULL, species = NULL, ensembl_assembly = NULL, ensembl_release = NULL) {
   
   # ---- MODE A: USER PROVIDED GTF (Highest Priority) ----
   
-  if (!is.null(gtf_file_path) && file.exists(gtf_file_path)) {
-    log_info(sample = "", step = "create_tx2gene", msg = "MODE: GTF Parsing (Local file)")
+  if (!is.null(ref_gtf_path) && file.exists(ref_gtf_path)) {
+    log_info(sample = "", 
+             step = "create_tx2gene", 
+             msg = "MODE: GTF Parsing (Local file)")
     
     # Load GTF
-    gtf_data <- rtracklayer::import(gtf_file_path, 
+    gtf_data <- rtracklayer::import(ref_gtf_path, 
                                     feature.type = "transcript", 
                                     colnames = c("type", "transcript_id", "gene_id", "gene_name", "gene_biotype"))
     
@@ -61,7 +76,7 @@ create_tx2gene <- function(output_dir, gtf_file_path = NULL, species = NULL, ens
     ### Extract file name
     
     # Get filename: "Mus_musculus.GRCm39.115.gtf"
-    base_name <- basename(gtf_file_path)
+    base_name <- basename(ref_gtf_path)
     
     # Strip extension and species prefix
     # This removes everything before the first dot and the .gtf at the end
@@ -73,7 +88,7 @@ create_tx2gene <- function(output_dir, gtf_file_path = NULL, species = NULL, ens
   
   # ---- MODE B: AnnotationHub (Web Query) ----
   
-  if (is.null(gtf_file_path) && !is.null(species)) {
+  if (is.null(ref_gtf_path) && !is.null(species)) {
     log_info(sample = "", step = "create_tx2gene", msg = "MODE: AnnotationHub (No GTF provided)")
     
     ### Normalize and Resolve Species
@@ -164,14 +179,14 @@ create_tx2gene <- function(output_dir, gtf_file_path = NULL, species = NULL, ens
       dplyr::rename(transcript_id = tx_id)
     
     ### Extract file name
-    csv_name <- paste0("tx2gene_", species, "_reference.csv")
+    csv_name <- paste0("tx2gene_", species, ".csv")
 
   } 
 
   if (!exists("tx2gene")) {
     log_error(sample = "", 
               step = "create_tx2gene", 
-              msg = "CRITICAL ERROR: You must provide either a 'gtf_file_path' or a 'species' name.")
+              msg = "CRITICAL ERROR: You must provide either a 'ref_gtf_path' or a 'species' name.")
   }
   
   # ---- Format tx2gene ----
@@ -205,20 +220,21 @@ create_tx2gene <- function(output_dir, gtf_file_path = NULL, species = NULL, ens
   return(invisible(tx2gene))
 }
 
-# ---- 🚀 4. Smart Execution (ONLY runs in Nextflow) ----
+# ---- 🚀 4. Smart Execution (Nextflow Only) ----
 
 if (!interactive()) {
+  args <- commandArgs(trailingOnly = TRUE)
   
-  get_arg <- function(idx) {
-    if (idx > length(args)) return(NULL) # Safety if fewer args provided
+  get_arg <- function(idx, default = NULL) {
+    if (idx > length(args)) return(default)
     val <- args[idx]
-    if (is.na(val) || val == "" || val == "null") return(NULL)
+    if (is.na(val) || val == "" || val == "null" || val == "NULL") return(default)
     return(val)
   }
   
   create_tx2gene(
     output_dir       = get_arg(1),
-    gtf_file_path    = get_arg(2),
+    ref_gtf_path     = get_arg(2),
     species          = get_arg(3),
     ensembl_assembly = get_arg(4), 
     ensembl_release  = get_arg(5)

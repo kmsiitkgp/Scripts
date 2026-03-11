@@ -26,15 +26,15 @@ process SALMON_QUANT {
     tag "Quantifying ${sample_id}"
     label 'process_medium'                          // 4 cores, 12GB RAM typical
 
-    publishDir { "${params.proj_dir()}/${species}_${type}/03.Salmon" },                mode: 'copy',    pattern: "${sample_id}"
-    publishDir { "${params.proj_dir()}/${species}_${type}/03.Salmon/quant_files" },    mode: 'copy',    pattern: "*.quant.sf"
-    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },                  mode: 'copy',    pattern: "*.SALMON_QUANT.error.log"
+    publishDir { "${params.proj_dir()}/${species}/03.Salmon" },                mode: 'copy',    pattern: "${sample_id}"
+    publishDir { "${params.proj_dir()}/${species}/03.Salmon/quant_files" },    mode: 'copy',    pattern: "*.quant.sf"
+    publishDir { "${params.proj_dir()}/${species}/07.Logs" },                  mode: 'copy',    pattern: "*.SALMON_QUANT.error.log"
 
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(species), val(type), val(sample_id), path(fastq_files), path(salmon_index_dir)
+    tuple val(species), val(sample_id), path(fastq_files), path(salmon_index_dir)
     // sample_id        : Sample identifier (e.g., "Sample1")
     // fastq_files      : List of FASTQ files [R1.fq.gz] for SE or [R1.fq.gz, R2.fq.gz] for PE
     // salmon_index_dir : Pre-built Salmon index directory
@@ -46,7 +46,7 @@ process SALMON_QUANT {
     // OUTPUT
     // =================================================================================
     output:
-    tuple val(species), val(type), val(sample_id), path(sample_id),    emit: salmon_quant_dir      // Full output directory
+    tuple val(species), val(sample_id), path(sample_id),    emit: salmon_quant_dir      // Full output directory
     tuple val(species), path("${sample_id}.quant.sf"),                 emit: salmon_quant_file     // Transcript abundances (TPM, counts)
     path("${sample_id}.SALMON_QUANT.error.log"),                       emit: error_log             // Process log
 
@@ -81,7 +81,6 @@ process SALMON_QUANT {
         --index "${salmon_index_dir}" \
         ${salmon_args} \
         ${MATES_ARGS} \
-        --threads "${task.cpus}" \
         --output "${sample_id}" \
         1>> "${LOG}" 2>&1 \
         || { echo "❌ ERROR: Salmon quantification failed for ${sample_id}" | tee -a "${LOG}" >&2; exit 1; }

@@ -25,15 +25,15 @@ process MULTIQC {
     tag "Aggregating all QC reports"
     label 'process_low'                                              // Lightweight (file parsing only)
 
-    publishDir { "${params.proj_dir()}/${species}_${type}/06.MULTIQC" },    mode: 'copy',    pattern: "*.html"
-    publishDir { "${params.proj_dir()}/${species}_${type}/06.MULTIQC" },    mode: 'copy',    pattern: "*_data"
-    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },       mode: 'copy',    pattern: "*.MULTIQC.error.log"
+    publishDir { "${params.proj_dir()}/${species}/06.MULTIQC" },    mode: 'copy',    pattern: "*.html"
+    publishDir { "${params.proj_dir()}/${species}/06.MULTIQC" },    mode: 'copy',    pattern: "*_data"
+    publishDir { "${params.proj_dir()}/${species}/07.Logs" },       mode: 'copy',    pattern: "*.MULTIQC.error.log"
 
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(species), val(type), path(all_reports)        // All QC files from upstream processes
+    tuple val(species), path(all_reports)        // All QC files from upstream processes
 
     // =================================================================================
     // OUTPUT
@@ -49,8 +49,8 @@ process MULTIQC {
     script:
 
     def LOG = "MULTIQC.error.log"
-    def multiqc_title    = "${species} ${type} ${params.project} QC Report"
-    def multiqc_filename = "${species}_${type}_${params.project}_multiqc"
+    def multiqc_title    = "${species} ${params.project} QC Report"
+    def multiqc_filename = "${species}_${params.project}_multiqc"
 
     """
     # Run MultiQC to consolidate all QC reports

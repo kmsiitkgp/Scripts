@@ -4,13 +4,14 @@ process DOWNLOAD_ENSEMBL_REF {
     label 'process_medium'
 
     input:
-    val(species)          // Human or Mouse
-    val(fa_name)          // Full FASTA filename from metadata in order use in output: for storeDir checking
-    val(gtf_name)         // Full GTF filename from metadata in order use in output: for storeDir checking:
-    val(release)          // Release from metadata
+    tuple val(species), val(fa_name), val(gtf_name), val(version), val(assembly), val(release)
+    // Human or Mouse
+    // Full FASTA filename from metadata in order use in output: for storeDir checking
+    // Full GTF filename from metadata in order use in output: for storeDir checking:
+    // Release from metadata
 
     output:
-    tuple val(species), path(fa_name), path(gtf_name),   emit: ref_tuple
+    tuple val(species), path(fa_name), path(gtf_name), val(version), val(assembly), val(release),   emit: ref_tuple
 
     script:
 

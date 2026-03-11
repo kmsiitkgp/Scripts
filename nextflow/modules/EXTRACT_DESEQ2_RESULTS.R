@@ -11,25 +11,39 @@ suppressPackageStartupMessages({
   library(DESeq2)
 })
 
-# ---- 🛠️ 2. Smart Setup(ONLY runs in Nextflow) ----
+# ---- 🛠️ 2. Smart Setup (Find & source UTILS.R) ----
 
-if (!interactive()) {
+get_utils_path <- function() {
+  # 1. Windows dev machine
+  if (.Platform$OS.type == "windows") {
+    return("C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/Scripts/nextflow/modules/UTILS.R")
+  }
   
-  # Source the custom functions from utils.R
+  # 2. Interactive Linux / macOS (HPC interactive session)
+  if (interactive()) {
+    # Assume project root is current working directory
+    return(file.path(getwd(), "modules", "UTILS.R"))
+  }
+  
+  # 3. Non-interactive (Nextflow / Rscript)
   initial.options <- commandArgs(trailingOnly = FALSE)
-  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
-  source(file.path(dirname(script.name), "UTILS.R"))
-  
-  # Capture command line arguments
-  args <- commandArgs(trailingOnly = TRUE)
+  file_arg <- grep("--file=", initial.options, value = TRUE)
+  if (length(file_arg) == 0) stop("Cannot detect script path for UTILS.R!")
+  script_dir <- dirname(sub("--file=", "", file_arg))
+  return(file.path(script_dir, "UTILS.R"))
 }
+
+utils_path <- get_utils_path()
+if (!file.exists(utils_path)) stop(paste("❌ UTILS.R not found at:", utils_path))
+source(utils_path)
 
 # ---- 🧬 3. Function Definition (Always Runs) ----
 
-extract_deseq2_results <- function(contrast, dds_rds_path, tx2gene_csv_path, output_dir, batch_vars = NULL, lfc_cutoff = 0, padj_cutoff = 0.1) {
+extract_deseq2_results <- function(contrast, dds, tx2gene, output_dir, batch_vars = NULL, lfc_cutoff = 0, padj_cutoff = 0.1) {
   
   # Load the actual data objects using the paths
-  dds  <- readRDS(dds_rds_path)
+  dds     <- load_smart(dds)
+  tx2gene <- load_smart(tx2gene)
   
   # For ashr
   set.seed(1234)
@@ -180,6 +194,7 @@ extract_deseq2_results <- function(contrast, dds_rds_path, tx2gene_csv_path, out
   # Use 'ashr' for shrinkage as it is robust for varied effect sizes
   res_parser <- DESeq2::lfcShrink(dds = dds, res = res_parser, type = "ashr", quiet = TRUE)
   #summary(res_parser)
+  DEGs_parser   <- process_degs(res_parser, tx2gene)
   
   res_standard <- DESeq2::results(object             = dds, 
                                 contrast             = contrast_standard,
@@ -193,8 +208,61 @@ extract_deseq2_results <- function(contrast, dds_rds_path, tx2gene_csv_path, out
   # Use 'ashr' for shrinkage as it is robust for varied effect sizes
   res_standard <- DESeq2::lfcShrink(dds = dds, res = res_standard, type = "ashr", quiet = TRUE)
   #summary(res_standard)
+  DEGs_standard <- process_degs(res_standard, tx2gene)
   
-  # ---- 🔍 Detailed Comparison of Results ----
+  # ---- 📊 COUNT MATRIX EXTRACTION ----
+  
+  # --- VST Non-Blind (Subset per Contrast) ---
+  # VST computed on contrast-specific samples only, design-aware (blind = FALSE).
+  # Dispersions are re-estimated from only the two groups in this contrast
+  # (after dropping unused factor levels) — more accurate than subsetting
+  # columns from a full-dataset VST.
+  # USE ONLY FOR: per-contrast heatmaps, biological clustering
+  
+  # Identify groups in this contrast (e.g., "Vehicle" and "Treatment1")
+  group_names <- all.vars(parsed_expr)
+  
+  # Subset dds to only the samples belonging to these two groups
+  dds_subset <- dds[, dds$Groups %in% group_names]
+  
+  # Drop unused factor levels from colData — CRITICAL before VST
+  # Without this, the design matrix retains empty levels from other groups,
+  # which causes incorrect dispersion estimation or errors in vst()
+  colData(dds_subset) <- droplevels(colData(dds_subset))
+  
+  # Compute VST on the subset (blind = FALSE: design-aware, preserves biological signal)
+  # Dispersions are re-estimated from scratch on the subset here
+  vst_sub_mat <- DESeq2::vst(dds_subset, blind = FALSE) %>%
+    SummarizedExperiment::assay()
+  
+  # Extract contrast-specific sample metadata (aligned to subsetted samples)
+  meta_sub <- as.data.frame(SummarizedExperiment::colData(dds_subset))
+  
+  # --- 🧹 LIMMA BATCH CORRECTION (Optional) ---
+  # Removes unwanted technical variation (e.g., batch, sex) from the VST matrix
+  # while protecting the biological Groups signal via the design matrix.
+  # Only applied if batch_vars is provided and non-empty.
+  if (!is.null(batch_vars) && any(batch_vars != "")) {
+    
+    # Design matrix protects the Groups coefficient during batch removal
+    design_sub <- stats::model.matrix(~Groups, data = meta_sub)
+    
+    # Extract batch vectors (up to two batch variables supported)
+    b1 <- meta_sub[[batch_vars[1]]]
+    b2 <- if (length(batch_vars) > 1) meta_sub[[batch_vars[2]]] else NULL
+    
+    log_info(sample = contrast, step = "VST", msg = "Applying limma::removeBatchEffect")
+    
+    # Correct vst_sub_mat in-place — output replaces the uncorrected matrix
+    vst_sub_mat <- limma::removeBatchEffect(vst_sub_mat,
+                                            batch  = b1,
+                                            batch2 = b2,
+                                            design = design_sub)
+  }
+  
+  vst_nonblind_counts <- process_counts(vst_sub_mat, tx2gene)
+ 
+  # ---- 🔍 Detailed Comparison of Parser and Standard Results ----
   
   # 1. Convert to dataframes for comparison
   df_p <- as.data.frame(res_parser)
@@ -233,12 +301,6 @@ extract_deseq2_results <- function(contrast, dds_rds_path, tx2gene_csv_path, out
   cat("- Only in Parser:    ", length(only_parser), "\n")
   cat("- Only in Standard:  ", length(only_standard), "\n")
   
-  if (!lfc_is_equal | !padj_is_equal | length(only_parser) > 0 | length(only_standard) > 0) {
-    cat("\n⚠️  Warning: Differences detected! Check p-value or LFC precision.\n")
-  } else {
-    cat("\n✅ Success: Parser and Standard results are identical (stringent check).\n")
-  }
-  
   cat("-----------------------------------------------\n")
   
   # For complex interactions, standard gets messy
@@ -254,48 +316,36 @@ extract_deseq2_results <- function(contrast, dds_rds_path, tx2gene_csv_path, out
   # contrast_vec["Cell_LineARCaPM.ConditionWT.Treatment4Gy"] <- -1
   # 
   # res_standard_ARCaPM <- results(dds_standard, contrast = contrast_vec)
-  
-  # -------------------TESTING COMPLETE ------------
-  
-  # ---- 📊 Data Formatting ----
-
-  process_degs <- function(res_obj, tx2gene_path) {
-
-    # Convert to DF and initial cleanup
-    df <- as.data.frame(res_obj) %>%
-      tibble::rownames_to_column("gene_id")
-
-    # Calculate the minimum non-zero padj safely for this specific dataset
-    # We do this outside mutate to avoid the 'padj not found' error
-    min_padj <- min(df$padj[df$padj > 0], na.rm = TRUE)
-
-    df %>%
-      dplyr::mutate(padj = case_when(is.na(padj) ~ 1,
-                                     padj == 0   ~ min_padj,
-                                     TRUE        ~ padj)) %>%
-      add_annotation(tx2gene_path) %>%
-      dplyr::filter(!is.na(SYMBOL)) %>%
-      dplyr::group_by(SYMBOL) %>%
-      dplyr::slice_min(order_by = padj, n = 1, with_ties = FALSE) %>%
-      dplyr::ungroup()
-  }
-
-  # Use the function (Much cleaner!)
-  DEGs_parser   <- process_degs(res_parser, tx2gene_csv_path)
-  DEGs_standard <- process_degs(res_standard, tx2gene_csv_path)
 
   # ---- 💾 Save Results ----
 
+  # Sanitize contrast name for file safety (removes spaces, slashes, etc.)
+  safe_contrast <- gsub("[^[:alnum:]_-]", "_", contrast)
+  output_dir <- file.path(output_dir, safe_contrast)
+  
   if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
-
-  # Save both sheets in ONE Excel file for easier comparison
-  openxlsx::write.xlsx(x = list("DEGs_Parser" = DEGs_parser, "DEGs_Standard" = DEGs_standard),
-                       file = file.path(output_dir, "DEGs_DESeq2.xlsx"),
+  
+  openxlsx::write.xlsx(x         = list("DEGs_Parser" = DEGs_parser),
+                       file      = file.path(output_dir, "DEGs.xlsx"),
                        overwrite = TRUE)
-
+  
+  openxlsx::write.xlsx( x         = list("VST_NonBlind" = vst_nonblind_counts),
+                        file      = file.path(output_dir, "VST_NonBlind_Counts_Heatmaps.xlsx"),
+                        overwrite = TRUE)
+  
   # Keep your RDS files for R-specific backup
   saveRDS(res_parser, file = file.path(output_dir, "res_parser.rds"))
-  saveRDS(res_standard, file = file.path(output_dir, "res_standard.rds"))
+  
+  # Save both sheets in ONE Excel file for easier comparison if results are not identical
+  if (!lfc_is_equal | !padj_is_equal | length(only_parser) > 0 | length(only_standard) > 0) {
+    cat("\n⚠️  Warning: Differences detected! Check p-value or LFC precision.\n")
+    saveRDS(res_standard, file = file.path(output_dir, "res_standard.rds"))
+    openxlsx::write.xlsx(x = list("DEGs_Parser" = DEGs_parser, "DEGs_Standard" = DEGs_standard),
+                         file = file.path(output_dir, paste0("DEGs.xlsx")),
+                         overwrite = TRUE)
+  }  else {
+    cat("\n✅ Success: Parser and Standard results are identical (stringent check).\n")
+  }
   
   # ---- 🪵 Log Output and Return ----
   
@@ -309,28 +359,34 @@ extract_deseq2_results <- function(contrast, dds_rds_path, tx2gene_csv_path, out
                         res_standard = res_standard)))
 }
 
-# ---- 🚀 4. Smart Execution (ONLY runs in Nextflow) ----
+# ---- 🚀 4. Smart Execution (Nextflow Only) ----
 
 if (!interactive()) {
+  args <- commandArgs(trailingOnly = TRUE)
   
-  # Helper to get args with specific default fallbacks
-  get_arg <- function(idx, default) {
+  get_arg <- function(idx, default = NULL) {
+    if (idx > length(args)) return(default)
     val <- args[idx]
-    if (is.na(val) || val == "" || val == "null" || length(args) < idx) {
-      return(default)
-    }
+    if (is.na(val) || val == "" || val == "null" || val == "NULL") return(default)
     return(val)
   }
   
-  # Execute with explicit types
+  # --- PROCESS BATCH VARS SAFELY ---
+  raw_batch <- get_arg(5)
+  
+  # split by comma, then trim leading/trailing whitespace from each element
+  batch_list <- if (!is.null(raw_batch)) {
+    trimws(strsplit(raw_batch, ",")[[1]]) 
+  } else {
+    NULL
+  }
+  
   extract_deseq2_results(
-    contrast         = get_arg(1, NULL),
-    dds_rds_path     = get_arg(2, NULL),
-    tx2gene_csv_path = get_arg(3, NULL),
-    output_dir       = get_arg(4, "."), 
-    # Batch vars should stay NULL if not provided
-    batch_vars       = get_arg(5, NULL),
-    # Numeric defaults must be coerced
+    contrast         = get_arg(1),
+    dds              = get_arg(2),
+    tx2gene          = get_arg(3),
+    output_dir       = get_arg(4, "."),
+    batch_vars       = batch_list,
     lfc_cutoff       = as.numeric(get_arg(6, 0)),
     padj_cutoff      = as.numeric(get_arg(7, 0.1))
   )

@@ -17,21 +17,21 @@ process EXTRACT_GENTROME {
     label 'process_high'                  // Moderate resources: ~8GB RAM, 4+ cores
 
     input:
-    tuple val(species), path(ref_fasta), path(ref_gtf), val(genome_version)
+    tuple val(species), path(ref_fasta), path(ref_gtf), val(genome_version), val(assembly), val(release)
 
     output:
     tuple val(species),
-    path("decoy_${genome_version}.txt"),      // Chromosome names for decoy marking
-    path("gentrome_${genome_version}.fa"),    // Combined transcriptome + genome
-    val(genome_version),
+    path("decoy_${assembly}.${release}.txt"),      // Chromosome names for decoy marking
+    path("gentrome_${assembly}.${release}.fa"),    // Combined transcriptome + genome
+    val(genome_version), val(assembly), val(release),
     emit: decoy_gentrome_tuple
     //path("EXTRACT_GENTROME.error.log"),        emit: error_log  // Process log
 
     script:
 
     def LOG = "EXTRACT_GENTROME.error.log"
-    def DECOY = "decoy_${genome_version}.txt"
-    def GENTROME = "gentrome_${genome_version}.fa"
+    def DECOY = "decoy_${assembly}.${release}.txt"
+    def GENTROME = "gentrome_${assembly}.${release}.fa"
 
     """
     # Step 1: Extract chromosome names from FASTA headers

@@ -69,21 +69,39 @@ fi
 YAML_FILE=$(readlink -f "${YAML}")
 
 # -----------------------------------------------------------------------------------------
-# 2. YAML CLEANUP (Prevents Common User Errors)
+# 🛠️ PIPELINE CLEANUP (YAML, NF, and R Scripts)
 # -----------------------------------------------------------------------------------------
-# YAML parsers don't handle tabs well - convert to spaces
-# This prevents "mapping values are not allowed here" errors
+# This sanitizes all files for Linux/HPC environments.
 
-# 1. Remove UTF-8 BOM (Byte Order Mark) from Windows editors
-sed -i '1s/^\xEF\xBB\xBF//' "${YAML}"
+# Define your paths
+MODULE_DIR="/hpc/home/kailasamms/scripts/nextflow/modules"
 
-# 2. Convert Tabs to Spaces (YAML's biggest enemy)
-sed -i 's/\t/    /g' "${YAML}"
+# # 1. CLEAN R MODULES & NEXTFLOW FILES [ ONLY ONCE is enough ]
+# # Removes Windows Line Endings (^M), BOM, and sets Executable permissions
+# for FILE in "${MODULE_DIR}"/*.{R,nf}; do
+    # if [ -f "$FILE" ]; then
+        # # Remove UTF-8 BOM
+        # sed -i '1s/^\xEF\xBB\xBF//' "$FILE"
+        # # Convert CRLF (Windows) to LF (Linux) - Fixes Exit 127
+        # sed -i 's/\r//g' "$FILE"
+        # # Ensure scripts are executable
+        # chmod +x "$FILE"
+        # echo "✅ Sanitized: $(basename "$FILE")"
+    # fi
+# done
 
-# 3. Strip trailing whitespace
-sed -i 's/[[:space:]]*$//' "${YAML}"
-
-echo "✅ Configuration file $YAML cleaned (Tabs/BOM removed)."
+# 2. CLEAN YAML CONFIG (Specific YAML rules)
+if [ -f "$YAML" ]; then
+    # Remove UTF-8 BOM (Byte Order Mark) from Windows editors
+    sed -i '1s/^\xEF\xBB\xBF//' "$YAML"
+    # Convert Tabs to Spaces (YAML's biggest enemy)
+    sed -i 's/\t/    /g' "$YAML"
+    # Strip trailing whitespace
+    sed -i 's/[[:space:]]*$//' "$YAML"
+    # Final CRLF check for YAML
+    sed -i 's/\r//g' "$YAML"
+    echo "✅ Configuration file $(basename "$YAML") cleaned."
+fi
 
 # -----------------------------------------------------------------------------------------
 # 3. EXTRACT PARAMETERS

@@ -1,16 +1,16 @@
 process CREATE_DDS {
 
-    tag "Creating dds: ${species}_${type}"
+    tag "Creating dds: ${species}"
     label 'process_medium'                      // STAR indexing requires 30-50GB RAM for human
 
-    publishDir { "${params.proj_dir()}/${species}_${type}/08.DESeq2" },    mode: 'copy',    pattern: "DESeq2_dds.rds"
-    publishDir { "${params.proj_dir()}/${species}_${type}/07.Logs" },      mode: 'copy',    pattern: "CREATE_DDS.error.log"
+    publishDir { "${params.proj_dir()}/${species}/08.DESeq2" },    mode: 'copy',    pattern: "*.{rds,xlsx}"
+    publishDir { "${params.proj_dir()}/${species}/07.Logs" },      mode: 'copy',    pattern: "CREATE_DDS.error.log"
 
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(species), val(type), path(txi)
+    tuple val(species), path(txi), path(tx2gene)
     path(metadata)
     val(design)
 
@@ -18,8 +18,9 @@ process CREATE_DDS {
     // OUTPUT
     // =================================================================================
     output:
-    path("DESeq2_dds.rds"),            emit: dds
-    path("CREATE_DDS.error.log"),      emit: error_log    // Process log
+    tuple val(species), path("DESeq2_dds.rds"), path(tx2gene),    emit: dds
+    path("*.xlsx"),                                               emit: count_xlsx
+    path("CREATE_DDS.error.log"),                                 emit: error_log    // Process log
 
     // =================================================================================
     // EXECUTION
@@ -28,10 +29,16 @@ process CREATE_DDS {
 
     // This points to the modules folder relative to your project root
     def script_path = "${workflow.projectDir}/modules"
+    def LOG = "CREATE_DDS.error.log"
 
     """
     # We pass '.' because Nextflow staged all 'gene_counts' into the current folder
     # We pass '.' as the second arg so the Excel file is saved in the current folder
-    Rscript ${script_path}/CREATE_DDS.R ${txi} ${metadata} . ${design} > CREATE_DDS.error.log 2>&1
+    Rscript ${script_path}/CREATE_DDS.R \
+        "${txi}" \
+        "${metadata}" \
+        "${tx2gene}" \
+        "." \
+        "${design}" > ${LOG} 2>&1
     """
 }

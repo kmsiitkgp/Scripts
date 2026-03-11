@@ -9,18 +9,33 @@ suppressPackageStartupMessages({
   library(openxlsx)
 })
 
-# ---- 🛠️ 2. Smart Setup(ONLY runs in Nextflow) ----
 
-if (!interactive()) {
+
+# ---- 🛠️ 2. Smart Setup (Find & source UTILS.R) ----
+
+get_utils_path <- function() {
+  # 1. Windows dev machine
+  if (.Platform$OS.type == "windows") {
+    return("C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/Scripts/nextflow/modules/UTILS.R")
+  }
   
-  # Source the custom functions from utils.R
+  # 2. Interactive Linux / macOS (HPC interactive session)
+  if (interactive()) {
+    # Assume project root is current working directory
+    return(file.path(getwd(), "modules", "UTILS.R"))
+  }
+  
+  # 3. Non-interactive (Nextflow / Rscript)
   initial.options <- commandArgs(trailingOnly = FALSE)
-  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
-  source(file.path(dirname(script.name), "UTILS.R"))
-  
-  # Capture command line arguments
-  args <- commandArgs(trailingOnly = TRUE)
+  file_arg <- grep("--file=", initial.options, value = TRUE)
+  if (length(file_arg) == 0) stop("Cannot detect script path for UTILS.R!")
+  script_dir <- dirname(sub("--file=", "", file_arg))
+  return(file.path(script_dir, "UTILS.R"))
 }
+
+utils_path <- get_utils_path()
+if (!file.exists(utils_path)) stop(paste("❌ UTILS.R not found at:", utils_path))
+source(utils_path)
 
 # ---- 🧬 3. Function Definition (Always Runs) ----
 
@@ -144,17 +159,18 @@ merge_counts <- function(counts_dir, output_dir) {
   return(invisible(count_matrix))
 }
 
-# ---- 🚀 4. Smart Execution (ONLY runs in Nextflow) ----
+# ---- 🚀 4. Smart Execution (Nextflow Only) ----
 
 if (!interactive()) {
+  args <- commandArgs(trailingOnly = TRUE)
   
-  get_arg <- function(idx) {
-    if (idx > length(args)) return(NULL) # Safety if fewer args provided
+  get_arg <- function(idx, default = NULL) {
+    if (idx > length(args)) return(default)
     val <- args[idx]
-    if (is.na(val) || val == "" || val == "null") return(NULL)
+    if (is.na(val) || val == "" || val == "null" || val == "NULL") return(default)
     return(val)
   }
-  
+
   merge_counts(
     counts_dir  = get_arg(1),
     output_dir  = get_arg(2)

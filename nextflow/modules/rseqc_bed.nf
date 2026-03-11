@@ -27,7 +27,7 @@ process RSEQC_BED {
     // INPUT
     // =================================================================================
     input:
-    tuple val(species), path(ref_fasta), path(ref_gtf), val(genome_version)
+    tuple val(species), path(ref_fasta), path(ref_gtf), val(genome_version), val(assembly), val(release)
 
     // =================================================================================
     // OUTPUT

@@ -3,9 +3,9 @@ process XENGSORT_CLASSIFY {
     tag "Separating human and mouse reads for ${sample_id}"
     label 'process_high'                      // XENGSORT classification requires 30-50GB RAM for human
 
-    publishDir { "${params.proj_dir()}/Human_split/01.FastQ/xengsort" },    mode: 'copy',    pattern: "${sample_id}_graft_R*.gz"
-    publishDir { "${params.proj_dir()}/Mouse_split/01.FastQ/xengsort" },    mode: 'copy',    pattern: "${sample_id}_host_R*.gz"
-    publishDir { "${params.proj_dir()}/Mouse_split/07.Logs" },              mode: 'copy',    pattern: "*.XENGSORT_CLASSIFY.error.log"
+    publishDir { "${params.proj_dir()}/Human/01.FastQ/xengsort" },    mode: 'copy',    pattern: "${sample_id}_graft_R*.gz"
+    publishDir { "${params.proj_dir()}/Mouse/01.FastQ/xengsort" },    mode: 'copy',    pattern: "${sample_id}_host_R*.gz"
+    publishDir { "${params.proj_dir()}/Xenograft/07.Logs" },          mode: 'copy',    pattern: "*.XENGSORT_CLASSIFY.error.log"
 
     // =================================================================================
     // INPUT

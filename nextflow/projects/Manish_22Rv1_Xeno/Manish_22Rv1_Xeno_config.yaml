@@ -30,6 +30,16 @@ expt: "RNASeq"                     #   Experiment type (determines output struct
 #species: "Mouse"
 species: "Xenograft"
 project: "Manish_22Rv1_Xeno"  #   Project name (used in output directory naming)
+run_mode: "bulk+de"   #bulk , de or bulk+de
+
+# Required only if run_mode is "de"
+type: #"split"            # If xenograft, use "split". Else, use "full"
+gene_counts: #"/path/to/04.STAR/gene_counts/*.tab"
+salmon_dir: #"/path/to/03.Salmon/"
+gtf: #"/path/to/reference/your_file.gtf"
+genome_version: #"GRCh38.115"
+assembly: #"GRCh38"
+release: #"115"
 
 # -----------------------------------------------------------------------------------------
 # PRIMARY ANALYSIS INPUT FILES & DIRECTORIES
@@ -50,37 +60,45 @@ metadata_file: "/hpc/home/kailasamms/scripts/nextflow/projects/Manish_22Rv1_Xeno
 
 # DESeq2 Analysis Settings
 deseq2:
-  design: "Comparisons"        # Metadata column name to use for the formula (e.g., "Condition")
+  design: "0+Comparisons"      # Metadata column name to use for the formula (e.g., "0 + Condition")
   lfc_cutoff: 0                # Log2 Fold Change threshold for labeling "Significant" genes
   padj_cutoff: 0.1             # Adjusted p-value (FDR) threshold (standard is 0.05 or 0.1)
-  batch_correct: false         # Set to true if you have a "Batch" column in metadata to remove noise
+  batch_vars: null             # Metadata column name(s) to use for the formula (e.g., "0 + Batch + Condition")
   contrasts:                   # Format: "Numerator-Denominator"
     - "SPB-Vehicle"
     - "IRR-Vehicle"
     - "SPB_IRR-Vehicle"
     - "SPB_IRR-IRR"            # Equivalent to (SPB_IRR - Vehicle) - (IRR - Vehicle)
 
+gsea:
+  padj_cutoff: 0.05
+  minsize: 15
+  maxsize: 500
+  only_deg: "FALSE"          # Input is only DEGs
+  top_n: 10                  # Top 10 UP and Top 10 DOWN pathways
+
 # Heatmap Visualization Settings
 heatmap:
-  label_genes: null                 # List of specific gene names to label (e.g., ["GAPDH", "MYC"])
-  filename: null                    # Suffix added to filename
-  output_dir: null                  # Location to save plot and matrix
-  metadata_col: null                # Dataframe with samples as rownames and columns for annotation
-  metadata_row: null                # Dataframe with genes as rownames and columns for annotation
+#  metadata_col: null                # Dataframe with samples as rownames and columns for annotation
+#  metadata_row: null                # Dataframe with genes as rownames and columns for annotation
   col_annotations: ["Treatment"]    # List of columns from metadata_col to show as colored bars at top
-  row_annotations: null             # List of columns from metadata_row to show as colored bars on side
-  col_gap_by: null                  # Single column from metadata_col to define column gaps
-  row_gap_by: null                  # Single column from metadata_row to define row gaps
+#  row_annotations: null             # List of columns from metadata_row to show as colored bars on side
+#  col_gap_by: null                  # Single column from metadata_col to define column gaps
+#  row_gap_by: null                  # Single column from metadata_row to define row gaps
   col_cluster_by: "Treatment"       # Single column from metadata_col, "all" unsupervised, or "alphabetical" to define column ordering
-  row_cluster_by: "all"             # Single column from metadata_row, "all" unsupervised, or "alphabetical" to define row ordering
+#  row_cluster_by: "all"             # Single column from metadata_row, "all" unsupervised, or "alphabetical" to define row ordering
   heatmap_palette: "rdbu"           # "rdbu" (Red-Blue) or "vrds" (Viridis)
-  annotation_palette: "discrete"    # "discrete" for categories, "continuous" for numeric gradients
-  border_color: "NA"                # Color of cell borders; use "NA" for no borders (cleaner for many genes)
-  plot_title: null                  # Title for heatmap (default no title)
-  force_log: false                  # Force log2 transformation (default false auto-detects)
-  show_expr_legend: true            # Set to false if annotation legends are taking up too much space
-  save_plot: false                  # If true, exports a high-res PDF
-  save_matrix: false                # If true, exports the underlying expression values to .xlsx
+#  plot_title: null                  # Title for heatmap (default no title)
+#  border_color: "NA"                # Color of cell borders; use "NA" for no borders (cleaner for many genes)
+#  show_expr_legend: true            # Set to false if annotation legends are taking up too much space
+
+#  label_genes: null                 # List of specific gene names to label (e.g., ["GAPDH", "MYC"])
+#  filename: null                    # Suffix added to filename
+#  output_dir: null                  # Location to save plot and matrix
+#  annotation_palette: "discrete"    # "discrete" for categories, "continuous" for numeric gradients
+#  force_log: false                  # Force log2 transformation (default false auto-detects)
+#  save_plot: false                  # If true, exports a high-res PDF
+#  save_matrix: false                # If true, exports the underlying expression values to .xlsx
 
 
 # Volcano Plot Settings
@@ -137,6 +155,8 @@ salmon_quant:
   gcBias: true   #   Correct GC content bias (~5% improvement)
   seqBias: true  #   Correct hexamer priming bias (~3% improvement)
   posBias: true  #   Correct positional bias (~2% improvement)
+  numBootstraps: 30
+  threads: 1
 
 # -----------------------------------------------------------------------------------------
 # OUTPUT DIRECTORIES
@@ -153,6 +173,9 @@ cache_dir: "/hpc/home/kailasamms/NGSTools/singularity_cache"
 
 # Reference: Reference genome storage (can be shared across projects)
 ref_dir: "/hpc/home/kailasamms/NGSTools/Reference_Genomes"
+
+# GMT Files: (can be shared across projects)
+gmt_dir: "/hpc/home/kailasamms/NGSTools/Signatures"
 
 # OUTPUT DIRECTORY STRUCTURE:
 #${base_dir}
