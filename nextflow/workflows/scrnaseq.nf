@@ -6,15 +6,14 @@ nextflow.enable.dsl=2        // Enable DSL2 syntax (modern Nextflow with explici
 // =========================================================================================
 // Modular architecture: Each process in separate file for maintainability
 
-include { RENAME_FASTQS }                from '../modules/rename_fastq.nf'
+include { RENAME_FASTQS }                from '../modules/rename_fastqs.nf'
 include { GENERATE_MD5 }                 from '../modules/generate_md5.nf'
 include { VALIDATE_INPUT }               from '../modules/validate_input.nf'
 include { FASTQC as FASTQC_RAW }         from '../modules/fastqc.nf'
 include { FASTQC as FASTQC_TRIMMED }     from '../modules/fastqc.nf'           // Reusable process with alias
 include { CELLRANGER_COUNT }             from '../modules/cellranger_count.nf'
 include { MULTIQC }                      from '../modules/multiqc.nf'
-//include { TEST_INDEX }                   from '../modules/test_index.nf'       // Debugging utility
-//include { TEST_PUBLISHDIR }              from '../modules/test_publishdir.nf'  // Debugging utility
+
 
 // =========================================================================================
 // MAIN WORKFLOW

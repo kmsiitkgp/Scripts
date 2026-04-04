@@ -5,7 +5,7 @@ nextflow.enable.dsl=2        // DSL2: enables modular workflows with explicit pr
 // IMPORT PROCESS MODULES
 // =========================================================================================
 
-include { RENAME_FASTQS }                from '../modules/rename_fastq.nf'
+include { RENAME_FASTQS }                from '../modules/rename_fastqs.nf'
 include { GENERATE_MD5 }                 from '../modules/generate_md5.nf'
 include { VALIDATE_INPUT }               from '../modules/validate_input.nf'
 
@@ -19,14 +19,13 @@ include { XENGSORT_INDEX }               from '../modules/xengsort_index.nf'
 include { XENGSORT_CLASSIFY }            from '../modules/xengsort_classify.nf'
 
 include { STAR_INDEX }                   from '../modules/star_index.nf'
-include { EXTRACT_GENTROME }             from '../modules/extract_gentrome.nf'
+include { CREATE_GENTROME }              from '../modules/create_gentrome.nf'
 include { SALMON_INDEX }                 from '../modules/salmon_index.nf'
 include { RSEQC_BED }                    from '../modules/rseqc_bed.nf'
 
 include { CREATE_TX2GENE }               from '../modules/create_tx2gene.nf'
-include { CREATE_TXI }                   from '../modules/create_txi.nf'
-include { SALMON_QUANT }                 from '../modules/salmon_quant.nf'
 
+include { SALMON_QUANT }                 from '../modules/salmon_quant.nf'
 include { STAR_ALIGN }                   from '../modules/star_align.nf'
 include { SAMBAMBA_PREP }                from '../modules/sambamba_prep.nf'
 
@@ -34,11 +33,23 @@ include { RSEQC }                        from '../modules/rseqc.nf'
 include { MULTIQC }                      from '../modules/multiqc.nf'
 
 include { MERGE_STAR_COUNTS }            from '../modules/merge_star_counts.nf'
+include { CREATE_TXI }                   from '../modules/create_txi.nf'
+
 include { CREATE_DDS }                   from '../modules/create_dds.nf'
+include { PLOT_DESEQ2_QC }               from '../modules/plot_deseq2_qc.nf'
 
 include { EXTRACT_DESEQ2_RESULTS }       from '../modules/extract_deseq2_results.nf'
+include { PLOT_DESEQ2_RESULTS }          from '../modules/plot_deseq2_results.nf'
+
 include { ANALYZE_PATHWAYS }             from '../modules/analyze_pathways.nf'
 include { PLOT_PATHWAYS }                from '../modules/plot_pathways.nf'
+
+include { ANALYZE_TFS }                  from '../modules/analyze_tfs.nf'
+include { PLOT_TFS }                     from '../modules/plot_tfs.nf'
+
+include { SALMON_STATS }                 from '../modules/salmon_stats.nf'
+include { STAR_STATS }                   from '../modules/star_stats.nf'
+include { DEEP_AUDIT }                   from '../modules/deep_audit.nf'
 
 // =========================================================================================
 // MAIN WORKFLOW
@@ -80,10 +91,10 @@ workflow RNASEQ {
         if (map_file_path && map_file_path.exists()) {
 
             map_ch       = Channel.value(map_file_path)
-            srr_fastq_ch = Channel.fromPath("${params.proj_dir()}/downloads/*.{fastq,fq}.gz")
+            initial_fastq_ch = Channel.fromPath("${params.read_dir}/*.{fastq,fq}.gz")
 
             // .collect() sends ALL files to ONE process instance (not one per file)
-            RENAME_FASTQS(srr_fastq_ch.collect(), map_ch)
+            RENAME_FASTQS(initial_fastq_ch.collect(), map_ch)
 
             // .flatten() breaks the output list back into individual file items
             raw_fastq_ch = RENAME_FASTQS.out.renamed_fastqs.flatten()
@@ -142,9 +153,9 @@ workflow RNASEQ {
         // STEP 4: FETCH ENSEMBL REFERENCE METADATA
         // =================================================================================
 
-        // Xenograft: need Human + Mouse metadata individually, plus a synthetic combined entry
+        // Xenograft: need Human + Mouse metadata individually
         if (params.species == 'Xenograft') {
-            target_species_list = ['Human', 'Mouse', 'Xenograft']
+            target_species_list = ['Human', 'Mouse']
         } else {
             target_species_list = [params.species]
         }
@@ -169,58 +180,54 @@ workflow RNASEQ {
             .filter { it != null }
 
         // [Species, FA_Name, GTF_Name, Version, Ensembl_Assembly, Ensembl_Release]
-        // ["Human",     "Homo_sapiens.GRCh38.dna.primary_assembly.fa", "Homo_sapiens.GRCh38.115.gtf", "GRCh38.115",            "GRCh38", "115"]
-        // ["Mouse",     "Mus_musculus.GRCm39.dna.primary_assembly.fa", "Mus_musculus.GRCm39.115.gtf", "GRCm39.115",            "GRCm39", "115"]
-        // ["Xenograft", "Homo_sapiens.GRCh38.dna.primary_assembly.fa", "Homo_sapiens.GRCh38.115.gtf", "GRCh38.115_GRCm39.115", "GRCh38", "115"]  ← composite version; no real files on Ensembl
+        // ["Human", "Homo_sapiens.GRCh38.dna.primary_assembly.fa", "Homo_sapiens.GRCh38.115.gtf", "GRCh38.115", "GRCh38", "115"]
+        // ["Mouse", "Mus_musculus.GRCm39.dna.primary_assembly.fa", "Mus_musculus.GRCm39.115.gtf", "GRCm39.115", "GRCm39", "115"]
+        
+        // Generate version info Xenograft
+        human_meta_ch = fetch_ensembl_versions_out_ch
+            .filter { it[0] == "Human" }
+            .map { species, fa, gtf, version, assembly, release -> tuple(assembly, release) }
+            
+        mouse_meta_ch = fetch_ensembl_versions_out_ch
+            .filter { it[0] == "Mouse" }
+            .map { species, fa, gtf, version, assembly, release -> tuple(assembly, release) }
+            
+        // Use .first() not .collect()
+        xeno_meta_ch = human_meta_ch
+            .combine(mouse_meta_ch)
+            .map { hAsm, hRel, mAsm, mRel -> "${hAsm}.${hRel}_${mAsm}.${mRel}" }
+            .first()
+        // .first() gives output as "GRCh38.115_GRCm39.115"
+        // .collect() wraps the string in a list like ["GRCh38.115_GRCm39.115"]
 
         // =================================================================================
         // STEP 5: DOWNLOAD REFERENCE FILES
         // =================================================================================
 
-        // BUG FIX: Xenograft has no FA/GTF on Ensembl — filter it out before downloading.
-        // The Xenograft reference entry is synthetic (Human FA+GTF paths, composite version tag);
-        // it is reconstructed below by combining the downloaded Human paths with Xenograft metadata.
-        download_ensembl_ref_in_ch = fetch_ensembl_versions_out_ch
-            .filter { it[0] != "Xenograft" }
-
-        // [Species, FA_Name, GTF_Name, Version, Ensembl_Assembly, Ensembl_Release]
-        // ["Human", "Homo_sapiens.GRCh38.dna.primary_assembly.fa", "Homo_sapiens.GRCh38.115.gtf", "GRCh38.115", "GRCh38", "115"]
-        // ["Mouse", "Mus_musculus.GRCm39.dna.primary_assembly.fa", "Mus_musculus.GRCm39.115.gtf", "GRCm39.115", "GRCm39", "115"]
-
-        DOWNLOAD_ENSEMBL_REF(download_ensembl_ref_in_ch)
+        DOWNLOAD_ENSEMBL_REF(fetch_ensembl_versions_out_ch)
         reference_ch = DOWNLOAD_ENSEMBL_REF.out.ref_tuple
 
         // [Species, FA_Path, GTF_Path, Version, Ensembl_Assembly, Ensembl_Release]
         // ["Human", "/ref/GRCh38.115/Homo_sapiens.GRCh38.dna.primary_assembly.fa", "/ref/GRCh38.115/Homo_sapiens.GRCh38.115.gtf", "GRCh38.115", "GRCh38", "115"]
         // ["Mouse", "/ref/GRCm39.115/Mus_musculus.GRCm39.dna.primary_assembly.fa", "/ref/GRCm39.115/Mus_musculus.GRCm39.115.gtf", "GRCm39.115", "GRCm39", "115"]
-
-        if (params.species == 'Xenograft') {
-
-            // Build synthetic Xenograft row: Human FA+GTF paths, but with the composite version tag.
-            // This lets STAR/Salmon index steps produce a Xenograft-labelled index directory
-            // that maps unseparated reads against the human reference.
-
-            xeno_meta_ch = fetch_ensembl_versions_out_ch
-                .filter { it[0] == "Xenograft" }
-                .map { species, fa, gtf, version, assembly, release -> tuple(species, version, assembly, release) }
-            // ["Xenograft", "GRCh38.115_GRCm39.115", "GRCh38", "115"]
-
-            human_ref_ch = reference_ch
-                .filter { it[0] == "Human" }
-                .map { species, fa, gtf, version, assembly, release -> tuple(fa, gtf) }
-            // ["/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf"]
-
-            xeno_ref_ch = xeno_meta_ch
-                .combine(human_ref_ch)
-                .map { species, version, assembly, release, fa, gtf -> tuple(species, fa, gtf, version, assembly, release) }
-            // ["Xenograft", "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115_GRCm39.115", "GRCh38", "115"]
-
-            // Append Xenograft row so all downstream index steps receive all 3 species
-            reference_ch = reference_ch.concat(xeno_ref_ch)
-            // ["Human",     "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115",            "GRCh38", "115"]
-            // ["Mouse",     "/ref/GRCm39.115/...fa", "/ref/GRCm39.115/...gtf", "GRCm39.115",            "GRCm39", "115"]
-            // ["Xenograft", "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115_GRCm39.115", "GRCh38", "115"]
-        }
+        
+        // --- XENOGRAFT VALIDATION LOGIC ---
+        // We create a "Xenograft" species label that points to the Human reference files.
+        // This allows us to map the full mixed reads against the Human genome and compare
+        // the results directly with the "Graft" (Human-only) reads to validate XenGSort 
+        // efficiency and noise reduction.
+        xeno_reference_ch = reference_ch
+            .filter { it[0] == "Human" }
+            .combine(xeno_meta_ch)
+            .map { species, fa, gtf, version, assembly, release, xeno_version -> tuple("Xenograft", fa, gtf, xeno_version, assembly, release) }
+        // ["Xenograft", "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115_GRCm39.115", "GRCh38", "115"]
+        
+        // Append Xenograft row so all downstream index steps receive all 3 species
+        reference_ch = reference_ch
+            .concat(xeno_reference_ch)
+        // ["Human",     "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115",            "GRCh38", "115"]
+        // ["Mouse",     "/ref/GRCm39.115/...fa", "/ref/GRCm39.115/...gtf", "GRCm39.115",            "GRCm39", "115"]
+        // ["Xenograft", "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115_GRCm39.115", "GRCh38", "115"]
 
         // =====================================================================================
         // STEP 6: BUILD REFERENCE INDEXES
@@ -233,8 +240,8 @@ workflow RNASEQ {
             return
         }
 
-        EXTRACT_GENTROME(reference_ch)
-        decoy_gentrome_ch = EXTRACT_GENTROME.out.decoy_gentrome_tuple
+        CREATE_GENTROME(reference_ch)
+        decoy_gentrome_ch = CREATE_GENTROME.out.gentrome_tuple
 
         SALMON_INDEX(decoy_gentrome_ch)
         if (params.stop_after == 'SALMON_INDEX') {
@@ -248,7 +255,7 @@ workflow RNASEQ {
         // [Species, ref_bed, housekeeping_bed]
         // ["Human",     "/bed/GRCh38_ref.bed", "/bed/GRCh38_hk.bed"]
         // ["Mouse",     "/bed/GRCm39_ref.bed",  "/bed/GRCm39_hk.bed"]
-        // ["Xenograft", "/bed/GRCh38_ref.bed", "/bed/GRCh38_hk.bed"]  ← same beds as Human
+        // ["Xenograft", "/bed/GRCh38_ref.bed", "/bed/GRCh38_hk.bed"]  ← same beds as Human                                                                                     
 
         if (params.stop_after == 'RSEQC_BED') {
             log.info "Stopping pipeline after RSEQC_BED as requested."
@@ -275,18 +282,10 @@ workflow RNASEQ {
                 .map { species, fa, gtf, version, assembly, release -> fa }
             // "/ref/GRCm39.115/Mus_musculus.GRCm39.dna.primary_assembly.fa"
 
-            // .first() not .collect() — .collect() wraps the string in a list,
-            // so XENGSORT_INDEX would receive ["GRCh38.115_GRCm39.115"] instead of "GRCh38.115_GRCm39.115"
-            xeno_version_ch = reference_ch
-                .filter { it[0] == "Xenograft" }
-                .map { species, fa, gtf, version, assembly, release -> version }
-                .first()
-            // "GRCh38.115_GRCm39.115"
-
-            XENGSORT_INDEX(human_fasta_ch, mouse_fasta_ch, xeno_version_ch)
+            XENGSORT_INDEX(human_fasta_ch, mouse_fasta_ch, xeno_meta_ch)
             xengsort_index_out_ch = XENGSORT_INDEX.out.xengsort_index_dir.collect()
 
-            XENGSORT_CLASSIFY(sample_fastq_ch, xengsort_index_out_ch, xeno_version_ch)
+            XENGSORT_CLASSIFY(sample_fastq_ch, xengsort_index_out_ch, xeno_meta_ch)
 
             graft_fastq_ch = XENGSORT_CLASSIFY.out.graft_fastqs
                 .map { sample_id, fastqs -> tuple("Human", sample_id, fastqs) }
@@ -302,21 +301,19 @@ workflow RNASEQ {
                 .map { sample_id, fastqs -> tuple("Xenograft", sample_id, fastqs) }
             // ["Xenograft", "S1", [S1_R1.fq, S1_R2.fq]]
             // ["Xenograft", "S2", [S2_R1.fq, S2_R2.fq]]
-
+            
             // Merge all three labeled streams into one channel
-            all_fastq_ch = graft_fastq_ch
+            // Join each labeled sample to its matching reference row by Species key
+            sample_fastq_metadata_ch = graft_fastq_ch
                 .concat(host_fastq_ch)
                 .concat(full_fastq_ch)
-            // ["Human",     "H_S1", [H_S1_graft_R1.fq, H_S1_graft_R2.fq]]
-            // ["Human",     "H_S2", [H_S2_graft_R1.fq, H_S2_graft_R2.fq]]
-            // ["Mouse",     "M_S1", [M_S1_host_R1.fq,  M_S1_host_R2.fq]]
-            // ["Mouse",     "M_S2", [M_S2_host_R1.fq,  M_S2_host_R2.fq]]
-            // ["Xenograft", "S1",   [S1_R1.fq, S1_R2.fq]]
-            // ["Xenograft", "S2",   [S2_R1.fq, S2_R2.fq]]
-
-            // Join each labeled sample to its matching reference row by Species key
-            sample_fastq_metadata_ch = all_fastq_ch
                 .combine(reference_ch, by: 0)
+            // ["Human",     "H_S1", [H_S1_graft_R1.fq, ...], "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115",            "GRCh38", "115"]
+            // ["Human",     "H_S2", [H_S2_graft_R1.fq, ...], "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115",            "GRCh38", "115"]
+            // ["Mouse",     "M_S1", [M_S1_host_R1.fq,  ...], "/ref/GRCm39.115/...fa", "/ref/GRCm39.115/...gtf", "GRCm39.115",            "GRCm39", "115"]
+            // ["Mouse",     "M_S2", [M_S2_host_R1.fq,  ...], "/ref/GRCm39.115/...fa", "/ref/GRCm39.115/...gtf", "GRCm39.115",            "GRCm39", "115"]
+            // ["Xenograft", "S1",   [S1_R1.fq, ...],         "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115_GRCm39.115", "GRCh38", "115"]
+            // ["Xenograft", "S2",   [S2_R1.fq, ...],         "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115_GRCm39.115", "GRCh38", "115"] ← uses human ref; composite version
 
         } else {
 
@@ -326,26 +323,16 @@ workflow RNASEQ {
                 .combine(reference_ch)
                 .map { sample_id, fastqs, species, fa, gtf, version, assembly, release ->
                     tuple(species, sample_id, fastqs, fa, gtf, version, assembly, release) }
+            // [Species, sample_id, [R1,R2], FA_path, GTF_path, Version, Assembly, Release]
+            // ["Human", "S1", [S1_R1.fq, S1_R2.fq], "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115", "GRCh38", "115"]
+            // ["Human", "S2", [S2_R1.fq, S2_R2.fq], "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115", "GRCh38", "115"]
         }
-
-        // [Species, sample_id, [R1,R2], FA_path, GTF_path, Version, Assembly, Release]
-        //
-        // Standard (Human):
-        // ["Human", "S1", [S1_R1.fq, S1_R2.fq], "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115", "GRCh38", "115"]
-        // ["Human", "S2", [S2_R1.fq, S2_R2.fq], "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115", "GRCh38", "115"]
-        //
-        // Xenograft:
-        // ["Human",     "H_S1", [H_S1_graft_R1.fq, ...], "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115",            "GRCh38", "115"]
-        // ["Human",     "H_S2", [H_S2_graft_R1.fq, ...], "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115",            "GRCh38", "115"]
-        // ["Mouse",     "M_S1", [M_S1_host_R1.fq,  ...], "/ref/GRCm39.115/...fa", "/ref/GRCm39.115/...gtf", "GRCm39.115",            "GRCm39", "115"]
-        // ["Mouse",     "M_S2", [M_S2_host_R1.fq,  ...], "/ref/GRCm39.115/...fa", "/ref/GRCm39.115/...gtf", "GRCm39.115",            "GRCm39", "115"]
-        // ["Xenograft", "S1",   [S1_R1.fq, ...],         "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115_GRCm39.115", "GRCh38", "115"]
-        // ["Xenograft", "S2",   [S2_R1.fq, ...],         "/ref/GRCh38.115/...fa", "/ref/GRCh38.115/...gtf", "GRCh38.115_GRCm39.115", "GRCh38", "115"]
 
         // =====================================================================================
         // STEP 8: FASTQC ON RAW READS
         // =====================================================================================
 
+        // IMPORTANT: We run fastqc on host, graft as well as full fastqs
         fastqc_in_ch = sample_fastq_metadata_ch
             .map { species, sample_id, fastqs, fa, gtf, version, assembly, release ->
                 tuple(species, sample_id, fastqs, "raw")
@@ -361,7 +348,12 @@ workflow RNASEQ {
             log.info "Stopping pipeline after FASTQC_RAW as requested."
             return
         }
-
+        
+        // IMPORTANT: Comment out filter step below if you want to run all processes 
+        // below on host, graft as well as full fastqs
+        sample_fastq_metadata_ch = sample_fastq_metadata_ch
+            .filter { it[0] != "Xenograft" }
+        
         // =====================================================================================
         // STEP 9: TRANSCRIPT QUANTIFICATION (SALMON)
         // =====================================================================================
@@ -413,7 +405,7 @@ workflow RNASEQ {
         // [Species, sample_id, [R1,R2], star_index_dir]  — joined on Species
         // ["Human",     "H_S1", [H_S1_graft_R1.fq, H_S1_graft_R2.fq], "/idx/star_GRCh38.115/"]
         // ["Mouse",     "M_S1", [M_S1_host_R1.fq,  M_S1_host_R2.fq],  "/idx/star_GRCm39.115/"]
-        // ["Xenograft", "S1",   [S1_R1.fq, S1_R2.fq],                  "/idx/star_GRCh38.115_GRCm39.115/"]
+        // ["Xenograft", "S1",   [S1_R1.fq, S1_R2.fq],                 "/idx/star_GRCh38.115/"]
 
         STAR_ALIGN(star_align_in_ch, star_args)
         star_align_out_ch = STAR_ALIGN.out.star_results
@@ -504,6 +496,33 @@ workflow RNASEQ {
             log.info "Stopping pipeline after MULTIQC as requested."
             return
         }
+
+        // =====================================================================================
+        // STEP 13: STATS COLLECTORS
+        // =====================================================================================
+        // Run after ALL samples finish — .collect() on the upstream channel acts as a
+        // barrier gate. The collected values are passed as trigger but not used inside
+        // the script — their presence forces Nextflow to wait for all items to emit.
+        //
+        // salmon_quant_out_ch : [Species, sample_id, quant_dir] — one item per sample
+        // star_align_out_ch   : [Species, sample_id, bam, ...]  — one item per sample
+        //
+        // .collect() waits for ALL samples across ALL species before releasing.
+
+        salmon_stats_trigger_ch = salmon_quant_out_ch
+            .map { species, sample_id, quant_dir -> quant_dir }
+            .collect()
+
+        star_stats_trigger_ch = star_align_out_ch
+            .map { species, sample_id, bam, gene_counts, sj_out, log -> log }
+            .collect()
+
+        SALMON_STATS(params.proj_dir(), salmon_stats_trigger_ch)
+        STAR_STATS(params.proj_dir(), star_stats_trigger_ch)
+
+        // Expose outputs for DEEP_AUDIT in bulk+de mode
+        salmon_summary_ch = SALMON_STATS.out.salmon_summary
+        star_summary_ch   = STAR_STATS.out.star_summary
     }
 
     // =====================================================================================
@@ -519,20 +538,20 @@ workflow RNASEQ {
             // For Xenograft in 'de' mode: run DE on separated Human reads only
             def target_species = (params.species == 'Xenograft') ? 'Human' : params.species
 
-            def gtf_file = params.gtf ? file(params.gtf) : null
-            def fa_file  = null
+            def gtf_file = file(params.gtf, checkIfExists: true)
+            def fa_file  = file(params.fa, checkIfExists: true)
             reference_ch = Channel.of(tuple(target_species, fa_file, gtf_file, params.genome_version, params.assembly, params.release))
-            // ["Human", null, "/ref/Homo_sapiens.GRCh38.115.gtf", "GRCh38.115", "GRCh38", "115"]
+            // ["Human", "/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa", "/ref/Homo_sapiens.GRCh38.115.gtf", "GRCh38.115", "GRCh38", "115"]
 
-            // User-supplied STAR count files (glob e.g. "counts/*.tab")
-            star_align_out_ch = Channel.fromPath(params.gene_counts)
-                .map { file -> tuple(target_species, file.baseName, null, file, null, null) }
+            // User-supplied STAR gene count dir (MUST have files like "SampleA.ReadsPerGene.out.tab")
+            star_align_out_ch = Channel.fromPath("${params.gene_counts}/*.tab")
+                .map { file -> tuple(target_species, file.name.replaceFirst(/\.ReadsPerGene\.out\.tab$/, ""), null, file, null, null) }
             // [Species, sample_id, bam=null, gene_counts, sj_out=null, log=null]
-            // ["Human", "H_S1", null, "/counts/H_S1_ReadsPerGene.tab", null, null]
-            // ["Human", "H_S2", null, "/counts/H_S2_ReadsPerGene.tab", null, null]
+            // ["Human", "H_S1", null, "/counts/H_S1.ReadsPerGene.tab", null, null]
+            // ["Human", "H_S2", null, "/counts/H_S2.ReadsPerGene.tab", null, null]
 
-            // User-supplied Salmon output dirs (glob e.g. "03.Salmon/*/")
-            salmon_quant_out_ch = Channel.fromPath(params.salmon_dir)
+            // User-supplied Salmon output dirs (MUST have folder like "SampleA" which has "quant.sf" file inside)
+            salmon_quant_out_ch = Channel.fromPath("${params.salmon_dir}/*", type: 'dir')
                 .map { sample_dir -> tuple(target_species, sample_dir.name, sample_dir) }
             // [Species, sample_id, quant_dir]
             // ["Human", "H_S1", "/03.Salmon/H_S1/"]
@@ -605,39 +624,146 @@ workflow RNASEQ {
         metadata_ch = Channel.fromPath(params.metadata_file, checkIfExists: true).collect()
 
         CREATE_DDS(create_txi_out_ch, metadata_ch, params.deseq2.design)
-        create_dds_out_ch = CREATE_DDS.out.dds
+        dds_ch       = CREATE_DDS.out.dds
+        log_norm_ch  = CREATE_DDS.out.log_norm_counts
+        vst_blind_ch = CREATE_DDS.out.vst_blind_counts
 
         // [Species, dds_rds, tx2gene_csv]
-        // ["Human", "/path/human_dds.rds", "/path/human_tx2gene.csv"]
-        // ["Mouse", "/path/mouse_dds.rds", "/path/mouse_tx2gene.csv"]
+        // ["Human", "/Human/08.DESeq2/DESeq2_dds.rds", "/path/human_tx2gene.csv"]
+        // ["Mouse", "/Mouse/08.DESeq2/DESeq2_dds.rds", "/path/mouse_tx2gene.csv"]
+
+        // [Species, log_norm]
+        // ["Human", "/Human/08.DESeq2/Log_Norm_Counts.xlsx"]
+        // ["Mouse", "/Mouse/08.DESeq2/Log_Norm_Counts.xlsx"]
+
+        plot_deseq2_qc_in_ch = dds_ch
+            .combine(vst_blind_ch, by: 0)
+            .map { species, dds, tx2gene, vst_blind -> tuple(species, dds, vst_blind) }
+        PLOT_DESEQ2_QC(plot_deseq2_qc_in_ch, metadata_ch)
+
 
         // =====================================================================================
         // STEP DE-5: EXTRACT DESEQ2 RESULTS
         // =====================================================================================
 
-        extract_deseq2_results_in_ch = create_dds_out_ch
-            .combine(Channel.fromList(params.deseq2.contrasts))
+        deseq2_params_ch = Channel.value(params.deseq2)
+        contrasts_ch = Channel.fromList(params.deseq2.contrasts)
+        extract_deseq2_results_in_ch = dds_ch
+            .combine(contrasts_ch)
 
         // [Species, dds_rds, tx2gene_csv, contrast]
-        // ["Human", "/path/human_dds.rds", "/path/human_tx2gene.csv", ["condition","Treated","Control"]]
-        // ["Mouse", "/path/mouse_dds.rds", "/path/mouse_tx2gene.csv", ["condition","Treated","Control"]]
+        // ["Human", "/Human/08.DESeq2/DESeq2_dds.rds", "/path/human_tx2gene.csv", ["condition","Treated","Control"]]
+        // ["Mouse", "/Mouse/08.DESeq2/DESeq2_dds.rds", "/path/mouse_tx2gene.csv", ["condition","Treated","Control"]]
 
-        deseq2_ch = Channel.value(params.deseq2)
-        EXTRACT_DESEQ2_RESULTS(extract_deseq2_results_in_ch, deseq2_ch)
+        EXTRACT_DESEQ2_RESULTS(extract_deseq2_results_in_ch, deseq2_params_ch)
+        res_ch  = EXTRACT_DESEQ2_RESULTS.out.res
+        degs_ch = EXTRACT_DESEQ2_RESULTS.out.degs
+        vst_ch  = EXTRACT_DESEQ2_RESULTS.out.vst
 
-        gsea_ch = Channel.fromList([params.gsea]).collect()
-        gmt_dir_ch = Channel.from(["Human", "Mouse"])
+
+        plot_deseq2_results_in_ch = res_ch
+            .combine(degs_ch, by: [0,1])
+            .combine(vst_ch, by: [0,1])
+        heatmap_params_ch   = Channel.fromList([params.heatmap]).collect()
+        PLOT_DESEQ2_RESULTS(plot_deseq2_results_in_ch, metadata_ch, heatmap_params_ch)
+
+        // [Species, contrast, DEGs.xlsx]
+        // ["Human", "SPB-Vehicle", "/08.DESeq2/SPB-Vehicle/DEGs.xlsx"]
+        // ["Human", "IRR-Vehicle", "/08.DESeq2/IRR-Vehicle/DEGs.xlsx"]
+        // ["Mouse", "SPB-Vehicle", "/08.DESeq2/SPB-Vehicle/DEGs.xlsx"]
+        // ["Mouse", "IRR-Vehicle", "/08.DESeq2/IRR-Vehicle/DEGs.xlsx"]
+
+        gsea_params_ch = Channel.fromList([params.gsea]).collect()
+        gmt_dir_ch     = Channel.from(["Human", "Mouse"])
             .map { species -> tuple(species, file("${params.gmt_dir}/${species}", checkIfExists: true)) }
 
-        analyze_pathways_in_ch = EXTRACT_DESEQ2_RESULTS.out.deg_dir
-           .map { species, contrast, dir -> tuple(species, contrast, file("${dir}/DEGs.xlsx", checkIfExists: true)) }
-           .combine(gmt_dir_ch, by: 0)
-        ANALYZE_PATHWAYS(analyze_pathways_in_ch, gsea_ch)
+        // [Species, gmt_dir]
+        // ["Human", "/path/gmt_dir/Human"]
+        // ["Mouse", "/path/gmt_dir/Mouse"]
 
-        heatmap_ch = Channel.fromList([params.heatmap]).collect()
-        plot_pathways_in_ch = ANALYZE_PATHWAYS.out.pathway_dir
-            .map { species, contrast, dir -> tuple(species, contrast, file("${dir}/Pathways.xlsx", checkIfExists: true), "NULL") }
-        PLOT_PATHWAYS(plot_pathways_in_ch, metadata_ch, heatmap_ch, gsea_ch )
+        analyze_pathways_in_ch = degs_ch
+           .combine(gmt_dir_ch, by: 0)
+
+        // [Species, contrast, DEGs.xlsx, gmt_dir]
+        // ["Human", "SPB-Vehicle", "/08.DESeq2/SPB-Vehicle/DEGs.xlsx", "/path/gmt_dir/Human"]
+        // ["Human", "IRR-Vehicle", "/08.DESeq2/IRR-Vehicle/DEGs.xlsx", "/path/gmt_dir/Human"]
+        // ["Mouse", "SPB-Vehicle", "/08.DESeq2/SPB-Vehicle/DEGs.xlsx", "/path/gmt_dir/Mouse"]
+        // ["Mouse", "IRR-Vehicle", "/08.DESeq2/IRR-Vehicle/DEGs.xlsx", "/path/gmt_dir/Mouse"]
+
+        ANALYZE_PATHWAYS(analyze_pathways_in_ch, gsea_params_ch)
+        pathways_ch = ANALYZE_PATHWAYS.out.pathways
+
+        // [Species, contrast, Pathways.xlsx]
+        // ["Human", "SPB-Vehicle", "/09.Pathways/SPB-Vehicle/Pathways.xlsx"]
+        // ["Human", "IRR-Vehicle", "/09.Pathways/IRR-Vehicle/Pathways.xlsx"]
+        // ["Mouse", "SPB-Vehicle", "/09.Pathways/SPB-Vehicle/Pathways.xlsx"]
+        // ["Mouse", "IRR-Vehicle", "/09.Pathways/IRR-Vehicle/Pathways.xlsx"]
+
+
+        plot_pathways_in_ch = pathways_ch
+            .join(vst_ch, by: [0,1])
+
+        // [Species, contrast, Pathways.xlsx, VST_NonBlind_Counts.xlsx]
+        // ["Human", "SPB-Vehicle", "/09.Pathways/SPB-Vehicle/Pathways.xlsx", "/08.DESeq2/SPB-Vehicle/VST_NonBlind_Counts.xlsx"]
+        // ["Human", "IRR-Vehicle", "/09.Pathways/IRR-Vehicle/Pathways.xlsx", "/08.DESeq2/IRR-Vehicle/VST_NonBlind_Counts.xlsx"]
+        // ["Mouse", "SPB-Vehicle", "/09.Pathways/SPB-Vehicle/Pathways.xlsx", "/08.DESeq2/SPB-Vehicle/VST_NonBlind_Counts.xlsx"]
+        // ["Mouse", "IRR-Vehicle", "/09.Pathways/IRR-Vehicle/Pathways.xlsx", "/08.DESeq2/IRR-Vehicle/VST_NonBlind_Counts.xlsx"]
+
+        PLOT_PATHWAYS(plot_pathways_in_ch, metadata_ch, heatmap_params_ch, gsea_params_ch)
+
+        decoupler_params_ch   = Channel.fromList([params.decoupler]).collect()
+        analyze_tfs_in_ch = degs_ch
+            .combine(log_norm_ch, by: [0])
+
+        // [Species, contrast, DEGs.xlsx, Log_Norm_Counts.xlsx ]
+        // ["Human", "SPB-Vehicle", "/08.DESeq2/SPB-Vehicle/DEGs.xlsx", "/08.DESeq2/Log_Norm_Counts.xlsx"]
+        // ["Human", "IRR-Vehicle", "/08.DESeq2/IRR-Vehicle/DEGs.xlsx", "/08.DESeq2/Log_Norm_Counts.xlsx"]
+        // ["Mouse", "SPB-Vehicle", "/08.DESeq2/SPB-Vehicle/DEGs.xlsx", "/08.DESeq2/Log_Norm_Counts.xlsx"]
+        // ["Mouse", "IRR-Vehicle", "/08.DESeq2/IRR-Vehicle/DEGs.xlsx", "/08.DESeq2/Log_Norm_Counts.xlsx"]
+        
+        ANALYZE_TFS(analyze_tfs_in_ch, metadata_ch, decoupler_params_ch)
+        tf_results_ch = ANALYZE_TFS.out.tf_results
+        
+        PLOT_TFS(tf_results_ch, metadata_ch, heatmap_params_ch, decoupler_params_ch)
+
+        // =====================================================================================
+        // STEP DE-6: DEEP AUDIT
+        // =====================================================================================
+        // DEEP_AUDIT cross-validates alignment/quantification stats against DESeq2 objects.
+        // It requires dds.rds and txi.rds — only available after DE steps complete.
+        //
+        // Skipped in bulk-only mode (no dds exists).
+        //
+        // Trigger logic by mode:
+        //   bulk+de : wait for stats collectors (SALMON_STATS, STAR_STATS) AND dds
+        //             so the summary files exist on disk before DEEP_AUDIT crawls for them
+        //   de only : stats collectors never ran — pass empty trigger for stats files;
+        //             DEEP_AUDIT will warn about missing summaries but still audit dds/txi
+
+        if (params.run_mode == 'bulk+de') {
+
+            // Wait for dds, salmon summary, and star summary — all must exist before auditing
+            deep_audit_trigger_ch = dds_ch
+                .map { species, dds_rds, tx2gene_csv -> dds_rds }
+                .collect()
+                .combine(salmon_summary_ch.collect())
+                .combine(star_summary_ch.collect())
+                .map { items -> items.flatten() }
+
+            DEEP_AUDIT(params.proj_dir(), deep_audit_trigger_ch)
+
+        } else if (params.run_mode == 'de') {
+
+            // Stats summaries don't exist — trigger only on dds completion
+            // DEEP_AUDIT will warn about missing summary files but still run
+            deep_audit_trigger_ch = dds_ch
+                .map { species, dds_rds, tx2gene_csv -> dds_rds }
+                .collect()
+
+            DEEP_AUDIT(params.proj_dir(), deep_audit_trigger_ch)
+        }
+
+        // bulk-only mode: DEEP_AUDIT is intentionally skipped — no dds to audit
 
     }
 }

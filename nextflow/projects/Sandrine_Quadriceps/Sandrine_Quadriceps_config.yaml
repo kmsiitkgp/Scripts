@@ -1,0 +1,149 @@
+# =========================================================================================
+# PROJECT CONFIGURATION FILE
+# =========================================================================================
+# Usage: nextflow run main.nf -params-file <this_file> -profile sge -resume
+#
+# Quick Start:
+#   1. Set species, project, run_mode
+#   2. Set read_dir to your FASTQ location
+#   3. Set metadata_file to your sample metadata
+#   4. Set base_dir, work_dir, cache_dir, ref_dir
+#   5. Configure deseq2 contrasts and design
+#   6. Leave STAR/Salmon defaults unchanged unless you have specific needs
+# =========================================================================================
+
+# -----------------------------------------------------------------------------------------
+# PROJECT METADATA
+# -----------------------------------------------------------------------------------------
+
+expt: "RNASeq"                        # Experiment type — determines output folder prefix
+species: "Mouse"                      # "Human", "Mouse", or "Xenograft"
+project: "Sandrine_Quadriceps"        # Project name — used in output directory naming
+run_mode: "bulk+de"                   # "bulk" (align only), "de" (DE only), "bulk+de" (full)
+
+# -----------------------------------------------------------------------------------------
+# INPUT FILES
+# -----------------------------------------------------------------------------------------
+
+read_dir:      "/common/bhowmicknlab/Sandrine_Quadriceps/input"
+yaml_file:     "/hpc/home/kailasamms/scripts/nextflow/projects/Sandrine_Quadriceps/Sandrine_Quadriceps_config.yaml"
+map_file:      "/hpc/home/kailasamms/scripts/nextflow/projects/Sandrine_Quadriceps/Sandrine_Quadriceps_fastq_map.txt"
+metadata_file: "/hpc/home/kailasamms/scripts/nextflow/projects/Sandrine_Quadriceps/Sandrine_Quadriceps_metadata.xlsx"
+
+# -----------------------------------------------------------------------------------------
+# DE-ONLY MODE INPUTS
+# -----------------------------------------------------------------------------------------
+# Required only when run_mode is "de" (pre-computed counts already exist).
+# For rum_mode = "bulk" or "bulk+de" — pipeline generates these automatically.
+
+#run_mode:       "de"                        # "bulk" (align only), "de" (DE only), "bulk+de" (full)
+gene_counts:    "/common/bhowmicknlab/Sandrine_Quadriceps/input/04.STAR/gene_counts/"
+salmon_dir:     "/common/bhowmicknlab/Sandrine_Quadriceps/input/03.Salmon/"
+gtf:            "/hpc/home/kailasamms/NGSTools/Reference_Genomes/Mus_musculus.GRCm39.115.gtf"
+fa:             "/hpc/home/kailasamms/NGSTools/Reference_Genomes/Mus_musculus.GRCm39.dna.primary_assembly.fa"
+genome_version: "GRCm39.115"
+assembly:       "GRCm39"
+release:        "115"
+
+# -----------------------------------------------------------------------------------------
+# DIFFERENTIAL EXPRESSION
+# -----------------------------------------------------------------------------------------
+
+deseq2:
+  design: "0+Comparisons"            # Metadata column for DESeq2 design formula
+                                     # "0+Column" fits group means directly (no intercept)
+                                     # Use "~Batch+Column" to correct for batch effects
+
+  independent_filtering_alpha: 0.1  # DESeq2 internal filtering threshold (not your FDR cutoff)
+                                     # Controls how aggressively low-count genes are removed
+                                     # before multiple testing correction. 0.1 is recommended.
+                                     # Do not set below 0.05.
+
+  batch_vars: null                   # Metadata column(s) for batch correction (e.g. "Batch")
+                                     # null = no batch correction
+
+  contrasts:                         # Comparisons to run. Format: "Numerator-Denominator"
+    - "Quadriceps.RFL-Quadriceps.FC"                  # Each contrast produces its own output subfolder
+    - "Quadriceps.RF-Quadriceps.FC"
+
+# -----------------------------------------------------------------------------------------
+# PATHWAY ANALYSIS (GSEA / ORA)
+# -----------------------------------------------------------------------------------------
+
+gsea:
+  padj_cutoff: 0.05    # FDR threshold for reporting significant pathways
+  top_n: 10            # Top N up + top N down pathways to plot per collection
+
+# -----------------------------------------------------------------------------------------
+# TF / PATHWAY ACTIVITY (decoupleR)
+# -----------------------------------------------------------------------------------------
+
+decoupler:
+  top_n: 20            # Top N up + top N down TFs/pathways to plot
+
+# -----------------------------------------------------------------------------------------
+# HEATMAP SETTINGS
+# -----------------------------------------------------------------------------------------
+# Applied to DEG heatmaps, pathway heatmaps, and TF activity heatmaps
+
+heatmap:
+  col_annotations: ["Treatment"]    # Metadata columns to show as color bars above heatmap
+                                    # Must match column names in metadata_file exactly
+
+  col_cluster_by: "Treatment"       # How to order columns:
+                                    #   "all"          → single unsupervised clustering
+                                    #   "alphabetical" → sort by sample name
+                                    #   "Treatment"    → cluster within each group separately
+
+  heatmap_palette: "rdbu"           # Color palette: "rdbu" (Red-Blue) or any viridis variant
+                                    # ("viridis", "magma", "plasma", "inferno")
+
+# -----------------------------------------------------------------------------------------
+# STAR ALIGNMENT PARAMETERS
+# -----------------------------------------------------------------------------------------
+# Standard RNA-seq defaults — leave unchanged unless you have specific needs
+
+star_align:
+  runMode: "alignReads"
+  twopassMode: "Basic"                        # 2-pass: improves novel junction detection
+  quantMode: "GeneCounts"                     # Generate gene counts alongside alignment
+  sjdbOverhang: 100                           # ReadLength - 1 (100 works for 75-150bp reads)
+  readFilesCommand: "zcat"                    # Use "zcat" for .gz files
+  outFilterMultimapNmax: 10                   # Discard reads mapping to > 10 loci
+  outFilterMismatchNmax: 999                  # Use percentage filter below instead
+  outFilterMismatchNoverReadLmax: 0.04        # Max 4% mismatches per read
+  outFilterType: "BySJout"                    # Filter low-confidence splice junctions
+  alignEndsType: "Local"                      # Allow soft-clipping at read ends
+  alignIntronMin: 20                          # Gaps < 20bp treated as deletions not introns
+  alignIntronMax: 1000000                     # Max intron size
+  alignMatesGapMax: 1000000                   # Max distance between paired-end mates
+  outSAMattributes: "NH HI AS nM MD"          # MD tag required for RSeQC
+  outSAMunmapped: "Within"                    # Keep unmapped reads in BAM
+  outSAMtype: ["BAM", "SortedByCoordinate"]   # Output sorted BAM
+  limitSjdbInsertNsj: 1500000
+
+# -----------------------------------------------------------------------------------------
+# SALMON QUANTIFICATION PARAMETERS
+# -----------------------------------------------------------------------------------------
+# Standard defaults — bias corrections add ~5-10% accuracy improvement
+
+salmon_quant:
+  libType: "A"          # "A" = auto-detect strand orientation (recommended)
+                        # "IU" = force unstranded if auto-detect fails
+  gcBias: true          # Correct GC content bias
+  seqBias: true         # Correct hexamer priming bias
+  posBias: true         # Correct positional bias
+  numBootstraps: 30     # Bootstrap replicates for uncertainty estimation
+
+
+# -----------------------------------------------------------------------------------------
+# OUTPUT DIRECTORIES
+# -----------------------------------------------------------------------------------------
+# Output lands at: ${base_dir}/${expt}_${species}_${project}/
+# e.g. /hpc/home/kailasamms/scratch/RNASeq_Xenograft_Kevin_22Rv1_Xeno/
+
+base_dir:  "/hpc/home/kailasamms/scratch"                       # Analysis results
+work_dir:  "/hpc/home/kailasamms/scratch/nf_work"               # Nextflow intermediates (safe to delete after run)
+cache_dir: "/hpc/home/kailasamms/NGSTools/singularity_cache"    # Singularity images (shared across projects)
+ref_dir:   "/hpc/home/kailasamms/NGSTools/Reference_Genomes"    # Reference genomes and indexes (shared)
+gmt_dir:   "/hpc/home/kailasamms/NGSTools/Signatures"           # GMT gene set files (shared)

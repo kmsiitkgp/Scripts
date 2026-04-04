@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# #$ -N NF_Launcher        # Job Name
+# #$ -cwd                  # Run in current directory
+# #$ -V                    # Export all environment variables
+# #$ -j y                  # Merge standard output and error logs
+# #$ -o launcher.o$JOB_ID  # Name of the output log
+# #$ -l h_vmem=8G          # The launcher itself needs very little RAM
+
+# # 1. Cleaner logging for HPC files
+# export NXF_ANSI_LOG=false
+
+# # 2. Safety limits for Java/Threads
+# export NXF_OPTS="-Xms1g -Xmx4g -XX:MaxMetaspaceSize=512m -XX:ActiveProcessorCount=2 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=2"
+
 # =========================================================================================
 # NEXTFLOW PIPELINE LAUNCHER
 # =========================================================================================
@@ -227,7 +240,7 @@ nextflow \
     run "$NF_MAIN" \
     -params-file "${YAML_FILE}" \
     -name "${RUN_NAME}" \
-    -work-dir "${WORK_DIR}/${PROJECT}/work" \
+    -work-dir "${WORK_DIR}/${PROJECT}" \
     -profile sge \
     -resume \
     --dynamic_binds "$BIND_FLAGS" \
@@ -299,11 +312,20 @@ nextflow \
 # See logs live
 # tail -f "${WORK_DIR}/${PROJECT}.nextflow.log"
 
-# Reattach screen session if needed
-# screen -r "${PROJECT}"
+# Start tmux session
+# tmux new -s "${PROJECT}"
+# screen -S "${PROJECT}"
 
-# Detach screen session if needed
-# Press Ctrl+A fist, release and press D
+# cd ~/scripts/nextflow/projects/Sandrine_Quadriceps/
+# sh ~/scripts/nextflow/run_nextflow.sh
+
+# Detach session
+# Press Ctrl+B first, release and press D (for tmux)
+# Press Ctrl+A first, release and press D (for screen)
+
+# Reattach session
+# tmux attach -t "${PROJECT}"
+# screen -r "${PROJECT}"
 
 # -----------------------------------------------------------------------------------------
 # DELETE WORD DIRS FROM FAILED RUNS (RUN AFTER SUCCESSFUL COMPLETION OF PROJECT)

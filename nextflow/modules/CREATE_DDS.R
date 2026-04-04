@@ -3,7 +3,7 @@
 # ---- 📦 1. Load Libraries (Always Runs) ----
 
 suppressPackageStartupMessages({
-  library(dplyr)      # Provides the %>% operator
+  library(dplyr)
   library(readr)
   library(tibble)
   library(tximport)
@@ -18,18 +18,15 @@ get_utils_path <- function() {
   if (.Platform$OS.type == "windows") {
     return("C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/Scripts/nextflow/modules/UTILS.R")
   }
-  
   # 2. Interactive Linux / macOS (HPC interactive session)
   if (interactive()) {
-    # Assume project root is current working directory
     return(file.path(getwd(), "modules", "UTILS.R"))
   }
-  
   # 3. Non-interactive (Nextflow / Rscript)
   initial.options <- commandArgs(trailingOnly = FALSE)
-  file_arg <- grep("--file=", initial.options, value = TRUE)
+  file_arg        <- grep("--file=", initial.options, value = TRUE)
   if (length(file_arg) == 0) stop("Cannot detect script path for UTILS.R!")
-  script_dir <- dirname(sub("--file=", "", file_arg))
+  script_dir      <- dirname(sub("--file=", "", file_arg))
   return(file.path(script_dir, "UTILS.R"))
 }
 
@@ -40,152 +37,174 @@ source(utils_path)
 # ---- 🧬 3. Function Definition (Always Runs) ----
 
 create_dds <- function(txi, metadata, tx2gene, output_dir, design = 1, expr_mat = NULL) {
-  
-  # Load the actual data objects using the paths
+
   metadata <- load_smart(metadata)
   txi      <- load_smart(txi)
   expr_mat <- load_smart(expr_mat)
-  tx2gene  <- load_smart(tx2gene) 
-  
-  # Remove the first column (the IDs) so only numeric counts remain
+  tx2gene  <- load_smart(tx2gene)
+
+  # expr_mat arrives as a dataframe with gene IDs in column 1 and sample counts
+  # in the remaining columns. Convert column 1 to rownames so the matrix is
+  # purely numeric — required by DESeqDataSetFromMatrix.
   if (!is.null(expr_mat)) {
     rownames(expr_mat) <- make.names(expr_mat[[1]])
     expr_mat           <- expr_mat[, -1, drop = FALSE]
   }
 
-  # ---- 🧪 SECTION 1: DESIGN FORMULA ----
-  
-  # Standardize DESeq2 design formula
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 1: Parse Design Formula
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Accepts three input forms for maximum flexibility:
+  #   Formula object : ~Batch + Group        — passed through unchanged
+  #   Character string: "~Batch + Group"     — tilde stripped and rebuilt
+  #   Numeric 1 / "1" : intercept-only model — used for QC or SVA runs where
+  #                      no biological grouping is needed yet
+  #
+  # Why not just require a formula object always?
+  # Nextflow passes all arguments as strings — the character path handles that
+  # case cleanly without requiring the caller to construct an R formula object.
+
   if (inherits(design, "formula")) {
     design_formula <- design
-    
-  } else if ( (is.numeric(design) || design == "1") && length(design) == 1 ) {
-    # Check if it is the number 1 OR the string "1"
-    # Intercept-only model (used for QC or SVA)
+
+  } else if ((is.numeric(design) || design == "1") && length(design) == 1) {
+    # Intercept-only — valid for exploratory PCA or SVA surrogate variable estimation
     design_formula <- stats::as.formula("~ 1")
-    
+
   } else if (is.character(design) && length(design) == 1 && nzchar(trimws(design))) {
-    # Clean leading ~ and whitespace (e.g., " ~ Condition " -> "Condition")
-    clean_design <- sub("^\\s*~\\s*", "", design)
+    # Strip any leading "~" and whitespace before rebuilding — handles both
+    # "~Batch+Group" and "Batch+Group" inputs identically
+    clean_design   <- sub("^\\s*~\\s*", "", design)
     design_formula <- stats::as.formula(paste0("~", clean_design))
-    
+
   } else {
-    log_error(sample = "", 
-              step = "create_dds", 
-              msg = "`design` must be a formula (e.g., ~Batch+Group), the number 1, or a character string.")
+    log_error(sample = "", step = "create_dds",
+              msg = "`design` must be a formula (e.g. ~Batch+Group), the number 1, or a character string.")
   }
-  
-  # ---- 📝 SECTION 2: METADATA ----
-  
-  # Remove "sizeFactor" column if present and filter out missing Sample_IDs
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 2: Prepare Metadata
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # ── 2a. Clean and set rownames ───────────────────────────────────────────
+  # DESeq2 matches samples between colData and counts by rownames — rownames
+  # MUST be set and must match colnames(counts) exactly.
+  # Why remove sizeFactor? If a previous dds was saved and metadata re-exported,
+  # sizeFactor may be present as a column. Leaving it causes DESeq2 to skip
+  # size factor estimation and use the stale values instead.
+  # Why as.data.frame()? rownames cannot be set on a tibble — converting first.
   metadata <- metadata %>%
-    dplyr::select(-any_of("sizeFactor")) %>%
+    dplyr::select(-dplyr::any_of("sizeFactor")) %>%
     dplyr::filter(!is.na(Sample_ID)) %>%
-    as.data.frame()  # cannot set rownames on tibble. R wont error, just warn.
-  
-  # Assign valid "Sample_ID" column as row names for DESeq2
+    as.data.frame()
+
   rownames(metadata) <- make.names(metadata$Sample_ID)
-  
-  # Add default Batch if missing
+
+  # ── 2b. Ensure Batch column exists ───────────────────────────────────────
+  # Batch is expected by downstream QC and batch correction functions. If the
+  # metadata doesn't have it (e.g. a single-batch experiment), assign a default
+  # of 1 so all samples belong to one batch and downstream code doesn't break.
   if (!"Batch" %in% colnames(metadata)) {
     metadata$Batch <- 1
-    log_warn(sample = "", step = "create_dds", msg = "No 'Batch' column. Assigned default '1'.")
+    log_warn(sample = "", step = "create_dds",
+             msg = "No 'Batch' column found. Assigned default value of 1.")
   }
-  
-  # Remove samples with NA in Design Columns
+
+  # ── 2c. Remove samples with NA in design variables ───────────────────────
+  # DESeq2 cannot build a model matrix if any sample has NA for a design
+  # variable — it will error or silently produce wrong results. Remove these
+  # samples early with a clear warning so the user knows what was dropped.
   design_vars <- all.vars(design_formula)
-  na_idx <- apply(X = metadata[, design_vars, drop = FALSE], 
-                  MARGIN = 1, 
-                  FUN = function(x) any(is.na(x)))
-  
+  na_idx      <- apply(X      = metadata[, design_vars, drop = FALSE],
+                       MARGIN = 1,
+                       FUN    = function(x) any(is.na(x)))
+
   if (any(na_idx)) {
     na_samples <- rownames(metadata)[na_idx]
-    log_warn(sample = "", 
-             step = "create_dds", 
-             msg = glue::glue("Removing {length(na_samples)} samples with NA in design: {paste(na_samples, collapse = ', ')}"))
+    log_warn(sample = "", step = "create_dds",
+             msg = glue::glue("Removing {length(na_samples)} sample(s) with NA in design ",
+                              "variables: {paste(na_samples, collapse = ', ')}"))
     metadata <- metadata[!na_idx, , drop = FALSE]
   }
-  
-  # Convert non-numeric columns to factors
-  #metadata <- as.data.frame(unclass(metadata), stringsAsFactors = TRUE)
-  #metadata[] <- lapply(metadata, as.factor)
-  metadata <- metadata %>%
-    dplyr::mutate(Batch = as.factor(Batch),  # Force Sample_ID and Batch to factor even if it's numeric (1, 2, 3)
-                  Sample_ID = as.factor(Sample_ID)) %>%
-    dplyr::mutate(across(where(~ is.character(.) | is.logical(.)), as.factor))
-  
 
-  # ---- 🧮 SECTION 3: READ DATA (TXI OR MATRIX) ----
-  
+  # ── 2d. Coerce columns to factor ─────────────────────────────────────────
+  # DESeq2 requires factor columns in colData for categorical design variables.
+  # Numeric batch/group IDs (1, 2, 3) would be treated as continuous covariates
+  # without this step, producing a wrong model matrix.
+  # Why mutate across where(is.character | is.logical)?
+  # Logical columns (TRUE/FALSE) and character columns both represent categorical
+  # variables and must be factors for DESeq2's model matrix to be correct.
+  metadata <- metadata %>%
+    dplyr::mutate(Batch     = as.factor(Batch),
+                  Sample_ID = as.factor(Sample_ID)) %>%
+    dplyr::mutate(dplyr::across(where(~ is.character(.) | is.logical(.)), as.factor))
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 3: Load and Validate Count Data
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Two input sources are supported:
+  #   txi     : Salmon quantification imported via tximport — preferred, because
+  #             tximport handles transcript-to-gene aggregation and preserves
+  #             uncertainty estimates (inferential replicates) that DESeq2 can use
+  #   expr_mat: Raw count matrix (e.g. from STAR + featureCounts) — simpler but
+  #             loses the transcript-level uncertainty information
+
   if (!is.null(txi)) {
-    # CASE A: Salmon / tximport
-    log_info(sample = "", 
-             step = "create_dds", 
-             msg = "Input detected: Salmon (tximport).")
-    
+    log_info(sample = "", step = "create_dds", msg = "Input detected: Salmon (tximport).")
     read_data <- txi$counts
-    
+
   } else if (!is.null(expr_mat)) {
-    # CASE B: STAR / FeatureCounts / Matrix
-    log_info(sample = "", 
-             step = "create_dds", 
-             msg = "Input detected: Raw count matrix.")
-    
-    # Assign valid "Sample_ID" column as column names for DESeq2
-    colnames(expr_mat) <- make.names(colnames(expr_mat))
-    
-    # Replace missing counts with 0
+    log_info(sample = "", step = "create_dds", msg = "Input detected: Raw count matrix.")
+
+    # Sanitise column names — spaces and special characters break DESeq2's
+    # colData matching downstream
+    colnames(expr_mat)        <- make.names(colnames(expr_mat))
     expr_mat[is.na(expr_mat)] <- 0
-    
-    # Convert all columns to numeric safely
+
+    # Coerce to numeric matrix — featureCounts output sometimes has character
+    # columns if non-numeric values crept in during file processing
     read_data <- matrix(as.numeric(as.matrix(expr_mat)),
-                        nrow = nrow(expr_mat),
-                        ncol = ncol(expr_mat),
+                        nrow     = nrow(expr_mat),
+                        ncol     = ncol(expr_mat),
                         dimnames = dimnames(expr_mat))
-    
-    # Detect if any NA still present in read data
+
     if (any(is.na(read_data))) {
-      log_error(sample = "",
-                step   = "create_dds",
-                msg    = "`read_data` contains non-numeric values that could not be converted.")
+      log_error(sample = "", step = "create_dds",
+                msg = "`read_data` contains non-numeric values that could not be coerced.")
     }
-    
-    # Remove genes with zero counts across all samples
+
+    # Remove all-zero genes and all-zero samples — DESeq2 cannot fit dispersions
+    # for genes with no counts, and zero-count samples indicate failed sequencing
     read_data <- read_data[rowSums(read_data) > 0, , drop = FALSE]
-    
-    # Remove samples with zero total reads
     read_data <- read_data[, colSums(read_data) > 0, drop = FALSE]
-    
-    # Remove rows where gene names are NA or empty strings
-    invalid_genes <- is.na(rownames(read_data)) | rownames(read_data) == ""
-    read_data <- read_data[!invalid_genes, , drop = FALSE]
-    
-  } else{
-    
-    log_error(sample = "", 
-              step = "create_dds", 
-              msg = "Neither 'txi' nor 'expr_mat' provided.")
+    read_data <- read_data[!(is.na(rownames(read_data)) | rownames(read_data) == ""), , drop = FALSE]
+
+  } else {
+    log_error(sample = "", step = "create_dds",
+              msg = "Neither 'txi' nor 'expr_mat' provided. One is required.")
   }
-  
-  
-  # ---- 🤝 SECTION 4: ALIGNING METADATA, READ DATA & DESIGN ----
-  
-  log_info(sample = "", 
-           step = "create_dds", 
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 4: Align Samples Between Counts and Metadata
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DESeq2 requires colnames(counts) and rownames(colData) to be identical and
+  # in the same order. We subset BOTH to the intersection so extra samples in
+  # either don't cause errors — but log any discrepancies clearly.
+
+  log_info(sample = "", step = "create_dds",
            msg = "Aligning samples between counts and metadata...")
-  
+
   common_samples <- intersect(colnames(read_data), rownames(metadata))
-  
+
   if (length(common_samples) == 0) {
-    log_error(sample = "",
-              step = "create_dds", 
-              msg = "Zero overlapping samples found!")
+    log_error(sample = "", step = "create_dds",
+              msg = "Zero overlapping samples between counts and metadata. Check Sample_ID formatting.")
   }
-  
-  # Subset Metadata
+
   metadata <- metadata[common_samples, , drop = FALSE]
-  
-  # Subset Counts / TXI
+
+  # For txi, ALL matrices within the list (counts, abundance, length) must be
+  # subset identically — subsetting only txi$counts would misalign the others
   if (!is.null(txi)) {
     txi <- lapply(txi, function(x) {
       if (is.matrix(x) || is.data.frame(x)) return(x[, common_samples, drop = FALSE])
@@ -194,141 +213,166 @@ create_dds <- function(txi, metadata, tx2gene, output_dir, design = 1, expr_mat 
   } else {
     read_data <- read_data[, common_samples, drop = FALSE]
   }
-  
-  # 🔍 CROSS-CHECK if design variables exist in metadata
-  # all.vars() turns "~ Batch + Condition" into c("Batch", "Condition")
-  design_vars <- all.vars(design_formula)
+
+  # Verify all design variables are present as columns in the final metadata.
+  # Checked here (after subsetting) rather than earlier because subsetting
+  # could in theory drop a column — though in practice metadata columns are
+  # never dropped by sample subsetting.
+  design_vars  <- all.vars(design_formula)
   missing_vars <- setdiff(design_vars, colnames(metadata))
-  
+
   if (length(missing_vars) > 0) {
-    log_error(sample = "", 
-              step = "create_dds", 
-              msg = glue::glue("The following variables in your design are MISSING from your metadata: {paste(missing_vars, collapse = ', ')}"))
+    log_error(sample = "", step = "create_dds",
+              msg = glue::glue("Design variable(s) missing from metadata: ",
+                               "{paste(missing_vars, collapse = ', ')}"))
   }
-  
-  
-  # ---- 🧪 SECTION 5: DDS OBJECT CREATION ----
-  
-  # Create DESeqDataSet based on input type
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 5: Build DESeqDataSet
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DESeqDataSetFromTximport is preferred over DESeqDataSetFromMatrix when txi
+  # is available because it internally handles the offset matrix (avgTxLength)
+  # that corrects for transcript length bias — important for accurate LFC estimates
+  # especially for genes with many/few isoforms.
+
   if (!is.null(txi)) {
-    dds <- DESeq2::DESeqDataSetFromTximport(txi = txi, 
-                                            colData = metadata, 
-                                            design = design_formula)
+    dds <- DESeq2::DESeqDataSetFromTximport(txi     = txi,
+                                            colData = metadata,
+                                            design  = design_formula)
   } else {
-    # Rounding protects against non-integer STAR counts if scaled
-    dds <- DESeq2::DESeqDataSetFromMatrix(countData = round(read_data), 
-                                          colData = metadata, 
-                                          design = design_formula)
+    # round() is required because featureCounts can produce non-integer counts
+    # when scaling is applied — DESeq2 requires integer counts
+    dds <- DESeq2::DESeqDataSetFromMatrix(countData = round(read_data),
+                                          colData   = metadata,
+                                          design    = design_formula)
   }
 
-  # ---- 📉 SECTION 6: MODEL FITTING (DISPERSION & FIT SELECTION) ----
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 6: Model Fitting
+  # ═══════════════════════════════════════════════════════════════════════════
 
-  log_info(sample = "", 
-           step = "create_dds", 
-           msg = "Fitting DESeq2 model...")
-  
-  # Auto-detect for 'poscounts' if many zeros exist
-  is_scRNA <- FALSE
-  
-  if (!is.null(read_data)){
-    is_scRNA <- all(rowSums(read_data == 0) > 0)
-  } else if (!is.null(txi) && !is.null(txi$counts)){
-    is_scRNA <- all(rowSums(txi$counts == 0) > 0)
+  log_info(sample = "", step = "create_dds", msg = "Fitting DESeq2 model...")
+
+  # ── 6a. Sparse data check ────────────────────────────────────────────────
+  # DESeq2's default size factor estimation (median-of-ratios) requires at
+  # least one non-zero count per gene across all samples to compute the
+  # geometric mean. If every gene has at least one zero-count sample (i.e.
+  # the data is sparse), this breaks. poscounts uses only positive counts for
+  # the geometric mean and is robust to sparse data.
+  is_sparse <- FALSE
+
+  if (!is.null(read_data)) {
+    is_sparse <- all(rowSums(read_data == 0) > 0)
+  } else if (!is.null(txi) && !is.null(txi$counts)) {
+    is_sparse <- all(rowSums(txi$counts == 0) > 0)
   }
-  
-  if (is_scRNA) {
-    log_warn(sample = "",
-             step   = "create_dds",
-             msg    = "scRNA-seq–like sparsity detected. Estimating size factors using 'poscounts'.")
+
+  if (is_sparse) {
+    log_warn(sample = "", step = "create_dds",
+             msg = "Sparse count data detected. Using 'poscounts' size factor estimation.")
     dds <- DESeq2::estimateSizeFactors(dds, type = "poscounts")
   } else {
-    # Pre-filter lowly expressed genes to improve sizefactor estimation in next step
+    # Pre-filter lowly expressed genes to reduce noise and improve dispersion
+    # estimation convergence. Threshold of 10 total counts is conservative —
+    # genes below this are unlikely to yield reliable differential expression calls.
     keep <- rowSums(DESeq2::counts(dds)) >= 10
-    dds <- dds[keep, ]
+    dds  <- dds[keep, ]
   }
-  
-  # Fit both Parametric and Local to choose the best one
-  dds_para <- DESeq2::DESeq(object = dds, 
-                            test = "Wald", 
-                            fitType = "parametric", 
-                            betaPrior = FALSE, 
-                            minReplicatesForReplace = 7, 
-                            quiet = TRUE)
-  
-  dds_local <- DESeq2::DESeq(object = dds, 
-                             test = "Wald", 
-                             fitType = "local", 
-                             betaPrior = FALSE, 
-                             minReplicatesForReplace = 7, 
-                             quiet = TRUE)
-  
-  # Calculate residuals to find the better fit
-  residual_para <- median((mcols(dds_para)$dispGeneEst - mcols(dds_para)$dispFit)^2, na.rm = TRUE)
+
+  # ── 6b. Dispersion model selection ──────────────────────────────────────
+  # DESeq2 offers two dispersion fitting strategies:
+  #   parametric: assumes a log-linear relationship between dispersion and mean —
+  #               works well for well-behaved RNA-seq datasets
+  #   local     : fits a local regression (loess) — more flexible, better for
+  #               datasets where dispersion doesn't follow a clean log-linear trend
+  #               (e.g. very heterogeneous samples, unusual expression distributions)
+  #
+  # Why fit both and choose?
+  # There's no universal rule for which fits better — it depends on the data.
+  # We fit both and select by median squared residual (gene-wise dispersion vs
+  # fitted dispersion). Lower residual = better fit. This is fully automatic
+  # and adds only modest compute time since DESeq is already the slow step.
+  dds_para  <- DESeq2::DESeq(object                  = dds,
+                              test                    = "Wald",
+                              fitType                 = "parametric",
+                              betaPrior               = FALSE,
+                              minReplicatesForReplace = 7,
+                              quiet                   = TRUE)
+
+  dds_local <- DESeq2::DESeq(object                  = dds,
+                              test                    = "Wald",
+                              fitType                 = "local",
+                              betaPrior               = FALSE,
+                              minReplicatesForReplace = 7,
+                              quiet                   = TRUE)
+
+  residual_para  <- median((mcols(dds_para)$dispGeneEst  - mcols(dds_para)$dispFit)^2,  na.rm = TRUE)
   residual_local <- median((mcols(dds_local)$dispGeneEst - mcols(dds_local)$dispFit)^2, na.rm = TRUE)
-  
+
   if (residual_para <= residual_local) {
-    dds <- dds_para
-    fit_type <- "Parametric"
+    dds      <- dds_para
+    fit_type <- "parametric"
   } else {
-    dds <- dds_local
-    fit_type <- "Local"
+    dds      <- dds_local
+    fit_type <- "local"
   }
-  
-  log_info(sample = "", 
-           step = "create_dds", 
-           msg = glue::glue("DESeq2 model built using '{fit_type}' fit."))
-  
-  # ---- 📊 COUNT MATRIX EXTRACTION ----
-  
-  # --- Median-of-Ratios Normalized Counts ---
-  # DESeq2 size-factor normalization (median of ratios method).
-  # Corrects for library size differences across samples.
-  # USE ONLY FOR: violin plots, box plots, etc visualization of raw expression
+
+  log_info(sample = "", step = "create_dds",
+           msg = glue::glue("Dispersion fit selected: '{fit_type}' ",
+                            "(para residual = {round(residual_para, 6)}, ",
+                            "local residual = {round(residual_local, 6)})"))
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 7: Extract Count Matrices
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Three count representations are saved, each suited for different uses:
+  #
+  #   Norm counts     : median-of-ratios normalised, NOT log-transformed
+  #                     → use for violin / box plots, expression visualisation
+  #   Log norm counts : log2(norm + 1) pseudo-count transform
+  #                     → use for TF activity inference (VIPER, decoupleR) which
+  #                        expects log-scale expression values; also expression plots
+  #   VST blind       : variance-stabilising transform, blind = TRUE (design-unaware)
+  #                     → use for QC, PCA, and sample-level correlation heatmaps
+  #                        blind = TRUE is correct here because we want QC to be
+  #                        unbiased by the design — we're checking data quality,
+  #                        not biological signal
+
   norm_counts_mat <- DESeq2::counts(dds, normalized = TRUE)
   norm_counts     <- process_counts(norm_counts_mat, tx2gene)
-  
-  # --- Log2 Transformed Normalized Counts ---
-  # log2(median-of-ratios normalized counts + 1) via DESeq2::normTransform().
-  # The +1 pseudo-count prevents log(0) and stabilizes low-count genes.
-  # USE ONLY FOR: violin plots, box plots, etc visualization of log expression;
-  #               TF activity inference (VIPER, DoRothEA, decoupleR)
-  log_norm_counts_mat <- DESeq2::normTransform(dds) %>%
-    SummarizedExperiment::assay()
+
+  # +1 pseudo-count prevents log2(0) = -Inf for zero-count genes
+  log_norm_counts_mat <- DESeq2::normTransform(dds) %>% SummarizedExperiment::assay()
   log_norm_counts     <- process_counts(log_norm_counts_mat, tx2gene)
-  
-  # --- VST — Blind ---
-  # VST computed without awareness of the experimental design (blind = TRUE).
-  # Stabilizes variance across the mean-expression range for visualization.
-  # Blind = TRUE is appropriate for QC steps where you do not want design
-  # information to influence the transformation (e.g., checking for outliers).
-  # USE ONLY FOR: QC plots, PCA, sample correlation / heatmaps.
-  vst_blind_mat    <- DESeq2::vst(dds, blind = TRUE) %>%
-    SummarizedExperiment::assay()
+
+  vst_blind_mat    <- DESeq2::vst(dds, blind = TRUE) %>% SummarizedExperiment::assay()
   vst_blind_counts <- process_counts(vst_blind_mat, tx2gene)
-  
-  # ---- 💾 Save Results ----
-  
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 8: Save and Return
+  # ═══════════════════════════════════════════════════════════════════════════
+  # File naming encodes the intended downstream use so outputs are self-documenting
+  # when browsing the output directory.
+
   if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
-  
+
   saveRDS(dds, file = file.path(output_dir, "DESeq2_dds.rds"))
-  openxlsx::write.xlsx(x         = list("Norm_Counts" = norm_counts),
+
+  openxlsx::write.xlsx(x         = list("Norm_Counts"     = norm_counts),
                        file      = file.path(output_dir, "Norm_Counts_ExpressionPlots.xlsx"),
                        overwrite = TRUE)
-  
+
   openxlsx::write.xlsx(x         = list("Log_Norm_Counts" = log_norm_counts),
                        file      = file.path(output_dir, "Log_Norm_Counts_ExpressionPlots_TFAnalysis.xlsx"),
                        overwrite = TRUE)
-  
-  openxlsx::write.xlsx(x         = list("VST_Blind" = vst_blind_counts),
+
+  openxlsx::write.xlsx(x         = list("VST_Blind"       = vst_blind_counts),
                        file      = file.path(output_dir, "VST_Blind_Counts_QC_PCA_Correlation.xlsx"),
                        overwrite = TRUE)
-  
-  # ---- 🪵 Log Output and Return ----
-  
-  log_info(sample = "", 
-           step   = "create_dds", 
-           msg    = "dds created successfully. Saved to: 'DESeq2_dds.rds'")
-  
+
+  log_info(sample = "", step = "create_dds",
+           msg    = glue::glue("dds built with '{fit_type}' dispersion fit. Saved to: {output_dir}"))
+
   return(invisible(dds))
 }
 
@@ -336,20 +380,20 @@ create_dds <- function(txi, metadata, tx2gene, output_dir, design = 1, expr_mat 
 
 if (!interactive()) {
   args <- commandArgs(trailingOnly = TRUE)
-  
+
   get_arg <- function(idx, default = NULL) {
     if (idx > length(args)) return(default)
     val <- args[idx]
     if (is.na(val) || val == "" || val == "null" || val == "NULL") return(default)
     return(val)
   }
-  
+
   create_dds(
     txi        = get_arg(1),
     metadata   = get_arg(2),
     tx2gene    = get_arg(3),
     output_dir = get_arg(4, "."),
-    design     = get_arg(5, "1"), 
+    design     = get_arg(5, "1"),
     expr_mat   = get_arg(6)
   )
 }

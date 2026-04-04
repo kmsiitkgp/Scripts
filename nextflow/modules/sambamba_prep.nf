@@ -1,38 +1,36 @@
-// =========================================================================================
+// =============================================================================
 // PROCESS: SAMBAMBA_PREP
-// =========================================================================================
-// Purpose: Prepares BAM files for downstream QC analysis
+// =============================================================================
+// Purpose: Prepares BAM files for downstream QC and analysis
 //
 // What it does:
-//   1. Renames BAM to standardized format
-//   2. Indexes full BAM file (creates .bai)
-//   3. Calculates read length from BAM
-//   4. Creates 1M read subsample for fast QC
-//   5. Indexes subsampled BAM
+//   1. Renames BAM to standardized sample_id.bam format
+//   2. Indexes full BAM (creates .bam.bai for random access)
+//   3. Detects read length from first 10K reads
+//   4. Creates a 1M-read subsample for fast RSeQC gene body coverage
+//   5. Indexes the subsampled BAM
 //
 // Why subsample?
-//   - RSeQC gene body coverage is slow on full BAM (~30 min)
-//   - 1M reads sufficient for detecting 3' bias (~2-3 min)
-//   - 10-15x speedup with minimal accuracy loss
+//   - RSeQC gene body coverage on full BAM can take 30+ minutes
+//   - 1M reads is sufficient to detect 3' bias (~2-3 min runtime)
+//   - ~10-15x speedup with negligible accuracy loss
 //
-// Typical resources: 4-8GB RAM, ~5-10 minutes per sample
-//
-// For detailed explanation, see: docs/bam_preparation.md
-// =========================================================================================
+// Typical resources: 4-8GB RAM, 5-10 minutes per sample
+// =============================================================================
 
 process SAMBAMBA_PREP {
 
-    tag "Indexing and subsampling ${raw_bam.name}"
-    label 'process_medium'                  // Moderate resources: 4-8GB RAM, 4 cores
+    tag "BAM prep: ${species} / ${sample_id}"
+    label 'process_medium'                        // 4-8GB RAM, 4 cores
 
-    //publishDir { "${params.proj_dir()}/${species}/04.STAR/bam" },    mode: 'copy',    pattern: "*.{bam,bam.bai}",    saveAs: { filename -> filename.contains('.1M') ? null : filename }
-    publishDir { "${params.proj_dir()}/${species}/07.Logs" },        mode: 'copy',    pattern: "*.SAMBAMBA_PREP.error.log"
+    publishDir { "${params.proj_dir()}/${species}/07.Logs" },    mode: 'copy',    pattern: "*.SAMBAMBA_PREP.error.log"
 
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
-    tuple val(species), val(sample_id), path(raw_bam)  // [species, sample_id, sorted_bam_from_STAR]
+    tuple val(species), val(sample_id), path(raw_bam)
+    // raw_bam: Coordinate-sorted BAM from STAR_ALIGN (long filename e.g. *.Aligned.sortedByCoord.out.bam)
 
     // =================================================================================
     // OUTPUT
@@ -40,13 +38,13 @@ process SAMBAMBA_PREP {
     output:
     tuple val(species),
         val(sample_id),
-        path("${sample_id}.bam"),                                        // Renamed full BAM
-        path("${sample_id}.bam.bai"),                                    // Full BAM index
-        path("${sample_id}.1M.bam"),                                     // Subsampled BAM (1M reads)
-        path("${sample_id}.1M.bam.bai"),                                 // Subsample index
-        path("${sample_id}.read_length.txt"),                            // Detected read length
+        path("${sample_id}.bam"),                  // Renamed full BAM
+        path("${sample_id}.bam.bai"),              // Full BAM index
+        path("${sample_id}.1M.bam"),               // 1M-read subsample
+        path("${sample_id}.1M.bam.bai"),           // Subsample index
+        path("${sample_id}.read_length.txt"),      // Detected read length (used by RSeQC)
         emit: bam_indexed
-    path("${sample_id}.SAMBAMBA_PREP.error.log"),     emit: error_log    // Process log
+    path("${sample_id}.SAMBAMBA_PREP.error.log"),    emit: error_log    // Process log
 
     // =================================================================================
     // EXECUTION
@@ -57,83 +55,71 @@ process SAMBAMBA_PREP {
 
     """
     # Step 1: Standardize BAM filename
-    # STAR outputs long names like "Sample.Aligned.sortedByCoord.out.bam"
-    # Rename to simple "Sample.bam" for consistency
+    # STAR outputs long names (e.g. Sample.Aligned.sortedByCoord.out.bam)
     mv "${raw_bam}" "${sample_id}.bam"
 
     # Step 2: Index full BAM
-    # Creates ${sample_id}.bam.bai for random access
-    # sambamba is faster than samtools (multi-threaded)
+    # sambamba is faster than samtools for indexing (multi-threaded)
     sambamba index -t "${task.cpus}" "${sample_id}.bam" \
         1>> "${LOG}" 2>&1 \
         || { echo "❌ ERROR: BAM indexing failed for ${sample_id}" | tee -a "${LOG}" >&2; exit 1; }
 
     echo "✅ SUCCESS: BAM indexed for ${sample_id}" >> "${LOG}"
 
-    # Step 3: Calculate read length
-    # Extract from first 10K reads, find most common length
-    # Used by RSeQC scripts that need read length parameter
+    # Step 3: Detect read length from first 10K reads
+    # Extract CIGAR field (col 10) length; take most frequent value
+    # Used by RSeQC deletion_profile and mismatch_profile
     sambamba view "${sample_id}.bam" | \
         head -n 10000 | \
         awk '{print length(\$10)}' | \
         sort | uniq -c | sort -rn | head -n 1 | \
         awk '{print \$2}' > "${sample_id}.read_length.txt"
 
-    # Step 4: Calculate subsampling fraction
-    # Target: 1M reads (sufficient for gene body coverage QC)
-    # If BAM has <1M reads, use all (fraction = 1.0)
-    TOTAL=\$(sambamba view -c -t ${task.cpus} "${sample_id}.bam")
+    # Step 4: Calculate subsampling fraction to target ~1M reads
+    # If total reads <= 1M, use fraction 1.0 (keep all reads)
+    TOTAL=\$(sambamba view -c -t "${task.cpus}" "${sample_id}.bam")
     FRACTION=\$(awk -v total=\$TOTAL 'BEGIN {
         if (total <= 1000000) print 1.0;
         else print 1000000/total
     }')
 
-    # Step 5: Subsample BAM
-    # --subsampling-seed=42: Reproducible random sampling
+    # Step 5: Subsample BAM to ~1M reads
+    # --subsampling-seed 42: Reproducible random sampling across runs
     sambamba view \
         -t "${task.cpus}" \
         -f bam \
         -s \$FRACTION \
-        --subsampling-seed=42 \
+        --subsampling-seed 42 \
         "${sample_id}.bam" \
         -o "${sample_id}.1M.bam" \
         1>> "${LOG}" 2>&1 \
-        || { echo "❌ ERROR: Subsampling failed for ${sample_id}" | tee -a "${LOG}" >&2; exit 1; }
+        || { echo "❌ ERROR: BAM subsampling failed for ${sample_id}" | tee -a "${LOG}" >&2; exit 1; }
 
-    echo "✅ SUCCESS: Subsampled to ~1M reads for ${sample_id}" >> "${LOG}"
+    echo "✅ SUCCESS: BAM subsampled to ~1M reads for ${sample_id}" >> "${LOG}"
 
     # Step 6: Index subsampled BAM
     sambamba index -t "${task.cpus}" "${sample_id}.1M.bam" \
         1>> "${LOG}" 2>&1 \
-        || { echo "❌ ERROR: Subsample index failed for ${sample_id}" | tee -a "${LOG}" >&2; exit 1; }
+        || { echo "❌ ERROR: Subsample BAM indexing failed for ${sample_id}" | tee -a "${LOG}" >&2; exit 1; }
 
-    echo "✅ SUCCESS: Subsample indexed for ${sample_id}" >> "${LOG}"
+    echo "✅ SUCCESS: Subsample BAM indexed for ${sample_id}" >> "${LOG}"
     """
 }
 
-// =========================================================================================
+// =============================================================================
 // QUICK REFERENCE
-// =========================================================================================
+// =============================================================================
 //
-// Input: Raw BAM from aligner (STAR, HISAT2, etc.)
-// Outputs:
-//   - Full BAM + index (for visualization, variant calling)
-//   - 1M subsample + index (for fast QC)
-//   - Read length file (for RSeQC parameters)
+// Outputs passed to RSEQC:
+//   full BAM + .bai         : For read_distribution, junction_annotation, artifact profiles
+//   1M subsample + .bai     : For gene body coverage and junction saturation (speed)
+//   read_length.txt         : For deletion_profile and mismatch_profile --read-align-length
 //
-// Why sambamba?
-//   - Multi-threaded (faster than samtools)
-//   - Compatible with samtools format
-//   - Efficient subsampling
+// Why sambamba over samtools?
+//   - Multi-threaded indexing and view (faster at scale)
+//   - Compatible with samtools BAM format
 //
-// Subsampling strategy:
-//   - Target: 1M reads
-//   - Seed: 42 (reproducible)
-//   - Random sampling (not first N reads)
-//
-// Typical speedup:
-//   - Gene body coverage: 10-15x faster
-//   - 30 minutes → 2-3 minutes
-//
-// For comprehensive guide, see: docs/bam_preparation.md
-// ========================================================================================='
+// Common issues:
+//   - "truncated file" error → Upstream STAR BAM may be incomplete; check STAR log
+//   - read_length.txt empty  → BAM may have too few reads; check alignment rate
+// =============================================================================

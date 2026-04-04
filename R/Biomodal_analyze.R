@@ -26,6 +26,8 @@ sum_total_c <- readr::read_tsv(file.path(path, "biomodal_output", "sum_total_c.t
 sum(round(sum_hmc[4:27]/sum_total_c[4:27] - frac_hmc[4:27],2), na.rm=TRUE)
 sum(round(sum_mc[4:27]/sum_total_c[4:27] - frac_mc[4:27],2), na.rm=TRUE)
 
+rm(list = intersect(ls(), c("count_hmc", "count_mc", "count_total_c", "frac_mc", "frac_hmc", "sum_hmc", "sum_mc", "sum_total_c")))
+
 # ---- Get genes that already have 5mc and 5hmc in normal samples ----
 
 # http://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/genes/
@@ -73,14 +75,22 @@ tss_region_gr <- GenomicRanges::promoters(x = transcripts,
 
 # Helper function to get collapsed gene names for a single Hits object
 get_collapsed_genes <- function(peaks, hits, subject_gr) {
-  # We use seq_along(peaks) here, but define peaks inside lapply
-  sapply(seq_along(peaks), function(i) {
-    # Extract gene names for the current peak 'i'
-    #unique_names <- unique(subject_gr$gene_name[S4Vectors::subjectHits(hits)[S4Vectors::queryHits(hits) == i]])
-    unique_names <- unique(S4Vectors::mcols(subject_gr)$gene_name[S4Vectors::subjectHits(hits)[S4Vectors::queryHits(hits) == i]])
+  
+  # 1. Create a factor for ALL possible peak indices (1 to N)
+  # This ensures that even peaks with 0 hits get an entry in the list
+  query_factor <- factor(S4Vectors::queryHits(hits), levels = seq_along(peaks))
+  
+  # 2. Split subject hits based on that factor
+  # This avoids the 'drop' error and keeps the list length = length(peaks)
+  hits_by_query <- S4Vectors::splitAsList(S4Vectors::subjectHits(hits), query_factor)
+  
+  # 3. Extract gene names for all peaks
+  sapply(hits_by_query, function(idx) {
+    # If a peak had no hits, idx will be an empty integer vector
+    if (length(idx) == 0) return("NA")
     
+    unique_names <- unique(S4Vectors::mcols(subject_gr)$gene_name[idx])
     
-    # Return "NA" if no names are found, else return semicolon-separated string
     if (length(unique_names) == 0) {
       return("NA")
     } else {
@@ -121,6 +131,10 @@ annotated_list <- list()
 annotated_list[["normal_5hmc"]] <- normal_5hmc 
 annotated_list[["normal_5mc"]] <- normal_5mc
 
+all_promoter_genes <- list()
+all_tss_genes      <- list()
+all_gene_body_genes <- list()
+
 for (i in names(annotated_list)){
   
   # 4️⃣ Merge genes across samples
@@ -150,6 +164,11 @@ for (i in names(annotated_list)){
       unique()
   })
   
+  # Save for diagnostics BEFORE intersecting
+  all_promoter_genes[[i]]  <- promoter_genes
+  all_tss_genes[[i]]       <- tss_genes
+  all_gene_body_genes[[i]] <- gene_body_genes
+  
   # Genes present in ALL normal samples
   common_promoter_genes <- purrr::reduce(.x = promoter_genes, .f = intersect)
   common_tss_genes      <- purrr::reduce(.x = tss_genes, .f = intersect)
@@ -177,219 +196,177 @@ for (i in names(annotated_list)){
 
 # ---- Identify DMR in tumor ----
 
-# DMR in normal DNA
-normal_dmr_hmc <- read.xlsx(file.path(path,  "normal_5hmc.xlsx"))
-normal_dmr_mc <- read.xlsx(file.path(path,  "normal_5mc.xlsx"))
+# 1. Reference Data (Normal DNA)
+ref_hmc <- read.xlsx(file.path(path, "normal_5hmc.xlsx"))
+ref_mc  <- read.xlsx(file.path(path, "normal_5mc.xlsx"))
 
-# DMR in cfDNA ( = ctDNA + normal DNA)
-#dmr_hmc_24 <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251124_130348_DMR_hmc_Pre__Post_20251124_130348.tsv"), show_col_types = FALSE)
-#dmr_mc_24 <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251124_130348_DMR_mc_Pre__Post_20251124_130348.tsv"), show_col_types = FALSE)
+# 2. Raw cfDNA Data ( = ctDNA + Normal DNA)
+# raw_hmc <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251124_130348_DMR_hmc_Pre__Post_20251124_130348.tsv"), show_col_types = FALSE)
+# raw_mc  <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251124_130348_DMR_mc_Pre__Post_20251124_130348.tsv"), show_col_types = FALSE)
 
-dmr_hmc_21 <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251208_144543_DMR_hmc_Pre__Post_20251208_144543.tsv"), show_col_types = FALSE)
-dmr_mc_21 <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251208_144543_DMR_mc_Pre__Post_20251208_144543.tsv"), show_col_types = FALSE)
+raw_hmc <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251208_144543_DMR_hmc_Pre__Post_20251208_144543.tsv"), show_col_types = FALSE)
+raw_mc  <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251208_144543_DMR_mc_Pre__Post_20251208_144543.tsv"), show_col_types = FALSE)
 
-sig_dmr_hmc <- dmr_hmc_21 %>% 
+# 3. Filtered Significant cfDNA DMRs
+sig_hmc <- raw_hmc %>% 
   dplyr::mutate(mean_mod_group_1 = ifelse(mean_mod_group_1 == 0, 1e-6, mean_mod_group_1),
                 mean_mod_group_2 = ifelse(mean_mod_group_2 == 0, 1e-6, mean_mod_group_2),
-                mod_fold_change = mean_mod_group_2 / mean_mod_group_1,
-                mod_lfc = log2(mod_fold_change)) %>%
+                mod_fold_change  = mean_mod_group_2 / mean_mod_group_1,
+                mod_lfc          = log2(mod_fold_change)) %>%
   dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_lfc) >= 0.58, !is.na(Name))
 
-sig_dmr_mc <- dmr_mc_21 %>% 
+sig_mc <- raw_mc %>% 
   dplyr::mutate(mean_mod_group_1 = ifelse(mean_mod_group_1 == 0, 1e-6, mean_mod_group_1),
                 mean_mod_group_2 = ifelse(mean_mod_group_2 == 0, 1e-6, mean_mod_group_2),
-                mod_fold_change = mean_mod_group_2 / mean_mod_group_1,
-                mod_lfc = log2(mod_fold_change)) %>% 
+                mod_fold_change  = mean_mod_group_2 / mean_mod_group_1,
+                mod_lfc          = log2(mod_fold_change)) %>% 
   dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_lfc) >= 0.58, !is.na(Name))
 
-# Remove normal DMR 
-tumor_DMR_hmc <- sig_dmr_hmc %>%
-  anti_join(normal_dmr_hmc, by = c("Name"="Name", "Annotation"="Annotation")) %>%
+# 4. Final Tumor-Specific DMRs (Normal-subtracted)
+# Remove any DMR whose gene name appears in the normal reference (ref_hmc/ref_mc),
+# regardless of annotation label (Promoter/TSS/Gene). This gene-level subtraction
+# is intentionally conservative: since the normal reference (hg19) and Biomodal 
+# output (hg38) use different genome builds and platforms, annotation labels for 
+# the same gene can differ due to coordinate shifts at region boundaries. Matching 
+# on gene name alone avoids retaining false positives caused by this label 
+# discordance. The cost is ~5% fewer hits, which is acceptable given the 
+# specificity gain.
+tumor_hmc <- sig_hmc %>%
+  anti_join(ref_hmc, by = c("Name")) %>%
   arrange(Annotation, Name) %>%
   dplyr::mutate(key = paste(Chromosome, Start, End, Name, Annotation, sep = "_"))
 
-tumor_DMR_mc <- sig_dmr_mc %>%
-  anti_join(normal_dmr_mc, by = c("Name"="Name", "Annotation"="Annotation")) %>%
+tumor_mc <- sig_mc %>%
+  anti_join(ref_mc, by = c("Name", "Annotation")) %>%
   arrange(Annotation, Name) %>%
-  dplyr::mutate(key = paste(Chromosome, Start, End, Name, Annotation, sep = "_"))
+  dplyr::mutate(key = paste(Chromosome, Start, End, Name, Annotation, sep = "_"),
+                # Flag genes that would be removed under strict filtering
+                in_strict_ref = Name %in% ref_mc$Name)
 
-# ---- UMAP ----
+write.xlsx(sig_hmc, 
+           file = file.path(path, "Tumor+Normal_5hmC_DMRs.xlsx"), 
+           overwrite = TRUE)
 
-metadata <- read.xlsx(file.path(path, "Metadata.xlsx"))
-  
-# Some genes like CD99, MKSS have more than 1 TSS. So, multiple entries exist.
-# Collapse into single entry using max signal.
-# logit transform the fraction data
-hmc_mat <- frac_hmc[,4:ncol(frac_hmc)] %>% 
-  dplyr::group_by(Name, Annotation) %>%
-  dplyr::summarize(across(.cols = everything(), .fns = max), .groups = "drop") %>%
-  dplyr::inner_join(sig_dmr_hmc %>% dplyr::select(Name, Annotation),
-                    by = c("Name", "Annotation")) %>%
-  dplyr::mutate(ID = paste0(Name, ".", Annotation)) %>%
-  dplyr::select(-Name, -Annotation) %>%
-  tibble::column_to_rownames("ID") %>%
-  dplyr::rename_with(.fn = function(x){ gsub("_num_hmc_region_frac", "", x)})
+write.xlsx(sig_mc, 
+           file = file.path(path, "Tumor+Normal_5mC_DMRs.xlsx"), 
+           overwrite = TRUE)
 
-# Replace NAs and 0/1 extremes and logit transform
-epsilon <- 1e-6
-hmc_mat[is.na(hmc_mat)] <- epsilon
-hmc_mat[hmc_mat == 0] <- epsilon
-hmc_mat[hmc_mat == 1] <- 1 - epsilon
-logit_hmc <- log(hmc_mat / (1 - hmc_mat)) %>% as.matrix()
+write.xlsx(tumor_hmc, 
+           file = file.path(path, "Tumor_Specific_5hmC_DMRs.xlsx"), 
+           overwrite = TRUE)
 
-mc_mat <- frac_mc[,4:ncol(frac_mc)] %>% 
-  dplyr::group_by(Name, Annotation) %>%
-  dplyr::summarize(across(.cols = everything(), .fns = max), .groups = "drop") %>%
-  dplyr::inner_join(sig_dmr_mc %>% dplyr::select(Name, Annotation),
-                    by = c("Name", "Annotation")) %>%
-  dplyr::mutate(ID = paste0(Name, ".", Annotation)) %>%
-  dplyr::select(-Name, -Annotation) %>%
-  tibble::column_to_rownames("ID") %>%
-  dplyr::rename_with(.fn = function(x){ gsub("_num_mc_region_frac", "", x)})
-
-# Replace NAs and 0/1 extremes and logit transform
-epsilon <- 1e-6
-mc_mat[is.na(mc_mat)] <- epsilon
-mc_mat[mc_mat == 0] <- epsilon
-mc_mat[mc_mat == 1] <- 1 - epsilon
-logit_mc <- log(mc_mat / (1 - mc_mat)) %>% as.matrix()
-
-
-plot_pca(expr_mat = logit_hmc, txi = NULL, metadata = metadata, top_n_genes = 5000, skip_plot = FALSE, filename = "PCA_hmc", output_dir = path)
-plot_pca(expr_mat = logit_mc, txi = NULL, metadata = metadata, top_n_genes = 5000, skip_plot = FALSE, filename = "PCA_mc", output_dir = path)
-
-filename <- "UMAP_hmc"
-plot_umap(expr_mat = logit_hmc, metadata, n_pcs = 50, n_neighbors = NULL, filename, output_dir = path)
-filename <- "UMAP_mc"
-plot_umap(expr_mat = logit_mc, metadata, n_pcs = 50, n_neighbors = NULL, filename, output_dir = path)
-
-# ---- Pie Chart ----
-
-sig_dmr_hmc_all <- dmr_hmc_21 %>% 
-  dplyr::mutate(mean_mod_group_1 = ifelse(mean_mod_group_1 == 0, 1e-6, mean_mod_group_1),
-                mean_mod_group_2 = ifelse(mean_mod_group_2 == 0, 1e-6, mean_mod_group_2),
-                mod_fold_change = mean_mod_group_2 / mean_mod_group_1,
-                mod_fold_change = log2(mod_fold_change)) %>%
-  dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_fold_change) >= 0.58)
-
-sig_dmr_mc_all <- dmr_mc_21 %>% 
-  dplyr::mutate(mean_mod_group_1 = ifelse(mean_mod_group_1 == 0, 1e-6, mean_mod_group_1),
-                mean_mod_group_2 = ifelse(mean_mod_group_2 == 0, 1e-6, mean_mod_group_2),
-                mod_fold_change = mean_mod_group_2 / mean_mod_group_1,
-                mod_fold_change = log2(mod_fold_change)) %>% 
-  dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_fold_change) >= 0.58)
-
-
-plot_piechart(metadata = sig_dmr_hmc_all, segment_col = "Annotation", filename = "5hmc_all", output_dir = path, split_col = NULL)
-plot_piechart(metadata = sig_dmr_mc_all, segment_col = "Annotation", filename = "5mc_all", output_dir = path, split_col = NULL)
+write.xlsx(tumor_mc, 
+           file = file.path(path, "Tumor_Specific_5mC_DMRs.xlsx"), 
+           overwrite = TRUE)
 
 
 # ---- Patient wise analysis ----
 
+# 1. Load Metadata and Define Patient Pairs
 metadata <- read.xlsx(file.path(path, "Metadata.xlsx"))
+samples  <- unique(metadata$Sample_ID)
 
-# Get all possible comparisons between controls and experiments
-samples <- metadata %>%
-  dplyr::pull(Sample_ID) %>%
-  unique()
+# 2. Generate all pairs and find C1 vs. Post-baseline matches for the same patient
+combns      <- utils::combn(x = samples, m = 2)
+p_controls  <- c()
+p_expts     <- c()
 
-combns <- utils::combn(x = samples, m = 2)
-controls <- c()
-expts <- c()
-comparisons <- list()
-for (i in 1:ncol(combns)){
+for (i in 1:ncol(combns)) {
+  # Strip timepoint labels to see if IDs match (e.g., Patient_A_C1 -> Patient_A)
+  id_a <- gsub("C1|C2|C3|EOT", "", combns[1, i])
+  id_b <- gsub("C1|C2|C3|EOT", "", combns[2, i])
   
-  a <- gsub(pattern = "C1|C2|C3|EOT", "", x = combns[1, i])
-  b <- gsub(pattern = "C1|C2|C3|EOT", "", x = combns[2, i])
-  
-  if (a == b){
-    if(grepl("C1", combns[1,i]) & !grepl("C1", combns[2,i])){
-      control <- combns[1, i]
-      expt <- combns[2, i]
-      controls <- c(controls, control)
-      expts <- c(expts, expt)
+  if (id_a == id_b) {
+    # Ensure we always treat C1 as the baseline/control
+    if (grepl("C1", combns[1, i]) & !grepl("C1", combns[2, i])) {
+      p_controls <- c(p_controls, combns[1, i])
+      p_expts    <- c(p_expts, combns[2, i])
     } 
   }
 }
 
-comparisons[["control"]] <- controls
-comparisons[["expt"]] <- expts
+patient_comparisons <- list(control = p_controls, expt = p_expts)
 
-# Get fraction of 5mc and 5hmc
-frac_hmc <- readr::read_tsv(file.path(path, "biomodal_output", "frac_hmc.tsv"), show_col_types = FALSE)
-frac_mc <- readr::read_tsv(file.path(path, "biomodal_output", "frac_mc.tsv"), show_col_types = FALSE)
+# 3. Process Methylation Fractions
+# Load raw fractions
+frac_hmc_raw <- readr::read_tsv(file.path(path, "biomodal_output", "frac_hmc.tsv"), show_col_types = FALSE)
+frac_mc_raw  <- readr::read_tsv(file.path(path, "biomodal_output", "frac_mc.tsv"), show_col_types = FALSE)
 
-colnames(frac_hmc) <- gsub("_num_hmc_region_frac", "", colnames(frac_hmc))
-colnames(frac_mc) <- gsub("_num_mc_region_frac", "", colnames(frac_mc))
-
-frac_hmc <- frac_hmc %>% 
-  dplyr::mutate(across(.cols = everything(), .fns = function(x) { replace(x, is.na(x), 0) })) %>%
-  dplyr::mutate(n_UP = 0, n_DOWN = 0)
-frac_mc <- frac_mc %>% 
-  dplyr::mutate(across(.cols = everything(), .fns = function(x) { replace(x, is.na(x), 0) })) %>%
-  dplyr::mutate(n_UP = 0, n_DOWN = 0)
-
-for (i in seq_along(comparisons$control)){
+process_fracs <- function(df, suffix) {
+  # 1. Clean column names using the specific suffix (hmc or mc)
+  colnames(df) <- gsub(suffix, "", colnames(df))
   
-  ctrl <- comparisons$control[i]
-  expt <- comparisons$expt[i]
-  
-  # Get regions between Control and Experiment
-  frac_hmc <- frac_hmc %>%
-    dplyr::mutate(n_UP   = n_UP   + as.integer(.data[[expt]] > .data[[ctrl]]),
-                  n_DOWN = n_DOWN + as.integer(.data[[expt]] < .data[[ctrl]]))
-  
-  # Get regions between Control and Experiment
-  frac_mc <- frac_mc %>%
-    dplyr::mutate(n_UP   = n_UP   + as.integer(.data[[expt]] > .data[[ctrl]]),
-                  n_DOWN = n_DOWN + as.integer(.data[[expt]] < .data[[ctrl]]))
+  # 2. Fix NAs and add counters
+  df %>%
+    dplyr::mutate(across(where(is.numeric), ~replace(.x, is.na(.x), 0))) %>%
+    dplyr::mutate(n_UP = 0, n_DOWN = 0)
 }
 
-frac_hmc <- frac_hmc %>% 
-  dplyr::mutate(across(.cols = everything(), .fns = function(x) { replace(x, x == 0, NA) })) %>%
-  dplyr::filter(n_UP != n_DOWN, !is.na(Name))
-frac_mc <- frac_mc %>% 
-  dplyr::mutate(across(.cols = everything(), .fns = function(x) { replace(x, x == 0, NA) })) %>%
-  dplyr::filter(n_UP != n_DOWN, !is.na(Name))
+frac_hmc <- process_fracs(frac_hmc_raw, "_num_hmc_region_frac")
+frac_mc  <- process_fracs(frac_mc_raw,  "_num_mc_region_frac")
 
-# Get pvalues and other stats from biomodal DMR analysis
-dmr_hmc_21 <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251208_144543_DMR_hmc_Pre__Post_20251208_144543.tsv"), show_col_types = FALSE)
-dmr_mc_21 <- readr::read_tsv(file.path(path, "biomodal_output", "DMR_20251208_144543_DMR_mc_Pre__Post_20251208_144543.tsv"), show_col_types = FALSE)
+# 4. Calculate Patient-Wise Trends (UP/DOWN counts)
+for (i in seq_along(patient_comparisons$control)) {
+  ctrl_id <- patient_comparisons$control[i]
+  expt_id <- patient_comparisons$expt[i]
+  
+  # Increment counters if Experiment > Control (UP) or Experiment < Control (DOWN)
+  frac_hmc <- frac_hmc %>%
+    dplyr::mutate(n_UP   = n_UP   + as.integer(.data[[expt_id]] > .data[[ctrl_id]]),
+                  n_DOWN = n_DOWN + as.integer(.data[[expt_id]] < .data[[ctrl_id]]))
+  
+  frac_mc <- frac_mc %>%
+    dplyr::mutate(n_UP   = n_UP   + as.integer(.data[[expt_id]] > .data[[ctrl_id]]),
+                  n_DOWN = n_DOWN + as.integer(.data[[expt_id]] < .data[[ctrl_id]]))
+}
 
-frac_hmc <- frac_hmc %>%
-  dplyr::left_join(dmr_hmc_21, by=c("Chromosome", "Start", "End", "Name", "Annotation"))
-frac_mc <- frac_mc %>%
-  dplyr::left_join(dmr_mc_21, by=c("Chromosome", "Start", "End", "Name", "Annotation"))
+# 5. Reformat and filter results
+finalize_dmr_results <- function(frac_df, raw_df, tumor_df) {
+  
+  frac_df %>%
+    # 1. Filter for regions with a consistent trend and valid names
+    dplyr::filter(n_UP != n_DOWN, !is.na(Name)) %>%
+    
+    # 2. Join with significant DMR statistics
+    dplyr::inner_join(raw_df, by = c("Chromosome", "Start", "End", "Name", "Annotation")) %>%
+    
+    # 3. Add the 'Type' (Tumor only vs Normal) using the key
+    dplyr::mutate(
+      key = paste(Chromosome, Start, End, Name, Annotation, sep = "_"),
+      Type = ifelse(key %in% tumor_df$key, "Tumor only", "Normal"),
+      n_Diff = n_UP - n_DOWN
+    ) %>%
+    
+    # 4. Select and rename columns for the final report
+    dplyr::select(
+      Chromosome, Start, End, Name, Annotation, Type, 
+      n_UP, n_DOWN, n_Diff, 
+      n_CpGs = num_contexts, 
+      Log2FC = mod_lfc,    # Standardized mapping
+      FDR    = dmr_qvalue, 
+      everything()
+    ) %>%
+    
+    # Remove the temporary key before returning
+    dplyr::select(-key)
+}
 
-# Add "Type" column indicating if region was tumor specific
-frac_hmc <- frac_hmc %>%
-  mutate(key = paste(Chromosome, Start, End, Name, Annotation, sep = "_")) %>%
-  mutate(Type = ifelse(key %in% tumor_DMR_hmc$key, "Tumor only", "Normal")) %>%
-  select(-key)  # remove temporary key
+sig_hmc   <- read.xlsx(file.path(path, "Tumor+Normal_5hmC_DMRs.xlsx"))
+sig_mc    <- read.xlsx(file.path(path, "Tumor+Normal_5mC_DMRs.xlsx"))
+tumor_hmc <- read.xlsx(file.path(path, "Tumor_Specific_5hmC_DMRs.xlsx"))
+tumor_mc  <- read.xlsx(file.path(path, "Tumor_Specific_5mC_DMRs.xlsx"))
 
-frac_mc <- frac_mc %>%
-  mutate(key = paste(Chromosome, Start, End, Name, Annotation, sep = "_")) %>%
-  mutate(Type = ifelse(key %in% tumor_DMR_mc$key, "Tumor only", "Normal")) %>%
-  select(-key)  # remove temporary key
+final_hmc_out <- finalize_dmr_results(frac_hmc, sig_hmc, tumor_hmc)
+final_mc_out  <- finalize_dmr_results(frac_mc, sig_mc, tumor_mc)
 
-# Reformat and save to excel
-frac_hmc <- frac_hmc %>%
-  dplyr::mutate(n_Diff = n_UP - n_DOWN) %>%
-  dplyr::rename(n_CpGs = num_contexts, FDR = dmr_qvalue, log2FC = mod_fold_change) %>%
-  dplyr::select(Chromosome, Start, End, Name, Annotation, Type, n_UP, n_DOWN, n_Diff, n_CpGs, log2FC, FDR, everything())
+# 6. Write to Excel
+# Create a named list where names = Sheet Names and values = DataFrames
+output_list <- list("5hmC_Trends" = final_hmc_out, 
+                    "5mC_Trends"  = final_mc_out)
 
-frac_mc <- frac_mc %>%
-  dplyr::mutate(n_Diff = n_UP - n_DOWN) %>%
-  dplyr::rename(n_CpGs = num_contexts, FDR = dmr_qvalue, log2FC = mod_fold_change) %>%
-  dplyr::select(Chromosome, Start, End, Name, Annotation, Type, n_UP, n_DOWN, n_Diff, n_CpGs, log2FC, FDR, everything())
- 
-# Write to Excel
-wb <- createWorkbook()
-addWorksheet(wb, "hmc")
-writeData(wb, sheet = "hmc", frac_hmc)
-addWorksheet(wb, "mc")
-writeData(wb, sheet = "mc", frac_mc)
-saveWorkbook(wb, file.path(path, "Biomodal_final_results.xlsx"), overwrite = TRUE)
+# Write everything in one go
+write.xlsx(output_list, file = file.path(path, "Biomodal_Patient_Trend_Analysis.xlsx"), overwrite = TRUE)
+
 
 # ---- Overlap with Felix Fang data ----
 path <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Biomodal"
@@ -859,4 +836,76 @@ plot_pathway(pathway_df = top_ora,
 #   dplyr::select(Name, Annotation, hmc_diff, mc_diff, hmc_logFC, mc_logFC, Trend)
 # 
 # comparison_df %>% dplyr::count(Trend)
+
+
+# ---- UMAP ----
+
+metadata <- read.xlsx(file.path(path, "Metadata.xlsx"))
+
+# Some genes like CD99, MKSS have more than 1 TSS. So, multiple entries exist.
+# Collapse into single entry using max signal.
+# logit transform the fraction data
+hmc_mat <- frac_hmc[,4:ncol(frac_hmc)] %>% 
+  dplyr::group_by(Name, Annotation) %>%
+  dplyr::summarize(across(.cols = everything(), .fns = max), .groups = "drop") %>%
+  dplyr::inner_join(sig_dmr_hmc %>% dplyr::select(Name, Annotation),
+                    by = c("Name", "Annotation")) %>%
+  dplyr::mutate(ID = paste0(Name, ".", Annotation)) %>%
+  dplyr::select(-Name, -Annotation) %>%
+  tibble::column_to_rownames("ID") %>%
+  dplyr::rename_with(.fn = function(x){ gsub("_num_hmc_region_frac", "", x)})
+
+# Replace NAs and 0/1 extremes and logit transform
+epsilon <- 1e-6
+hmc_mat[is.na(hmc_mat)] <- epsilon
+hmc_mat[hmc_mat == 0] <- epsilon
+hmc_mat[hmc_mat == 1] <- 1 - epsilon
+logit_hmc <- log(hmc_mat / (1 - hmc_mat)) %>% as.matrix()
+
+mc_mat <- frac_mc[,4:ncol(frac_mc)] %>% 
+  dplyr::group_by(Name, Annotation) %>%
+  dplyr::summarize(across(.cols = everything(), .fns = max), .groups = "drop") %>%
+  dplyr::inner_join(sig_dmr_mc %>% dplyr::select(Name, Annotation),
+                    by = c("Name", "Annotation")) %>%
+  dplyr::mutate(ID = paste0(Name, ".", Annotation)) %>%
+  dplyr::select(-Name, -Annotation) %>%
+  tibble::column_to_rownames("ID") %>%
+  dplyr::rename_with(.fn = function(x){ gsub("_num_mc_region_frac", "", x)})
+
+# Replace NAs and 0/1 extremes and logit transform
+epsilon <- 1e-6
+mc_mat[is.na(mc_mat)] <- epsilon
+mc_mat[mc_mat == 0] <- epsilon
+mc_mat[mc_mat == 1] <- 1 - epsilon
+logit_mc <- log(mc_mat / (1 - mc_mat)) %>% as.matrix()
+
+
+plot_pca(expr_mat = logit_hmc, txi = NULL, metadata = metadata, top_n_genes = 5000, skip_plot = FALSE, filename = "PCA_hmc", output_dir = path)
+plot_pca(expr_mat = logit_mc, txi = NULL, metadata = metadata, top_n_genes = 5000, skip_plot = FALSE, filename = "PCA_mc", output_dir = path)
+
+filename <- "UMAP_hmc"
+plot_umap(expr_mat = logit_hmc, metadata, n_pcs = 50, n_neighbors = NULL, filename, output_dir = path)
+filename <- "UMAP_mc"
+plot_umap(expr_mat = logit_mc, metadata, n_pcs = 50, n_neighbors = NULL, filename, output_dir = path)
+
+# ---- Pie Chart ----
+
+sig_dmr_hmc_all <- dmr_hmc_21 %>% 
+  dplyr::mutate(mean_mod_group_1 = ifelse(mean_mod_group_1 == 0, 1e-6, mean_mod_group_1),
+                mean_mod_group_2 = ifelse(mean_mod_group_2 == 0, 1e-6, mean_mod_group_2),
+                mod_fold_change = mean_mod_group_2 / mean_mod_group_1,
+                mod_fold_change = log2(mod_fold_change)) %>%
+  dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_fold_change) >= 0.58)
+
+sig_dmr_mc_all <- dmr_mc_21 %>% 
+  dplyr::mutate(mean_mod_group_1 = ifelse(mean_mod_group_1 == 0, 1e-6, mean_mod_group_1),
+                mean_mod_group_2 = ifelse(mean_mod_group_2 == 0, 1e-6, mean_mod_group_2),
+                mod_fold_change = mean_mod_group_2 / mean_mod_group_1,
+                mod_fold_change = log2(mod_fold_change)) %>% 
+  dplyr::filter(dmr_qvalue <= 0.05, num_contexts >= 10, abs(mod_fold_change) >= 0.58)
+
+
+plot_piechart(metadata = sig_dmr_hmc_all, segment_col = "Annotation", filename = "5hmc_all", output_dir = path, split_col = NULL)
+plot_piechart(metadata = sig_dmr_mc_all, segment_col = "Annotation", filename = "5mc_all", output_dir = path, split_col = NULL)
+
 

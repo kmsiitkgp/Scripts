@@ -290,12 +290,12 @@ for (y in c("cam_genes", "scaffold_genes", "combo")){
   transformed_data <- t(transformed_data) %>%
     as.data.frame() %>%
     tibble::rownames_to_column("SYMBOL") %>%
-    dplyr::mutate(SYMBOL = gsub(pattern= "\\.", replacement= " ", x=SYMBOL))
+    dplyr::mutate(SYMBOL = gsub(pattern= "//.", replacement= " ", x=SYMBOL))
   colnames(transformed_data)[1] <- "SYMBOL"
   
   metadata_column <- metadata %>% 
     tibble::rownames_to_column("Sample")
-  colnames(metadata_column) <- gsub(pattern= "\\.", replacement= " ", x=colnames(metadata_column))
+  colnames(metadata_column) <- gsub(pattern= "//.", replacement= " ", x=colnames(metadata_column))
   
   metadata_row <- NULL
   plot_genes <- transformed_data$SYMBOL
@@ -907,7 +907,7 @@ gse_list <- c("GSE5287", "GSE13507", "GSE31684", "GSE32894", "GSE48075",
 
 # --- 3. Function to Process a Single GSE (Data Retrieval & Gene Summarization) ---
 process_and_summarize_gse <- function(gse_id) {
-  message(paste("\n--- Processing GSE:", gse_id, "---"))
+  message(paste("/n--- Processing GSE:", gse_id, "---"))
   
   # a. Data Retrieval
   gset <- getGEO(gse_id, GSEMatrix = TRUE)
@@ -985,7 +985,7 @@ cl_1750 <- openxlsx::read.xlsx(
   tidyr::separate(
     col = ID, # The column to split
     into = c("Sample_ID", "GSM_temp"), # The names of the new columns
-    sep = "\\.", # The delimiter (the comma)
+    sep = "//.", # The delimiter (the comma)
     remove = FALSE # Keep the original 'Full_Name_Code' column
   ) %>%
   dplyr::mutate(GSM_temp = dplyr::case_when(is.na(GSM_temp) ~ Sample_ID,
@@ -1344,9 +1344,371 @@ for (proj in PROJ){
   
 }
 
+#******************************************************************************#
+
+# Calculate DEGs
+proj <- "scRNASeq_Simon"
+source("/hpc/home/kailasamms/projects/scRNASeq/scRNASeq_Seurat_Functions_Variables.R")
+celltype <- "Epithelial"
+
+# Load the seurat object
+integrated_seurat <- readRDS(paste0(seurat_results, "Simon_integrated_seurat_snn",
+                                    dplyr::if_else(is.null(celltype), ".rds", paste0("_", celltype, ".rds"))))
+									
+DefaultAssay(integrated_seurat) <- "RNA"
+Idents(integrated_seurat) <- "subtype"
+
+# Get annotations from ENSEMBL
+annotations <- get_annotations(species)			
+
+  # Find ALL markers
+  all_markers <- Seurat::FindAllMarkers(object=integrated_seurat,
+                                        assay="RNA",
+                                        features=NULL,
+                                        logfc.threshold=0.25,
+                                        test.use="wilcox",
+                                        slot="data",
+                                        min.pct=0.1,
+                                        min.diff.pct=0.1,
+                                        node=NULL,
+							
+                                        verbose=TRUE,
+                                        only.pos=TRUE,
+                                        max.cells.per.ident=Inf,
+                                        random.seed=1,
+                                        latent.vars=NULL,
+                                        min.cells.feature=3,
+                                        min.cells.group=1,
+                                        pseudocount.use=1,
+                                        mean.fxn=NULL,
+                                        fc.name=NULL,
+                                        base=2,
+                                        return.thresh=0.01,
+                                        densify=FALSE)
+  
+  all_markers <- all_markers %>% 
+    dplyr::mutate(pct.1=dplyr::if_else(pct.1 == 0, 0.001, pct.1),
+                  pct.2=dplyr::if_else(pct.2 == 0, 0.001, pct.2),
+                  ratio=pct.1/pct.2) %>%
+    dplyr::left_join(y=unique(annotations[, c("SYMBOL", "CHR", "DESCRIPTION")]), by=c("gene"="SYMBOL")) %>%
+    dplyr::relocate(cluster, gene, CHR, avg_log2FC, p_val, p_val_adj, pct.1, pct.2, ratio, DESCRIPTION)
+	
+	
+# Save all the markers
+filename <- paste0(proj, "_Markers_All_Chao_", celltype,".xlsx")
+
+wb <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb=wb, sheetName="All_Markers")
+openxlsx::writeData(wb=wb, sheet="All_Markers", x=all_markers)
+openxlsx::saveWorkbook(wb=wb, file=paste0(seurat_results, filename), overwrite=TRUE)
+
+scaffold_genes <- c("DLG2", "DLG4", "HOMER1", "HOMER2", "HOMER3", "SHANK1", 
+                    "SHANK2", "SHANK3")
+cam_genes <- c("CDH2", "CDH12", "LRFN1", "DAG1", "NLGN1", "NLGN2", "NLGN3",
+               "LRRTM1", "LRRTM2", "ADGRL2", "ADGRL3", "EPHB2", "EPHB3", 
+               "ADGRB1", "ADGRB3")
+ampa <- c("GRIA1", "GRIA2", "GRIA3", "GRIA4")
+muscarinergic <- c("CHRM1", "CHRM2", "CHRM3", "CHRM4", "CHRM5")
+gaba_b <- c("GABBR1", "GABBR2")
+glycinergic <- c("GLRA1", "GLRA2", "GLRA3", "GLRA4", "GLRB")
+kainate <- c("GRIK1", "GRIK2", "GRIK3", "GRIK4", "GRIK5")
+nmda <- c("GRIN1", "GRIN2A", "GRIN2B", "GRIN2C", "GRIN2D", "GRIN3A", "GRIN3B")
+adrenergic <- c("ADRA1A", "ADRA1B", "ADRA1D", "ADRA2A", "ADRA2B", "ADRA2C",
+                "ADRB1", "ADRB2", "ADRB3")
+ionotrophic <- c("HTR1A", "HTR1B", "HTR1D", "HTR1E", "HTR1F", "HTR2A", "HTR2B", 
+                 "HTR2C", "HTR3A", "HTR3B", "HTR3C", "HTR3D", "HTR3E", "HTR4")
+gaba_a <- c("GABRA1", "GABRA2", "GABRA3", "GABRA4", "GABRA5", "GABRA6", "GABRB1",
+            "GABRB2", "GABRB3", "GABRD", "GABRE", "GABRG1", "GABRG2", "GABRG3", 
+            "GABRP", "GABRQ", "GABRR1", "GABRR2", "GABRR3")
+glutamate <- c("GRM1", "GRM2", "GRM3", "GRM4", "GRM5", "GRM6", "GRM7", "GRM8")
+nicotinergic <- c("CHRNA1", "CHRNA10", "CHRNA2", "CHRNA3", "CHRNA4", "CHRNA5",
+                  "CHRNA6", "CHRNA7", "CHRNA9", "CHRNB1", "CHRNB2", "CHRNB3",
+                  "CHRNB4", "CHRND", "CHRNE", "CHRNG")
+neuro_genes <- c(adrenergic, ampa, muscarinergic, ionotrophic, gaba_a, gaba_b,
+                   glycinergic, kainate, glutamate, nicotinergic, nmda, cam_genes,
+				   scaffold_genes)
+
+# Plot heatmap
+source("/hpc/home/kailasamms/projects/RNASeq/RNASeq_DESeq2_Functions.R")
+
+plot_genes <- all_markers %>%
+        dplyr::filter(p_val_adj <= 0.05) %>% 
+        dplyr::add_count(gene) %>%
+        dplyr::filter(n==1) %>%       
+        dplyr::group_by(cluster) %>%
+        dplyr::slice_max(avg_log2FC, n=50) %>%
+        dplyr::ungroup() %>%
+        dplyr::select(gene) %>%
+        unlist(use.names=FALSE) %>%
+        unique()
+
+#plot_genes <- neuro_genes
+disp_genes <- neuro_genes
+																	
+																		   
+
+metadata <- integrated_seurat@meta.data %>%
+            dplyr::select(barcode, subtype)
+			
+data <- integrated_seurat@assays$RNA@data
+data <- data[rownames(data) %in% plot_genes, ]
+data <- data %>%
+        t() %>%
+        data.frame() %>%
+        tibble::rownames_to_column("Cell") %>%
+        dplyr::left_join(metadata, by=c("Cell" = "barcode")) %>%
+        dplyr::select(subtype, everything(), -Cell) %>%
+        dplyr::group_by(subtype) %>%
+        dplyr::summarize(across(everything(), mean,na.rm=TRUE)) %>%
+        tibble::column_to_rownames("subtype") %>%
+        t() %>%
+        data.frame() %>%
+        tibble::rownames_to_column("SYMBOL")
+		
+metadata_column <- data.frame("Sample"=c("CDH12_Epithelial", "KRT13_Epithelial", "KRT6A_Epithelial", "UPK_Epithelial", "Cycling_Epithelial"))
+metadata_row <- NULL
+columns <- "Sample"
+perform_log_transform <- FALSE
+perform_scaling <- TRUE
+row_clustering <- FALSE    
+col_clustering <- FALSE    
+row_clustering_alphabetical <- FALSE
+col_clustering_alphabetical <- FALSE
+gaps_in_col <- FALSE
+gap_columns <- "Score"   # Irrelevant if gaps_in_col is FALSE
+gaps_in_row <- FALSE
+gap_rows <- "Pathway"    # Irrelevant if gaps_in_row is FALSE
+col_clustering_within_group <- FALSE
+row_clustering_within_group <- FALSE
+anno_columns <- NA
+anno_rows <- NA
+color_by_cols <- FALSE
+color_by_rows <- FALSE
+my_palette <- colorRampPalette(rev(brewer.pal(n = 11, name = "RdYlBu")))(100)
+my_palette<- colorRampPalette(rev(brewer.pal(n = 11, name = "Spectral")))(100)
+file_format <- ".pdf"
+file_suffix <- "50" #"neuro"  #"50", "500"
+bar_width <- NA #10 #NA
+bar_height <- NA #10 #NA
+expr_legend <- TRUE
+results_path <- ""
+plot_heatmap(data, metadata_column, metadata_row, plot_genes, 
+              disp_genes, file_suffix, file_format, results_path, 
+               bar_width, bar_height, expr_legend)		
 
 
+# ---- new survivl curves ---
 
+#source from utils.R
+metadata      <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Past/Xinyi/Dr.Chao project/TCGA_BLCA_Metadata.xlsx"
+expr_data     <-  "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Past/Xinyi/Dr.Chao project/TCGA_BLCA_Normalized.xlsx"
+output_dir    <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop"
 
+metadata  <- load_smart(metadata)
+expr_data <- load_smart(expr_data)
 
+time_col             <- "Time"
+status_col           <- "Status"
 
+# facet_var            <- NULL
+# global_cutoff        <- TRUE
+# cutoff_method        <- "optimal"
+show_all_bins        <- FALSE
+# calc_signature_score <- TRUE
+conf_interval        <- FALSE
+plot_curve           <- TRUE
+plot_risk_table      <- TRUE
+time_units           <- "months"
+# title                <- NULL
+# filename             <- "Survival_Plot_new"
+# facet_var            <- "consensusClass"
+
+library(BLCAsubtyping)
+library(consensusMIBC)
+row_id               <- "SYMBOL"
+if (any(duplicated(expr_data[[row_id]]))) {
+  
+  expr_matrix <- expr_data %>%
+    as.data.frame() %>%
+    #tibble::rownames_to_column(row_id) %>%
+    dplyr::mutate(total_expr = rowSums(dplyr::across(-dplyr::all_of(row_id), abs))) %>%
+    dplyr::group_by(.data[[row_id]]) %>%
+    dplyr::slice_max(order_by = total_expr, n = 1, with_ties = FALSE) %>%
+    dplyr::ungroup() %>%
+    tibble::column_to_rownames(row_id) %>%
+    dplyr::select(-total_expr) %>%
+    as.matrix()
+}
+tcga_cl <- getConsensusClass(x = expr_matrix, gene_id = c("hgnc_symbol")) %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column("Sample_ID") %>%
+  dplyr::mutate(Sample_ID = make.names(Sample_ID))
+metadata <- dplyr::left_join(x = metadata %>% dplyr::mutate(Sample_ID = make.names(Sample_ID)), 
+                             y = tcga_cl,
+                             by = c("Sample_ID" = "Sample_ID"))
+  
+
+plot_survival(metadata             = metadata,
+              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
+              expr_data            = expr_data,
+              cutoff_method        = "optimal",
+              calc_signature_score = FALSE,
+              filename             = "GRIA1-4_individual_all_patients",
+              output_dir           = output_dir)
+
+plot_survival(metadata             = metadata,
+              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
+              expr_data            = expr_data,
+              cutoff_method        = "optimal",
+              calc_signature_score = TRUE,
+              filename             = "GRIA1-4_combinedscore_all_patients",
+              output_dir           = output_dir)
+
+plot_survival(metadata             = metadata,
+              stratify_var         = c("GRIA1", "GRIA2"),
+              expr_data            = expr_data,
+              cutoff_method        = "optimal",
+              calc_signature_score = TRUE,
+              filename             = "GRIA1-2_combinedscore_all_patients",
+              output_dir           = output_dir)
+
+plot_survival(metadata             = metadata,
+              stratify_var         = "consensusClass",
+              filename             = "QCSurv",
+              output_dir           = output_dir)
+
+plot_survival(metadata             = metadata,
+              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
+              facet_var            = "consensusClass",
+              expr_data            = expr_data,
+              cutoff_method        = "optimal",
+              global_cutoff        = FALSE,
+              calc_signature_score = FALSE,
+              filename             = "GRIA1-4_individual_subclass",
+              output_dir           = output_dir)
+
+plot_survival(metadata             = metadata,
+              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
+              facet_var            = "consensusClass",
+              expr_data            = expr_data,
+              cutoff_method        = "optimal",
+              global_cutoff        = FALSE,
+              calc_signature_score = TRUE,
+              filename             = "GRIA1-4_combinedscore_subclass",
+              output_dir           = output_dir)
+
+plot_survival(metadata             = metadata,
+              stratify_var         = c("GRIA1", "GRIA2"),
+              facet_var            = "consensusClass",
+              expr_data            = expr_data,
+              cutoff_method        = "optimal",
+              global_cutoff        = FALSE,
+              calc_signature_score = TRUE,
+              filename             = "GRIA1-2_combinedscore_subclass",
+              output_dir           = output_dir)
+
+plot_survival(metadata             = metadata %>% 
+                dplyr::mutate(Stage = dplyr::case_when(grepl(pattern="T0", x=Stage) ~ "Unknown",
+                                                       grepl(pattern="T1", x=Stage) ~ "I",
+                                                       grepl(pattern="T2", x=Stage) ~ "II",
+                                                       grepl(pattern="T3", x=Stage) ~ "III",
+                                                       grepl(pattern="T4", x=Stage) ~ "IV",
+                                                       TRUE ~ "Unknown")) %>%
+                dplyr::filter(Stage %in% c("I", "II", "III", "IV")),
+              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
+              facet_var            = "Stage",
+              expr_data            = expr_data,
+              cutoff_method        = "optimal",
+              global_cutoff        = FALSE,
+              calc_signature_score = FALSE,
+              filename             = "GRIA1-4_individual_stage",
+              output_dir           = output_dir)
+
+plot_survival(metadata             = metadata %>% 
+                dplyr::mutate(Stage = dplyr::case_when(grepl(pattern="T0", x=Stage) ~ "Unknown",
+                                                       grepl(pattern="T1", x=Stage) ~ "I",
+                                                       grepl(pattern="T2", x=Stage) ~ "II",
+                                                       grepl(pattern="T3", x=Stage) ~ "III",
+                                                       grepl(pattern="T4", x=Stage) ~ "IV",
+                                                       TRUE ~ "Unknown")) %>%
+                dplyr::filter(Stage %in% c("I", "II", "III", "IV")),
+              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
+              facet_var            = "Stage",
+              expr_data            = expr_data,
+              cutoff_method        = "optimal",
+              global_cutoff        = FALSE,
+              calc_signature_score = TRUE,
+              filename             = "GRIA1-4_combinedscore_stage",
+              output_dir           = output_dir)
+
+plot_survival(metadata             = metadata %>% 
+                dplyr::mutate(Stage = dplyr::case_when(grepl(pattern="T0", x=Stage) ~ "Unknown",
+                                                       grepl(pattern="T1", x=Stage) ~ "I",
+                                                       grepl(pattern="T2", x=Stage) ~ "II",
+                                                       grepl(pattern="T3", x=Stage) ~ "III",
+                                                       grepl(pattern="T4", x=Stage) ~ "IV",
+                                                       TRUE ~ "Unknown")) %>%
+                dplyr::filter(Stage %in% c("I", "II", "III", "IV")),
+              stratify_var         = c("GRIA1", "GRIA2"),
+              facet_var            = "Stage",
+              expr_data            = expr_data,
+              cutoff_method        = "optimal",
+              global_cutoff        = FALSE,
+              calc_signature_score = TRUE,
+              filename             = "GRIA1-2_combinedscore_stage",
+              output_dir           = output_dir)
+
+# 1. Setup Path and Files
+base_path <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/16th. Oct. 2025/"
+
+files <- c("GRIA1_2_combinedscore_all_patients.xlsx",
+           "GRIA1_2_combinedscore_stage.xlsx",
+           "GRIA1_2_combinedscore_subclass.xlsx",
+           "GRIA1_4_combinedscore_all_patients.xlsx",
+           "GRIA1_4_combinedscore_stage.xlsx",
+           "GRIA1_4_combinedscore_subclass.xlsx",
+           "GRIA1_4_individual_all_patients.xlsx",
+           "GRIA1_4_individual_stage.xlsx",
+           "GRIA1_4_individual_subclass.xlsx")
+
+# 2. Map through files and target "cox_stats"
+master_cox_df <- map_df(files, function(f) {
+  
+  full_path <- file.path(base_path, f)
+  
+  # Safety checks
+  if (!file.exists(full_path)) return(NULL)
+  if (!("cox_stats" %in% getSheetNames(full_path))) return(NULL)
+  
+  # Metadata extraction
+  parts    <- str_split(gsub(".xlsx", "", f), "_")[[1]]
+  gene_set <- paste(parts[1], parts[2], sep = "_")
+  type     <- parts[3]
+  grouping <- paste(parts[4:length(parts)], collapse = "_")
+  
+  # Read and tag
+  read.xlsx(full_path, sheet = "cox_stats") %>%
+    mutate(
+      Filename    = f,           # Add filename here
+      Gene_Set    = gene_set,
+      Score_Type  = type,
+      Grouping    = grouping
+    ) %>%
+    mutate(across(everything(), as.character)) # Clean merge
+})
+
+# 3. Final cleanup and column reordering
+numeric_cols <- c("HR", "pval", "CI_lower", "CI_upper", 
+                  "p_logrank", "p_logrank_late", "p_gehan_breslow", 
+                  "p_tarone_ware", "p_peto_peto", "p_mod_peto", "p_fleming_harrington")
+
+master_cox_df <- master_cox_df %>%
+  # Restore numeric types
+  mutate(across(any_of(numeric_cols), as.numeric)) %>%
+  # Force Filename to be the 1st column
+  relocate(Filename, .before = everything())
+
+# 4. Save the result
+write.xlsx(master_cox_df, file.path(base_path, "MASTER_MERGED_COX_STATS.xlsx"))
+
+message("Success! The merged file with 'Filename' as the first column is ready.")

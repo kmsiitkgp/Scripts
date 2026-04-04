@@ -3,12 +3,15 @@
 # ---- 📦 1. Load Libraries (Always Runs) ----
 
 suppressPackageStartupMessages({
-  library(dplyr)      # Provides the %>% operator
-  library(readr)
+  library(dplyr)
+  library(tidyr)
   library(tibble)
-  library(tximport)
-  library(openxlsx)
   library(DESeq2)
+  library(SummarizedExperiment)
+  library(S4Vectors)
+  library(limma)
+  library(openxlsx)
+  library(glue)
 })
 
 # ---- 🛠️ 2. Smart Setup (Find & source UTILS.R) ----
@@ -18,18 +21,15 @@ get_utils_path <- function() {
   if (.Platform$OS.type == "windows") {
     return("C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/Scripts/nextflow/modules/UTILS.R")
   }
-  
   # 2. Interactive Linux / macOS (HPC interactive session)
   if (interactive()) {
-    # Assume project root is current working directory
     return(file.path(getwd(), "modules", "UTILS.R"))
   }
-  
   # 3. Non-interactive (Nextflow / Rscript)
   initial.options <- commandArgs(trailingOnly = FALSE)
-  file_arg <- grep("--file=", initial.options, value = TRUE)
+  file_arg        <- grep("--file=", initial.options, value = TRUE)
   if (length(file_arg) == 0) stop("Cannot detect script path for UTILS.R!")
-  script_dir <- dirname(sub("--file=", "", file_arg))
+  script_dir      <- dirname(sub("--file=", "", file_arg))
   return(file.path(script_dir, "UTILS.R"))
 }
 
@@ -39,355 +39,457 @@ source(utils_path)
 
 # ---- 🧬 3. Function Definition (Always Runs) ----
 
-extract_deseq2_results <- function(contrast, dds, tx2gene, output_dir, batch_vars = NULL, lfc_cutoff = 0, padj_cutoff = 0.1) {
-  
-  # Load the actual data objects using the paths
+extract_deseq2_results <- function(contrast, dds, tx2gene, output_dir,
+                                   batch_vars = NULL, lfc_cutoff = 0, padj_cutoff = 0.1) {
+
   dds     <- load_smart(dds)
   tx2gene <- load_smart(tx2gene)
-  
-  # For ashr
+
+  # ashr shrinkage (Section 4) uses an EM algorithm with random initialisation.
+  # Setting a seed here ensures shrinkage estimates are numerically reproducible
+  # across re-runs — without this, tiny differences in LFC estimates can appear
+  # between otherwise identical runs, making QC comparisons harder.
   set.seed(1234)
-  
-  # ---- 🧮 Dynamic Contrast Parsing (PARSER METHOD) ----
-  
-  # Extract design variables (e.g., c("Condition", "Batch"))
-  # all.vars is robust; it handles ~Batch+Condition and ~Batch+Condition*Treatment
+
+  # Sanitise contrast string into a filesystem-safe directory name early —
+  # output_dir is used from Section 5 onward so we build it here once.
+  safe_contrast <- gsub("[^[:alnum:]_-]", "_", contrast)
+  output_dir    <- file.path(output_dir, safe_contrast)
+  if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 1: Dynamic Contrast Parsing (Parser Method)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # The parser method converts a human-readable contrast string (e.g. "A - B",
+  # "GroupA - GroupB + GroupC") into a numeric contrast vector over the model
+  # matrix columns. This is more general than DESeq2's built-in c() syntax,
+  # which can only express simple two-group pairwise comparisons.
+  #
+  # Why not just use c(factor, numerator, denominator) for everything?
+  # Because c() is hardcoded to one factor column + two level names. Any
+  # contrast with 3+ terms — additive, interaction, or otherwise — cannot be
+  # expressed with c() and requires a numeric coefficient vector instead.
+  #
+  # Strategy:
+  #   1. Build a model matrix from the dds design
+  #   2. Map each group name to its mean coefficient vector in that matrix
+  #   3. Recursively substitute group names in the contrast expression with
+  #      their coefficient vectors, then evaluate the resulting arithmetic
+  #   4. The output is a numeric vector of length ncol(model_matrix) that
+  #      encodes the desired contrast as a linear combination of coefficients
+
+  # all.vars() robustly extracts variable names from any formula structure,
+  # including interactions (e.g. ~Batch + Condition * Treatment)
   design_vars <- all.vars(DESeq2::design(dds))
-  
-  # Extract the model matrix 
-  # This is useful for downstream checking of rank deficiency
-  mod_mat <- stats::model.matrix(DESeq2::design(dds), 
+
+  # Model matrix used for coefficient-vector contrast construction and rank checks.
+  # Why model.matrix() here instead of pulling from dds directly?
+  # Because we need the actual numeric matrix to compute per-group colMeans —
+  # the dds object does not expose this directly.
+  mod_mat <- stats::model.matrix(DESeq2::design(dds),
                                  data = SummarizedExperiment::colData(dds))
-  
-  # Create "Groups" column for easy subsetting/contrasts
+
+  # ── 1a. Build Groups column ──────────────────────────────────────────────
+  # Combine all design variables into a single "Groups" column so individual
+  # samples can be mapped to their model matrix rows for coefficient averaging.
+  # Why unite() across ALL design variables (not just the condition)?
+  # Because in a multi-factor design (e.g. ~Batch + Condition), each unique
+  # combination of all factor levels defines a distinct group in the model
+  # matrix — collapsing to just one variable would misassign rows.
+
   if (length(design_vars) > 0) {
-    df_groups <- SummarizedExperiment::colData(dds) %>% 
-      as.data.frame() %>% 
+    df_groups <- SummarizedExperiment::colData(dds) %>%
+      as.data.frame() %>%
       tidyr::unite(col = "Groups", dplyr::all_of(design_vars), sep = "_", remove = FALSE)
-    
-    # Update the dds colData to include this combined Groups column
+
     SummarizedExperiment::colData(dds)$Groups <- as.factor(df_groups$Groups)
+
   } else {
-    # If design is ~1, Groups is just "All"
-    df_groups <- SummarizedExperiment::colData(dds)$Groups <- as.factor("All")
+    # No design variables — intercept-only model. All samples belong to one group.
+    # Must build df_groups as a proper dataframe (not scalar) so that
+    # df_groups$Groups is accessible downstream. Chained assignment
+    # (df_groups <- colData()$Groups <- ...) would make df_groups a scalar,
+    # causing df_groups$Groups to return NULL and breaking group_coef_list.
+    df_groups <- SummarizedExperiment::colData(dds) %>%
+      as.data.frame() %>%
+      dplyr::mutate(Groups = as.factor("All"))
+
+    SummarizedExperiment::colData(dds)$Groups <- df_groups$Groups
   }
-  
-  # Define all possible groups that could be compared based on the design
+
   groups <- unique(df_groups$Groups)
-  
-  # Map groups to mean model coefficients (Get all possible coefficient vectors)
-  group_coef_list <- lapply(groups, function(i) colMeans(as.matrix(mod_mat[df_groups$Groups == i, , drop = FALSE])))
+
+  # ── 1b. Map groups to coefficient vectors ────────────────────────────────
+  # For each group, average the model matrix rows belonging to that group.
+  # Why colMeans() rather than taking a single row?
+  # colMeans() is robust to unbalanced designs — a group with many samples
+  # gives the same coefficient vector as one with a single sample, because
+  # the model matrix encodes group membership, not raw counts.
+
+  group_coef_list <- lapply(groups, function(i) {
+    colMeans(as.matrix(mod_mat[df_groups$Groups == i, , drop = FALSE]))
+  })
   names(group_coef_list) <- groups
-  
-  # Recursive function to evaluate the contrast string (e.g., "A-B") as a vector operation
+
+  # ── 1c. Validate groups before parsing ──────────────────────────────────
+  # Check for missing groups BEFORE calling replace_symbols() / eval().
+  # If a group name in the contrast string is not in group_coef_list,
+  # replace_symbols() will leave it as an unevaluated R symbol and eval()
+  # will throw a cryptic "object not found" error. Checking here first gives
+  # a clear, informative error message instead.
+
+  parsed_expr    <- base::parse(text = contrast)[[1]]
+  missing_groups <- setdiff(all.vars(parsed_expr), names(group_coef_list))
+
+  if (length(missing_groups) > 0) {
+    log_error(sample = contrast, step = "extract_deseq2_results",
+              msg = glue::glue("These groups in contrast do not exist in the design: ",
+                               "{paste(missing_groups, collapse = ', ')}"))
+  }
+
+  # ── 1d. Recursively evaluate contrast expression ─────────────────────────
+  # replace_symbols() walks the parsed R expression tree and substitutes each
+  # group name symbol with its coefficient vector from group_coef_list.
+  # When it encounters an operator like "-" or "+", it returns the node
+  # unchanged — these are R language objects (calls), not group names, and
+  # R's eval() knows how to apply arithmetic to numeric vectors.
+  # The final eval() call then executes the substituted expression, producing
+  # a single numeric contrast vector via ordinary vector arithmetic.
+
   replace_symbols <- function(node) {
     if (is.symbol(node)) {
       nm <- as.character(node)
-      if (nm %in% names(group_coef_list)) {
-        return(group_coef_list[[nm]])
-      } else {
-        # it's an operator like "-" or "+" → return unchanged
-        return(node)
-      }
+      if (nm %in% names(group_coef_list)) return(group_coef_list[[nm]])
+      return(node)  # Arithmetic operator ("+", "-" etc.) — return as-is for eval()
     } else if (is.call(node)) {
       return(as.call(lapply(node, replace_symbols)))
     } else {
       return(node)
     }
   }
-  
-  parsed_expr <- base::parse(text = contrast)[[1]]
-  expr_sub <- replace_symbols(parsed_expr)
+
+  expr_sub        <- replace_symbols(parsed_expr)
   contrast_parser <- base::eval(expr_sub)
-  
-  # ⚠️ Sanity Check: contrast_parser Alignment
+
+  # ── 1e. Sanity checks on contrast vector ────────────────────────────────
+
   if (length(contrast_parser) != ncol(mod_mat)) {
-    log_error(sample = contrast,
-              step   = "extract_deseq2_results",
-              msg    = glue::glue("Length of contrast_parser ({length(contrast_parser)}) does 
-                                   not match the number of columns in the design matrix ({ncol(mod_mat)})."))
+    log_error(sample = contrast, step = "extract_deseq2_results",
+              msg = glue::glue("Length of contrast_parser ({length(contrast_parser)}) does not ",
+                               "match number of model matrix columns ({ncol(mod_mat)})."))
   }
-  
+
   if (all(contrast_parser == 0)) {
-    log_error(sample = contrast,
-              step   = "extract_deseq2_results",
-              msg    = "contrast_parser is all zeros — invalid contrast. Check the user-provided contrast string.")
+    log_error(sample = contrast, step = "extract_deseq2_results",
+              msg = "contrast_parser is all zeros — invalid contrast. Check the contrast string.")
   }
-  
-  missing_groups <- setdiff(all.vars(parsed_expr), names(group_coef_list))
-  if (length(missing_groups) > 0) {
-    log_error(sample = contrast,
-              step   = "extract_deseq2_results",
-              msg    = glue::glue("These groups in contrast do not exist in the design: {paste(missing_groups, collapse=', ')}"))
-  }
-  
+
   if (any(is.na(contrast_parser))) {
-    log_error(sample = contrast,
-              step   = "extract_deseq2_results",
-              msg    = "Contrast vector contains NA — possible missing or empty group.")
+    log_error(sample = contrast, step = "extract_deseq2_results",
+              msg = "Contrast vector contains NA — possible missing or empty group.")
   }
-  
-  # ---- 🧹 Zero out user-specified batch covariates ----
-  
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 2: Zero Out Batch Covariates
+  # ═══════════════════════════════════════════════════════════════════════════
+  # When batch variables are in the design (e.g. ~Batch + Condition), the
+  # parser contrast vector will contain non-zero coefficients for the batch
+  # columns. We zero these out so the contrast only captures the biological
+  # signal of interest, not the batch effect.
+  #
+  # Why zero out rather than exclude batch from the design?
+  # Keeping batch in the design lets DESeq2 account for it during dispersion
+  # estimation and normalisation — we just don't want it contributing to the
+  # final contrast direction.
+
   if (!is.null(batch_vars)) {
-    
-    # Find model matrix columns corresponding to nuisance vars
-    batch_cols <- grep(paste0("^(", paste(batch_vars, collapse="|"), ")"), 
-                          names(contrast_parser), value = TRUE)
-    
+
+    batch_cols <- grep(paste0("^(", paste(batch_vars, collapse = "|"), ")"),
+                       names(contrast_parser), value = TRUE)
+
     if (length(batch_cols) == 0) {
-      log_error(sample = contrast,
-                step   = "extract_deseq2_results",
-                msg    = glue::glue("Nuisance vars {paste(batch_vars, collapse=', ')} 
-                                   not found in model matrix columns. 
-                                   Are they included in the design formula?"))
+      log_error(sample = contrast, step = "extract_deseq2_results",
+                msg = glue::glue("Batch vars {paste(batch_vars, collapse = ', ')} not found in ",
+                                 "model matrix columns. Are they in the design formula?"))
     }
-    
-    # Confounding check — warn if batch is confounded with groups
+
+    # Warn if a batch variable is fully confounded with Groups — this means
+    # every group has only one unique batch level, so zeroing batch coefficients
+    # removes information that cannot be separated from the biological signal.
     for (nv in batch_vars) {
-      if (nv %in% colnames(colData(dds))) {
+      if (nv %in% colnames(SummarizedExperiment::colData(dds))) {
         tab <- table(df_groups$Groups, SummarizedExperiment::colData(dds)[[nv]])
         if (any(rowSums(tab == 0) == ncol(tab) - 1)) {
-          log_error(sample = contrast,
-                    step   = "extract_deseq2_results",
-                    msg    = glue::glue("Nuisance variable '{nv}' appears confounded 
-                                       with Groups — results unreliable!"))
+          log_error(sample = contrast, step = "extract_deseq2_results",
+                    msg = glue::glue("Batch variable '{nv}' appears fully confounded with Groups — ",
+                                     "batch and biological signal cannot be separated. Results unreliable!"))
         }
       }
     }
-    
-    log_info(sample = contrast,
-             step = "extract_deseq2_results", 
-             msg = glue::glue("ℹ️  Zeroing nuisance covariate(s) from contrast vector: '{paste(batch_cols, collapse = ", ")}'"))
+
+    log_info(sample = contrast, step = "extract_deseq2_results",
+             msg = glue::glue("Zeroing batch covariate(s) from contrast vector: ",
+                              "'{paste(batch_cols, collapse = ', ')}'"))
     contrast_parser[batch_cols] <- 0
   }
-  
-  # ---- 🧮 Dynamic Contrast (STANDARD METHOD) ----
 
-  design_vars <- all.vars(design(dds))
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 3: Standard Contrast (for Cross-Validation)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # The standard contrast uses DESeq2's built-in c(factor, numerator, denominator)
+  # syntax as an independent cross-check against the parser contrast vector.
+  #
+  # Why cross-validate at all?
+  # The parser method is more general but also more complex — a bug in
+  # replace_symbols() or an unexpected model matrix structure could silently
+  # produce a wrong contrast vector. Running the standard method in parallel
+  # and comparing results catches any such discrepancies before they propagate
+  # to downstream analyses.
+  #
+  # Why can't we always use c() and skip the parser?
+  # DESeq2's c(factor, numerator, denominator) syntax is ONLY valid for simple
+  # pairwise comparisons — exactly ONE factor column and exactly TWO group levels.
+  # Any contrast with 3+ terms (additive like "A - B + C", interaction, or
+  # multi-group) cannot be expressed with c() at all. The parser handles all
+  # cases; c() is used here ONLY as a cross-check for the simple case.
+  #
+  # We detect "simple pairwise" by checking length(terms) == 2:
+  # all.vars() on the contrast string returns the group names referenced.
+  # Exactly 2 group names → one subtraction → safe to use c() syntax.
+  # 3+ group names → complex contrast → fall back to parser vector for both methods.
+
+  # NOTE: design_vars is NOT re-extracted here — it was already computed in
+  # Section 1. condition_col uses tail() because DESeq2 convention places the
+  # primary condition of interest as the LAST variable in the design formula
+  # (e.g. ~Batch + Condition → condition_col = "Condition"). This assumption
+  # holds for standard designs; only used in the simple pairwise branch below.
   condition_col <- tail(design_vars, 1)
-  
-  all_contrasts <- DESeq2::resultsNames(dds)
-  terms <- all.vars(as.formula(paste0("~", contrast)))
-  
-  if (length(terms) == 2){
-    
-    # --- SIMPLE PAIRWISE (e.g., A - B) ---
+  terms         <- all.vars(as.formula(paste0("~", contrast)))
+
+  if (length(terms) == 2) {
+    # Simple pairwise (e.g. "A - B") — standard c() syntax is valid
     contrast_standard <- c(condition_col, terms[1], terms[2])
-    
   } else {
-    # --- COMPLEX INTERACTION ((A-B) - (C-D)) ---
+    # Complex contrast (3+ terms, additive or interaction) — c() cannot express
+    # this, so both methods use the same parser vector. Cross-validation still
+    # runs to catch any numerical differences from DESeq2's internal handling.
     contrast_standard <- contrast_parser
   }
-  
-  # ---- 🧬 Results & LFC Shrinkage ----
-  
-  res_parser <- DESeq2::results(object               = dds, 
-                                contrast             = contrast_parser,
-                                lfcThreshold         = lfc_cutoff,
-                                altHypothesis        = "greaterAbs",
-                                cooksCutoff          = TRUE,
-                                independentFiltering = TRUE,
-                                alpha                = padj_cutoff,
-                                pAdjustMethod        = "BH")
-  
-  # Use 'ashr' for shrinkage as it is robust for varied effect sizes
-  res_parser <- DESeq2::lfcShrink(dds = dds, res = res_parser, type = "ashr", quiet = TRUE)
-  #summary(res_parser)
-  DEGs_parser   <- process_degs(res_parser, tx2gene)
-  
-  res_standard <- DESeq2::results(object             = dds, 
-                                contrast             = contrast_standard,
-                                lfcThreshold         = lfc_cutoff,
-                                altHypothesis        = "greaterAbs",
-                                cooksCutoff          = TRUE,
-                                independentFiltering = TRUE,
-                                alpha                = padj_cutoff,
-                                pAdjustMethod        = "BH")
-  
-  # Use 'ashr' for shrinkage as it is robust for varied effect sizes
-  res_standard <- DESeq2::lfcShrink(dds = dds, res = res_standard, type = "ashr", quiet = TRUE)
-  #summary(res_standard)
-  DEGs_standard <- process_degs(res_standard, tx2gene)
-  
-  # ---- 📊 COUNT MATRIX EXTRACTION ----
-  
-  # --- VST Non-Blind (Subset per Contrast) ---
-  # VST computed on contrast-specific samples only, design-aware (blind = FALSE).
-  # Dispersions are re-estimated from only the two groups in this contrast
-  # (after dropping unused factor levels) — more accurate than subsetting
-  # columns from a full-dataset VST.
-  # USE ONLY FOR: per-contrast heatmaps, biological clustering
-  
-  # Identify groups in this contrast (e.g., "Vehicle" and "Treatment1")
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 4: DEG Extraction and LFC Shrinkage
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Run DESeq2::results() followed by lfcShrink() for both contrast methods.
+  #
+  # Why ashr shrinkage rather than apeglm?
+  # apeglm only supports single model coefficients (coef= argument) — it cannot
+  # accept a numeric contrast vector. ashr works with any contrast type and is
+  # robust to varied effect size distributions, making it the only viable
+  # choice for complex parser contrasts.
+  #
+  # Why save stat before shrinkage?
+  # lfcShrink() drops the stat column from the results object (it modifies LFC
+  # so the original test statistic no longer applies). We preserve stat here
+  # because it is needed for TF activity analysis downstream (decoupleR uses
+  # the t-statistic as the gene-level input).
+
+  # ── 4a. Parser method ────────────────────────────────────────────────────
+
+  res_parser_raw <- DESeq2::results(object               = dds,
+                                    contrast             = contrast_parser,
+                                    lfcThreshold         = lfc_cutoff,
+                                    altHypothesis        = "greaterAbs",
+                                    cooksCutoff          = TRUE,
+                                    independentFiltering = TRUE,
+                                    alpha                = padj_cutoff,
+                                    pAdjustMethod        = "BH")
+
+  # Collect stat BEFORE shrinkage — lfcShrink() will drop this column
+  stat_parser <- process_degs(res_parser_raw, tx2gene) %>%
+    dplyr::select(gene_id, stat)
+
+  res_parser  <- DESeq2::lfcShrink(dds = dds, res = res_parser_raw, type = "ashr", quiet = TRUE)
+  degs_parser <- process_degs(res_parser, tx2gene) %>%
+    dplyr::left_join(stat_parser, by = "gene_id")
+
+  # ── 4b. Standard method ──────────────────────────────────────────────────
+
+  res_standard_raw <- DESeq2::results(object               = dds,
+                                      contrast             = contrast_standard,
+                                      lfcThreshold         = lfc_cutoff,
+                                      altHypothesis        = "greaterAbs",
+                                      cooksCutoff          = TRUE,
+                                      independentFiltering = TRUE,
+                                      alpha                = padj_cutoff,
+                                      pAdjustMethod        = "BH")
+
+  stat_standard <- process_degs(res_standard_raw, tx2gene) %>%
+    dplyr::select(gene_id, stat)
+
+  res_standard  <- DESeq2::lfcShrink(dds = dds, res = res_standard_raw, type = "ashr", quiet = TRUE)
+  degs_standard <- process_degs(res_standard, tx2gene) %>%
+    dplyr::left_join(stat_standard, by = "gene_id")
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 5: VST (Contrast-Specific, Design-Aware)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Compute VST on only the samples belonging to the two groups in this contrast.
+  #
+  # Why subset before VST rather than taking columns from a full-dataset VST?
+  # VST with blind = FALSE re-estimates dispersions from only the subset samples.
+  # A full-dataset VST includes all samples (including unrelated contrasts),
+  # inflating dispersion estimates and producing less accurate variance
+  # stabilisation for this specific comparison.
+  #
+  # Why blind = FALSE?
+  # blind = TRUE ignores the design formula when estimating dispersions — this
+  # is intended for QC/exploration only. For contrast-specific heatmaps used
+  # in biological interpretation, blind = FALSE uses the design to give more
+  # accurate stabilisation.
+  #
+  # Why droplevels() before vst()?
+  # After subsetting to two groups, the colData factor columns still carry all
+  # original levels from the full dds object. Empty levels cause DESeq2 to
+  # build a rank-deficient model matrix, breaking dispersion estimation.
+  # droplevels() removes unused levels so the design matrix reflects only the
+  # samples actually present in the subset.
+
   group_names <- all.vars(parsed_expr)
-  
-  # Subset dds to only the samples belonging to these two groups
-  dds_subset <- dds[, dds$Groups %in% group_names]
-  
-  # Drop unused factor levels from colData — CRITICAL before VST
-  # Without this, the design matrix retains empty levels from other groups,
-  # which causes incorrect dispersion estimation or errors in vst()
-  colData(dds_subset) <- droplevels(colData(dds_subset))
-  
-  # Compute VST on the subset (blind = FALSE: design-aware, preserves biological signal)
-  # Dispersions are re-estimated from scratch on the subset here
+  dds_subset  <- dds[, dds$Groups %in% group_names]
+
+  # CRITICAL: drop unused factor levels before vst() — see note above
+  SummarizedExperiment::colData(dds_subset) <- droplevels(
+    SummarizedExperiment::colData(dds_subset)
+  )
+
   vst_sub_mat <- DESeq2::vst(dds_subset, blind = FALSE) %>%
     SummarizedExperiment::assay()
-  
-  # Extract contrast-specific sample metadata (aligned to subsetted samples)
+
   meta_sub <- as.data.frame(SummarizedExperiment::colData(dds_subset))
-  
-  # --- 🧹 LIMMA BATCH CORRECTION (Optional) ---
-  # Removes unwanted technical variation (e.g., batch, sex) from the VST matrix
-  # while protecting the biological Groups signal via the design matrix.
-  # Only applied if batch_vars is provided and non-empty.
+
+  # ── 5a. Optional limma batch correction on VST matrix ───────────────────
+  # removeBatchEffect() removes technical variation (e.g. batch, sex) from the
+  # VST matrix while protecting biological signal via a design matrix (~Groups).
+  # Applied AFTER VST (not before) because VST expects raw count-scale data —
+  # batch correction on log-scale VST values is the correct order of operations.
+  # Only applied when batch_vars is provided.
+
   if (!is.null(batch_vars) && any(batch_vars != "")) {
-    
-    # Design matrix protects the Groups coefficient during batch removal
+
     design_sub <- stats::model.matrix(~Groups, data = meta_sub)
-    
-    # Extract batch vectors (up to two batch variables supported)
+
     b1 <- meta_sub[[batch_vars[1]]]
     b2 <- if (length(batch_vars) > 1) meta_sub[[batch_vars[2]]] else NULL
-    
-    log_info(sample = contrast, step = "VST", msg = "Applying limma::removeBatchEffect")
-    
-    # Correct vst_sub_mat in-place — output replaces the uncorrected matrix
+
+    log_info(sample = contrast, step = "extract_deseq2_results",
+             msg = "Applying limma::removeBatchEffect to VST matrix.")
+
     vst_sub_mat <- limma::removeBatchEffect(vst_sub_mat,
                                             batch  = b1,
                                             batch2 = b2,
                                             design = design_sub)
   }
-  
+
   vst_nonblind_counts <- process_counts(vst_sub_mat, tx2gene)
- 
-  # ---- 🔍 Detailed Comparison of Parser and Standard Results ----
-  
-  # 1. Convert to dataframes for comparison
-  df_p <- as.data.frame(res_parser)
-  df_s <- as.data.frame(res_standard)
-  
-  # 2. Check rownames match
-  if (!all(rownames(df_p) == rownames(df_s))) {
-    stop("Row names do not match between Parser and Standard results!")
-  }
-  
-  # 3. Check log2FoldChange within tight tolerance
-  tolerance <- 1e-8
-  lfc_diff <- abs(df_p$log2FoldChange - df_s$log2FoldChange)
-  lfc_is_equal <- all(lfc_diff < tolerance, na.rm = TRUE)
-  max_lfc_diff <- max(lfc_diff, na.rm = TRUE)
-  
-  # 4. Check padj within tight tolerance
-  padj_diff <- abs(df_p$padj - df_s$padj)
-  padj_is_equal <- all(padj_diff < tolerance, na.rm = TRUE)
-  max_padj_diff <- max(padj_diff, na.rm = TRUE)
-  
-  # 5. Compare DEG sets
-  deg_p <- rownames(df_p)[which(df_p$padj < padj_cutoff & abs(df_p$log2FoldChange) > lfc_cutoff)]
-  deg_s <- rownames(df_s)[which(df_s$padj < padj_cutoff & abs(df_s$log2FoldChange) > lfc_cutoff)]
-  
-  shared_degs <- intersect(deg_p, deg_s)
-  only_parser <- setdiff(deg_p, deg_s)
-  only_standard <- setdiff(deg_s, deg_p)
-  
-  # 6. Print Stringent Comparison Report
-  cat("\n--- ⚖️  Parser vs Standard Comparison Report (Stringent) ---\n")
-  cat("Numerical LFC Match: ", lfc_is_equal, " (Max Δ = ", formatC(max_lfc_diff, format='e', digits=2), ")\n", sep="")
-  cat("Numerical padj Match:", padj_is_equal, " (Max Δ = ", formatC(max_padj_diff, format='e', digits=2), ")\n", sep="")
-  cat("\nDEG Set Comparison:\n")
-  cat("- Shared DEGs:       ", length(shared_degs), "\n")
-  cat("- Only in Parser:    ", length(only_parser), "\n")
-  cat("- Only in Standard:  ", length(only_standard), "\n")
-  
-  cat("-----------------------------------------------\n")
-  
-  # For complex interactions, standard gets messy
-  # dds_standard <- fit_deseq2_model(expr_mat    = deseq2_data$expr_mat, 
-  #                                  txi         = deseq2_data$txi, 
-  #                                  metadata    = deseq2_data$metadata,
-  #                                  design      = "Cell_Line * Condition * Treatment")
-  # 
-  # contrast_vec <- setNames(rep(0, length(resultsNames(dds_standard))), 
-  #                          resultsNames(dds_standard))
-  # 
-  # contrast_vec["ConditionWT.Treatment4Gy"] <- -1
-  # contrast_vec["Cell_LineARCaPM.ConditionWT.Treatment4Gy"] <- -1
-  # 
-  # res_standard_ARCaPM <- results(dds_standard, contrast = contrast_vec)
 
-  # ---- 💾 Save Results ----
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 6: Cross-Validate Parser vs Standard Results
+  # ═══════════════════════════════════════════════════════════════════════════
+  # compare_deseq2_results() performs a full column-by-column comparison of
+  # the two result objects and returns a list with an any_differences flag.
+  # We use this flag to decide what to save — keeping output lean when results
+  # are identical (the expected case for simple contrasts).
 
-  # Sanitize contrast name for file safety (removes spaces, slashes, etc.)
-  safe_contrast <- gsub("[^[:alnum:]_-]", "_", contrast)
-  output_dir <- file.path(output_dir, safe_contrast)
-  
-  if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
-  
-  openxlsx::write.xlsx(x         = list("DEGs_Parser" = DEGs_parser),
-                       file      = file.path(output_dir, "DEGs.xlsx"),
-                       overwrite = TRUE)
-  
-  openxlsx::write.xlsx( x         = list("VST_NonBlind" = vst_nonblind_counts),
-                        file      = file.path(output_dir, "VST_NonBlind_Counts_Heatmaps.xlsx"),
-                        overwrite = TRUE)
-  
-  # Keep your RDS files for R-specific backup
+  comparison <- compare_deseq2_results(
+    res_a      = res_parser,
+    res_b      = res_standard,
+    output_dir = output_dir,
+    label_a    = "Parser",
+    label_b    = "Standard"
+  )
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 7: Save Results
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Saving strategy mirrors the cross-validation outcome:
+  #   Always saved   : res_parser.rds (shrunken), DEGs.xlsx, VST counts
+  #   Only if differ : res_standard.rds (shrunken), DEGs_Standard sheet,
+  #                    Comparison_Results.xlsx (written by compare_deseq2_results)
+  #
+  # We save shrunken RDS objects (res_parser / res_standard) rather than raw
+  # (res_parser_raw / res_standard_raw) because shrunken LFCs are what all
+  # downstream tools (volcano plots, heatmaps, pathway analysis) consume.
+  # The raw objects are not needed after this point.
+
+  # Parser RDS and VST counts — always saved
   saveRDS(res_parser, file = file.path(output_dir, "res_parser.rds"))
-  
-  # Save both sheets in ONE Excel file for easier comparison if results are not identical
-  if (!lfc_is_equal | !padj_is_equal | length(only_parser) > 0 | length(only_standard) > 0) {
-    cat("\n⚠️  Warning: Differences detected! Check p-value or LFC precision.\n")
+
+  openxlsx::write.xlsx(
+    x         = list("VST_NonBlind" = vst_nonblind_counts),
+    file      = file.path(output_dir, "VST_NonBlind_Counts_Heatmaps.xlsx"),
+    overwrite = TRUE
+  )
+
+  if (comparison$any_differences) {
+
+    # Results differ — save standard RDS and both DEG sheets for investigation
     saveRDS(res_standard, file = file.path(output_dir, "res_standard.rds"))
-    openxlsx::write.xlsx(x = list("DEGs_Parser" = DEGs_parser, "DEGs_Standard" = DEGs_standard),
-                         file = file.path(output_dir, paste0("DEGs.xlsx")),
-                         overwrite = TRUE)
-  }  else {
-    cat("\n✅ Success: Parser and Standard results are identical (stringent check).\n")
+
+    openxlsx::write.xlsx(
+      x         = list("DEGs_Parser"   = degs_parser,
+                       "DEGs_Standard" = degs_standard),
+      file      = file.path(output_dir, "DEGs.xlsx"),
+      overwrite = TRUE
+    )
+
+  } else {
+
+    # Results identical — parser sheet only, no standard RDS needed
+    openxlsx::write.xlsx(
+      x         = list("DEGs_Parser" = degs_parser),
+      file      = file.path(output_dir, "DEGs.xlsx"),
+      overwrite = TRUE
+    )
   }
-  
-  # ---- 🪵 Log Output and Return ----
-  
-  log_info(sample = "", 
-           step   = "extract_deseq2_results", 
-           msg    = "DEG results extracted successfully")
-  
-  return(invisible(list(df_parser   = DEGs_parser,
-                        df_standard = DEGs_standard,
-                        res_parser  = res_parser,
-                        res_standard = res_standard)))
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 8: Log and Return
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  log_info(sample = contrast, step = "extract_deseq2_results",
+           msg    = glue::glue("DEG results extracted successfully. Saved to: {output_dir}"))
+
+  return(invisible(list(
+    degs_parser   = degs_parser,
+    degs_standard = degs_standard,
+    res_parser    = res_parser,       # shrunken
+    res_standard  = res_standard      # shrunken
+  )))
 }
 
 # ---- 🚀 4. Smart Execution (Nextflow Only) ----
 
 if (!interactive()) {
   args <- commandArgs(trailingOnly = TRUE)
-  
+
   get_arg <- function(idx, default = NULL) {
     if (idx > length(args)) return(default)
     val <- args[idx]
     if (is.na(val) || val == "" || val == "null" || val == "NULL") return(default)
     return(val)
   }
-  
-  # --- PROCESS BATCH VARS SAFELY ---
-  raw_batch <- get_arg(5)
-  
-  # split by comma, then trim leading/trailing whitespace from each element
-  batch_list <- if (!is.null(raw_batch)) {
-    trimws(strsplit(raw_batch, ",")[[1]]) 
-  } else {
-    NULL
-  }
-  
+
+  # Split comma-separated batch_vars string into a character vector
+  raw_batch  <- get_arg(5)
+  batch_list <- if (!is.null(raw_batch)) trimws(strsplit(raw_batch, ",")[[1]]) else NULL
+
   extract_deseq2_results(
-    contrast         = get_arg(1),
-    dds              = get_arg(2),
-    tx2gene          = get_arg(3),
-    output_dir       = get_arg(4, "."),
-    batch_vars       = batch_list,
-    lfc_cutoff       = as.numeric(get_arg(6, 0)),
-    padj_cutoff      = as.numeric(get_arg(7, 0.1))
+    contrast    = get_arg(1),
+    dds         = get_arg(2),
+    tx2gene     = get_arg(3),
+    output_dir  = get_arg(4, "."),
+    batch_vars  = batch_list,
+    lfc_cutoff  = as.numeric(get_arg(6, 0)),
+    padj_cutoff = as.numeric(get_arg(7, 0.1))
   )
 }

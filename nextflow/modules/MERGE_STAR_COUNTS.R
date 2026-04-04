@@ -3,13 +3,11 @@
 # ---- 📦 1. Load Libraries (Always Runs) ----
 
 suppressPackageStartupMessages({
-  library(dplyr)      # Provides the %>% operator
+  library(dplyr)
   library(readr)
   library(purrr)
   library(openxlsx)
 })
-
-
 
 # ---- 🛠️ 2. Smart Setup (Find & source UTILS.R) ----
 
@@ -18,18 +16,15 @@ get_utils_path <- function() {
   if (.Platform$OS.type == "windows") {
     return("C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/Scripts/nextflow/modules/UTILS.R")
   }
-  
   # 2. Interactive Linux / macOS (HPC interactive session)
   if (interactive()) {
-    # Assume project root is current working directory
     return(file.path(getwd(), "modules", "UTILS.R"))
   }
-  
   # 3. Non-interactive (Nextflow / Rscript)
   initial.options <- commandArgs(trailingOnly = FALSE)
-  file_arg <- grep("--file=", initial.options, value = TRUE)
+  file_arg        <- grep("--file=", initial.options, value = TRUE)
   if (length(file_arg) == 0) stop("Cannot detect script path for UTILS.R!")
-  script_dir <- dirname(sub("--file=", "", file_arg))
+  script_dir      <- dirname(sub("--file=", "", file_arg))
   return(file.path(script_dir, "UTILS.R"))
 }
 
@@ -40,122 +35,191 @@ source(utils_path)
 # ---- 🧬 3. Function Definition (Always Runs) ----
 
 merge_counts <- function(counts_dir, output_dir) {
-  
-  # ---- 🔎 Identify Count Files ----
-  
-  # Pattern matches STAR (ReadsPerGene.out.tab) files
-  count_files <- list.files(path = counts_dir, 
-                            pattern = "ReadsPerGene\\.out\\.tab$", 
-                            full.names = TRUE)
-  
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 1: Identify Count Files
+  # ═══════════════════════════════════════════════════════════════════════════
+  # STAR writes one ReadsPerGene.out.tab file per sample during the alignment
+  # step (--quantMode GeneCounts). Each file has 4 columns:
+  #   col 1: gene_id    — Ensembl gene ID
+  #   col 2: unstranded — counts ignoring strand
+  #   col 3: forward    — counts on the forward strand
+  #   col 4: reverse    — counts on the reverse strand
+  # We collect all such files across the counts_dir before processing.
+
+  count_files <- list.files(path       = counts_dir,
+                            pattern    = "ReadsPerGene\\.out\\.tab$",
+                            full.names = TRUE,
+                            recursive  = TRUE)
+
   if (length(count_files) == 0) {
-    log_warn(sample = "", step = "merge_counts", msg = "No count files found.")
+    log_warn(sample = "", step = "merge_counts",
+             msg = glue::glue("No ReadsPerGene.out.tab files found under: {counts_dir}"))
     return(NULL)
   }
-  
-  # ---- 🔄 Parse Files and Detect Strandedness ----
-  
-  # Define metadata rows to exclude (STAR stats)
-  special_counters <- c("__no_feature", "__ambiguous", "__too_low_aQual", 
-                        "__not_aligned", "__alignment_not_unique", "__assignment_counts",
-                        "N_unmapped", "N_multimapping", "N_noFeature", "N_ambiguous")
-  
+
+  log_info(sample = "", step = "merge_counts",
+           msg = glue::glue("Found {length(count_files)} count file(s)."))
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 2: Parse Files and Detect Strandedness
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # ── 2a. Define summary rows to exclude ──────────────────────────────────
+  # STAR prepends 4 summary rows to every ReadsPerGene.out.tab file before the
+  # per-gene counts begin. These rows use special gene IDs (N_unmapped etc.)
+  # and report alignment statistics, not gene counts. They must be excluded
+  # before strandedness detection — including them would inflate forward/reverse
+  # totals with non-gene reads and distort the strand proportion calculation.
+  # The double-underscore variants (__no_feature etc.) are HTSeq-style labels
+  # that appear in some STAR versions or featureCounts outputs.
+  special_counters <- c("N_unmapped", "N_multimapping", "N_noFeature", "N_ambiguous",
+                        "__no_feature", "__ambiguous", "__too_low_aQual",
+                        "__not_aligned", "__alignment_not_unique", "__assignment_counts")
+
   all_counts <- list()
-  
+
   for (count_file in count_files) {
-    
-    # Extract Sample ID from filename
+
+    # ── 2b. Extract sample ID from filename ─────────────────────────────────
+    # The regex removes the "ReadsPerGene.out.tab" suffix AND any other dot-
+    # separated extension that may precede it (e.g. "Sample1.Aligned.out.tab"
+    # becomes "Sample1"). The alternation handles both naming conventions.
     sample_id <- gsub("\\..*$|ReadsPerGene\\.out\\.tab", "", basename(count_file))
-    
-    # Read a count file and name the columns
-    # read.table(file = count_file, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+
+    # ── 2c. Read the file ────────────────────────────────────────────────────
+    # col_names = FALSE because STAR does not write a header row — the first
+    # data line is already a summary counter (N_unmapped). We assign names
+    # explicitly via rename() to make downstream column references readable.
     df <- tryCatch({
-      readr::read_tsv(file = count_file, 
-                      col_names = FALSE, 
+      readr::read_tsv(file           = count_file,
+                      col_names      = FALSE,
                       show_col_types = FALSE) %>%
-        dplyr::rename(gene_id    = 1, 
-                      unstranded = 2, 
-                      forward    = 3, 
+        dplyr::rename(gene_id    = 1,
+                      unstranded = 2,
+                      forward    = 3,
                       reverse    = 4)
     }, error = function(e) {
-      log_error(sample = sample_id, step = "merge_counts", msg = glue::glue("Error: {e$message}"))
+      log_error(sample = sample_id, step = "merge_counts",
+                msg = glue::glue("Failed to read file: {e$message}"))
       return(NULL)
     })
-    
+
     if (is.null(df) || ncol(df) < 4) next
-    
-    # Remove metadata/stats rows
+
+    # Remove STAR summary rows — gene-level counts only from here on
     df <- df %>% dplyr::filter(!(gene_id %in% special_counters))
-    
-    
-    # ---- 🧬 Strandedness Logic ----
-    
-    fwd_sum <- sum(df$forward, na.rm = TRUE)
-    rev_sum <- sum(df$reverse, na.rm = TRUE)
+
+    # ── 2d. Detect strandedness ──────────────────────────────────────────────
+    # Strandedness is inferred from the proportion of reads mapping to the
+    # forward strand relative to all stranded reads.
+    #
+    # Why use fwd/(fwd+rev) rather than fwd/(fwd+rev+unstranded)?
+    # The unstranded column is NOT a third category of reads — it is the SUM of
+    # forward + reverse. Including it in the denominator would double-count all
+    # reads and artificially compress the proportion toward 0.5.
+    #
+    # Threshold rationale:
+    #   prop_fwd > 0.8 : ≥80% forward → library is forward-stranded
+    #   prop_fwd < 0.2 : ≤20% forward → library is reverse-stranded (≥80% reverse)
+    #   0.4–0.6        : ~50/50 split → genuinely unstranded library
+    #   0.2–0.4 or 0.6–0.8 : ambiguous — neither clearly stranded nor unstranded;
+    #                         falls back to unstranded with a warning so the run
+    #                         completes rather than hard-stopping on one sample
+
+    fwd_sum <- sum(df$forward,  na.rm = TRUE)
+    rev_sum <- sum(df$reverse,  na.rm = TRUE)
     total   <- fwd_sum + rev_sum
-    
+
     if (total == 0) {
-      log_error(sample = sample_id, step = "merge_counts", msg = "CRITICAL: Total counts are zero. Sample excluded.")
-      next 
+      log_error(sample = sample_id, step = "merge_counts",
+                msg = "Total stranded counts are zero — sample excluded.")
+      next
     }
-    
+
     prop_fwd <- fwd_sum / total
-    
-    # Determine the column to keep
+
     if (prop_fwd > 0.8) {
-      log_info(sample = sample_id, step = "merge_counts", msg = "Detected: Forward Stranded")
+      log_info(sample = sample_id, step = "merge_counts",
+               msg = glue::glue("Strandedness: Forward ({round(prop_fwd * 100, 1)}% fwd)"))
       sample_df <- df %>% dplyr::select(ID = gene_id, !!sample_id := forward)
-      
+
     } else if (prop_fwd < 0.2) {
-      log_info(sample = sample_id, step = "merge_counts", msg = "Detected: Reverse Stranded")
+      log_info(sample = sample_id, step = "merge_counts",
+               msg = glue::glue("Strandedness: Reverse ({round((1-prop_fwd) * 100, 1)}% rev)"))
       sample_df <- df %>% dplyr::select(ID = gene_id, !!sample_id := reverse)
-      
+
     } else {
-      # Handle Unstranded (~0.5) and Ambiguous (e.g. 0.7)
-      msg <- if(abs(prop_fwd - 0.5) < 0.1) "Detected: Unstranded" else glue::glue("Ambiguous ({round(prop_fwd, 2)}). Using Unstranded.")
+      # abs(prop_fwd - 0.5) < 0.1 catches the genuinely unstranded case
+      # (40–60% forward). Values outside this range (0.2–0.4 or 0.6–0.8) are
+      # ambiguous — warn the user but proceed with unstranded rather than crash.
+      msg <- if (abs(prop_fwd - 0.5) < 0.1) {
+        glue::glue("Strandedness: Unstranded ({round(prop_fwd * 100, 1)}% fwd)")
+      } else {
+        glue::glue("Strandedness: Ambiguous ({round(prop_fwd * 100, 1)}% fwd). ",
+                   "Falling back to unstranded — verify library prep protocol.")
+      }
       log_info(sample = sample_id, step = "merge_counts", msg = msg)
       sample_df <- df %>% dplyr::select(ID = gene_id, !!sample_id := unstranded)
     }
-    
+
     all_counts[[sample_id]] <- sample_df
   }
-  
+
   if (length(all_counts) == 0) {
-    log_error(sample = "", step = "merge_counts", msg = "No valid samples remained after filtering.")
-    return(NULL)
+    log_error(sample = "", step = "merge_counts",
+              msg = "No valid samples remained after parsing. Check input files.")
   }
-  
-  # ---- 📊 Build Count Matrix ----
-  
-  # purrr::reduce handles merging multiple dataframes efficiently
-  count_matrix <- all_counts %>% 
-    purrr::reduce(dplyr::full_join, by = "ID") 
-  
-  # Replace any NAs from full_join with 0
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 3: Build Count Matrix
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # ── 3a. Merge per-sample dataframes ─────────────────────────────────────
+  # purrr::reduce() applies full_join iteratively across all sample dataframes,
+  # joining on the shared "ID" column.
+  # Why full_join and not inner_join?
+  # inner_join would drop any gene absent from even one sample — in practice
+  # this can remove real genes that happen to have zero counts in one sample
+  # (e.g. lowly expressed genes). full_join retains all genes and produces NA
+  # for absent genes, which we then replace with 0 (correct: gene was present
+  # in the annotation but had no detected reads in that sample).
+  count_matrix <- purrr::reduce(all_counts, dplyr::full_join, by = "ID")
+
+  # Replace NAs introduced by full_join with 0 — absent gene = zero counts
   count_matrix[is.na(count_matrix)] <- 0
-  
-  # Remove genes with 0 counts across all samples
+
+  # ── 3b. Remove all-zero genes and samples ────────────────────────────────
+  # All-zero genes: not expressed in any sample — cannot yield DE results and
+  # inflate the multiple testing burden. rowSums on all columns except ID.
   count_matrix <- count_matrix %>%
     dplyr::filter(rowSums(dplyr::select(., -ID), na.rm = TRUE) > 0)
-  
-  # Remove samples with 0 counts across all genes
-  count_matrix <- count_matrix[, c(TRUE, colSums(count_matrix[,-1]) > 0), drop = FALSE]
-  
-  # ---- 💾 Save Results ----
-  
+
+  # All-zero samples: indicate a failed sequencing run or sample mislabelling.
+  # The c(TRUE, ...) prepends TRUE for the ID column so it is always kept —
+  # without this, the logical vector would be one element too short and R would
+  # recycle it incorrectly, potentially dropping the ID column.
+  count_matrix <- count_matrix[, c(TRUE, colSums(count_matrix[, -1]) > 0), drop = FALSE]
+
+  log_info(sample = "", step = "merge_counts",
+           msg = glue::glue("Matrix dimensions: {nrow(count_matrix)} genes × ",
+                            "{ncol(count_matrix) - 1} samples."))
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 4: Save and Return
+  # ═══════════════════════════════════════════════════════════════════════════
+
   if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
-  
-  openxlsx::write.xlsx(x = count_matrix, 
-                       sheetName = "raw_counts", 
-                       file = file.path(output_dir, "STAR_Gene_counts.xlsx"), 
+
+  output_file <- file.path(output_dir, "STAR_Gene_counts.xlsx")
+
+  openxlsx::write.xlsx(x         = list("raw_counts" = count_matrix),
+                       file      = output_file,
                        overwrite = TRUE)
-  
-  # ---- 🪵 Log Output and Return ----
-  
-  log_info(sample = "", 
-           step   = "merge_counts", 
-           msg    = "Merged counts successfully. Saved to: 'STAR_Gene_counts.xlsx'")
-  
+
+  log_info(sample = "", step = "merge_counts",
+           msg    = glue::glue("Merged count matrix saved to: '{output_file}'"))
+
   return(invisible(count_matrix))
 }
 
@@ -163,7 +227,7 @@ merge_counts <- function(counts_dir, output_dir) {
 
 if (!interactive()) {
   args <- commandArgs(trailingOnly = TRUE)
-  
+
   get_arg <- function(idx, default = NULL) {
     if (idx > length(args)) return(default)
     val <- args[idx]
@@ -172,7 +236,7 @@ if (!interactive()) {
   }
 
   merge_counts(
-    counts_dir  = get_arg(1),
-    output_dir  = get_arg(2)
+    counts_dir = get_arg(1),
+    output_dir = get_arg(2)
   )
 }

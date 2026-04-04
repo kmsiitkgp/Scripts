@@ -1078,14 +1078,14 @@ plot_ma <- function(dds, output_dir, filename = NULL) {
                                                            log2FoldChange < -5 ~ -5,
                                                            TRUE                ~ log2FoldChange),
                   # Assign shapes: 16 is a solid circle, 17 is a solid triangle
-                  is_outlier = log2FoldChange > 5 | log2FoldChange < -5,
+                  is_outlier = !is.na(log2FoldChange) & (log2FoldChange > 5 | log2FoldChange < -5),
                   point_shape = ifelse(is_outlier, 17, 16))
   
   p <- ggplot(data = res_df, 
               mapping = aes(x = baseMean, y = log2FoldChange, color = significant)) +
     geom_point(alpha = 0.5, size = 1.25) +
     theme_classic() +
-    custom_theme +
+    #custom_theme +
     theme(legend.position = "none") +
     scale_x_log10(labels = scales::trans_format("log10", scales::math_format(10^.x))) +
     scale_color_manual(values = c("grey70", "firebrick3")) + 
@@ -1099,7 +1099,7 @@ plot_ma <- function(dds, output_dir, filename = NULL) {
     geom_point(alpha = 0.5, size = 1.25, aes(shape = point_shape)) +
     scale_shape_identity() + # Tells ggplot to use the actual numeric shape codes
     theme_classic() +
-    custom_theme +
+    #custom_theme +
     theme(legend.position = "none") +
     scale_x_log10(labels = scales::trans_format("log10", scales::math_format(10^.x))) +
     scale_color_manual(values = c("grey70", "firebrick3")) +
@@ -1199,7 +1199,7 @@ plot_volcano <- function(res_df, output_dir, filename = NULL,
   
   # ---- ⚙️ Validate Input Parameters ----
   
-  validate_inputs(res_df = res_df, filename = filename, output_dir = output_dir)
+  #validate_inputs(res_df = res_df, filename = filename, output_dir = output_dir)
   
   # ---- 🧪 Setup Volcano Parameters ----
   
@@ -1216,6 +1216,9 @@ plot_volcano <- function(res_df, output_dir, filename = NULL,
                   # Handle padj = 0 for log scaling
                   padj = dplyr::case_when(padj == 0 ~ min(padj[padj > 0], na.rm = TRUE), 
                                           TRUE ~ padj),
+                  # Create a new column specifically for plotting
+                  plot_y = -log10(padj),
+                  plot_y = ifelse(plot_y > 50, 50, plot_y),
                   Significance = dplyr::case_when(abs(log2FoldChange) >= lfc_cutoff & padj <= 0.001 ~ "FDR < 0.001",
                                                   abs(log2FoldChange) >= lfc_cutoff & padj <= 0.01  ~ "FDR < 0.01",
                                                   abs(log2FoldChange) >= lfc_cutoff & padj <= 0.05  ~ "FDR < 0.05",
@@ -1235,41 +1238,66 @@ plot_volcano <- function(res_df, output_dir, filename = NULL,
   alpha_palette <- c("FDR < 0.001" = 1, "FDR < 0.01" = 0.8, 
                      "FDR < 0.05" = 0.6, "Not Significant" = 0.4)
   
-  # ---- 📐 Axis limits and breaks ----
+  # ---- Axis limits and breaks ----
   
-  # Calculate dynamic axis limits
-  x_vals <- res_df$log2FoldChange
-  y_vals <- -log10(res_df$padj)
+  x_vals <- res_df$log2FoldChange[is.finite(res_df$log2FoldChange)]
+  y_vals <- res_df$plot_y[is.finite(res_df$plot_y)]
   
-  # Keep only finite values
-  x_vals <- x_vals[is.finite(x_vals)]
-  y_vals <- y_vals[is.finite(y_vals)]
+  x_min <- floor(min(x_vals))
+  x_max <- ceiling(max(x_vals))
+  y_min <- 0
+  y_max <- ceiling(max(y_vals))
   
-  x_max <- ceiling(max(abs(res_df$log2FoldChange), na.rm = TRUE))
-  y_max <- ceiling(max(-log10(res_df$padj), na.rm = TRUE))
+  # Symmetric x-axis extent so volcano is centered at 0
+  x_extent <- max(x_max, abs(x_min))
   
-  # Round to nearest integer for nice axis limits
-  x_min <- floor(min(x_vals, na.rm = TRUE))
-  x_max <- ceiling(max(x_vals, na.rm = TRUE))
-  y_min <- 0  # Start y-axis at 0 for volcano
-  y_max <- ceiling(max(y_vals, na.rm = TRUE))
+  # ~5 bins across the full range, rounded to a clean number
+  x_bin_raw <- x_extent / 5
+  x_bin <- if (x_bin_raw > 10) 10 else if (x_bin_raw > 5) 5 else if (x_bin_raw > 2) 2 else if (x_bin_raw > 1) 1 else 0.5
+  x_breaks <- seq(-x_extent, x_extent, by = x_bin)
   
-  # Set x-axis breaks in reasonable bins (approx 5 units each)
-  x_bin <- max(abs(floor(x_min / 5)), abs(ceiling(x_max / 5)))
-  x_breaks <- seq(from = -max(x_max, abs(x_min)), to = max(x_max, abs(x_min)), by = x_bin)
-  x_breaks <- x_breaks[!x_breaks <= x_min-x_bin]
-  x_breaks <- x_breaks[!x_breaks >= x_max+x_bin] 
+  # ~5 bins on y-axis, rounded to a clean number
+  y_bin_raw <- y_max / 5
+  y_bin <- if (y_bin_raw > 50) 50 else if (y_bin_raw > 20) 25 else if (y_bin_raw > 10) 10 else if (y_bin_raw > 2) 5 else if (y_bin_raw > 1) 2 else 1
+  y_breaks <- seq(y_min, ceiling(y_max / y_bin) * y_bin, by = y_bin)
   
-  # Set y-axis breaks (dynamic, based on magnitude)
-  y_bin <- if (y_max > 100) 100 else if (y_max > 10) 10 else 1
-  y_breaks <- seq(from = y_min, to = ceiling(y_max/y_bin)*y_bin, by = y_bin)
+  # # ---- 📐 Axis limits and breaks ----
+  # 
+  # # Calculate dynamic axis limits
+  # x_vals <- res_df$log2FoldChange
+  # y_vals <- res_df$plot_y     #-log10(res_df$padj)
+  # 
+  # # Keep only finite values
+  # x_vals <- x_vals[is.finite(x_vals)]
+  # y_vals <- y_vals[is.finite(y_vals)]
+  # 
+  # x_max <- ceiling(max(abs(res_df$log2FoldChange), na.rm = TRUE))
+  # y_max <- ceiling(max(res_df$plot_y, na.rm = TRUE))
+  # #y_max <- ceiling(max(-log10(res_df$padj), na.rm = TRUE))
+  # 
+  # # Round to nearest integer for nice axis limits
+  # x_min <- floor(min(x_vals, na.rm = TRUE))
+  # x_max <- ceiling(max(x_vals, na.rm = TRUE))
+  # y_min <- 0  # Start y-axis at 0 for volcano
+  # y_max <- ceiling(max(y_vals, na.rm = TRUE))
+  # 
+  # # Set x-axis breaks in reasonable bins (approx 5 units each)
+  # x_bin <- max(abs(floor(x_min / 5)), abs(ceiling(x_max / 5)))
+  # x_breaks <- seq(from = -max(x_max, abs(x_min)), to = max(x_max, abs(x_min)), by = x_bin)
+  # x_breaks <- x_breaks[!x_breaks <= x_min-x_bin]
+  # x_breaks <- x_breaks[!x_breaks >= x_max+x_bin] 
+  # 
+  # # Set y-axis breaks (dynamic, based on magnitude)
+  # y_bin <- if (y_max > 100) 100 else if (y_max > 10) 10 else 1
+  # y_breaks <- seq(from = y_min, to = ceiling(y_max/y_bin)*y_bin, by = y_bin)
   
   # ---- 🖼️ Generate Plots ----
   
   p <- ggplot2::ggplot(data = res_df, 
-                       mapping = aes(x = log2FoldChange, y = -log10(padj),
+                       mapping = aes(x = log2FoldChange, y = plot_y, #-log10(padj),
                                      color = Direction, 
                                      alpha = Significance,
+                                     shape = Annotation,
                                      size = Relevance)) +
     ggplot2::geom_point(position = ggplot2::position_jitter(width = 0.05, height = 0.05)) +
     ggplot2::theme_classic() +
@@ -1320,6 +1348,7 @@ plot_volcano <- function(res_df, output_dir, filename = NULL,
   
   q <- p + ggrepel::geom_text_repel(
     data = res_df %>% dplyr::filter(SYMBOL %in% genes_to_label),
+    #position = ggbeeswarm::position_quasirandom(width = 0.1, varwidth = TRUE),
     aes(label = SYMBOL), 
     direction = "both",
     box.padding = 0.8,                # ↓ smaller padding around label
@@ -1331,8 +1360,7 @@ plot_volcano <- function(res_df, output_dir, filename = NULL,
     segment.ncp = 50,                 # More control points = smoother curves
     segment.angle = 20,               # Affects entry/exit angles
     segment.size = 0.5,               # Optional: line thickness
-    size = 4,                         # text size in mm (1 mm = 2.83 points)
-    position = ggbeeswarm::position_quasirandom(width = 0.1, varwidth = TRUE)
+    size = 4                          # text size in mm (1 mm = 2.83 points)
   )
   
   # ---- 💾 Save Plots ----
@@ -3112,6 +3140,21 @@ add_annotation <- function(df, ann_list = NULL, remove_ann_col = TRUE) {
   return(annotated_df)
 }
 
+norm_counts_DESeq2 <- function(metadata, read_data, proj.params) {
+  
+  # Batch Correction (if applicable) 
+  if ("Batch" %in% colnames(metadata) && length(unique(metadata$Batch)) > 1) {
+    normalized_counts_batch <- limma::removeBatchEffect(x = log2(normalized_counts + 1),
+                                                        batch = dds$Batch)
+  }
+  
+  normalized_counts_batch_df <- normalized_counts_batch %>%
+    as.data.frame() %>%
+    tibble::rownames_to_column("ID") %>%
+    add_annotation()
+
+}
+
 fit_sva <- function(dds, condition_col) {
   
   # ---- ⚙️ Prepare Data ----
@@ -3155,21 +3198,6 @@ fit_sva <- function(dds, condition_col) {
   log_info(sample = "", step = "SVA", msg = glue::glue("Updated design formula to: {format(new_formula)}"))
   
   return(dds)
-}
-
-norm_counts_DESeq2 <- function(metadata, read_data, proj.params) {
-  
-  # Batch Correction (if applicable) 
-  if ("Batch" %in% colnames(metadata) && length(unique(metadata$Batch)) > 1) {
-    normalized_counts_batch <- limma::removeBatchEffect(x = log2(normalized_counts + 1),
-                                                        batch = dds$Batch)
-  }
-  
-  normalized_counts_batch_df <- normalized_counts_batch %>%
-    as.data.frame() %>%
-    tibble::rownames_to_column("ID") %>%
-    add_annotation()
-
 }
 
 add_major_pathway <- function(df){
@@ -7533,7 +7561,7 @@ survival_params <- list(
   multiple_cutoff  = FALSE,          # TRUE = compute cutoffs separately for substratify_var
   
   # Plot settings
-  sig_score        = FALSE,          # TRUE = combine genes into one signature score
+  sig_score        = TRUE,          # TRUE = combine genes into one signature score
   conf_interval    = FALSE,          # TRUE = show confidence interval in survival curve
   plot_curve       = TRUE,           # TRUE = plot the survival curve
   plot_risk_table  = TRUE,           # TRUE = plot the risk table below the curve
@@ -8001,7 +8029,7 @@ survival_analysis <- function(metadata, expr_data = NULL, survival_params) {
   
   keep_cols <- unique(c(time_col, status_col, stratify_vars, substratify_var, facet_var))
   
-  surv_df <- expr_df %>%
+  surv_df1 <- expr_df1 %>%
     dplyr::inner_join(metadata, by = c("Sample_ID"="Sample_ID")) %>%
     dplyr::select(Sample_ID, dplyr::all_of(keep_cols))
   
@@ -9448,11 +9476,6 @@ plot_umap <- function(expr_mat, metadata, n_pcs = 50, n_neighbors = NULL,
 # ---- 🥧 PIE CHART ----
 
 plot_piechart <- function(metadata, segment_col, filename, output_dir, split_col = NULL){
-  
-  # ---- ⚙️ Validate Input Parameters ----
-  
-  validate_inputs(metadata = metadata,
-                  filename = filename, output_dir = output_dir)
   
   # ---- 👥 Determine Groups for Plotting ----
   

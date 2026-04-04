@@ -1,38 +1,66 @@
+// =============================================================================
+// PROCESS: DOWNLOAD_ENSEMBL_REF
+// =============================================================================
+// Purpose: Downloads genome FASTA and GTF annotation from Ensembl FTP
+//
+// What it does:
+//   - Downloads primary assembly FASTA and GTF for Human or Mouse
+//   - Retries up to 5 times per file to handle transient DNS/network failures
+//   - Decompresses .gz files after successful download
+//
+// Why retry logic?
+//   - Ensembl FTP can be slow or briefly unavailable
+//   - A single transient failure would otherwise abort the entire pipeline run
+//
+// Uses storeDir: files are downloaded once and reused across runs
+// =============================================================================
+
 process DOWNLOAD_ENSEMBL_REF {
 
-    tag "Downloading ${species} Ensembl Reference"
-    label 'process_medium'
+    tag "Downloading ${species} reference (Ensembl release ${release})"
+    label 'process_medium'                        // Network-bound; moderate resources
 
+    // =================================================================================
+    // INPUT
+    // =================================================================================
     input:
-    tuple val(species), val(fa_name), val(gtf_name), val(version), val(assembly), val(release)
-    // Human or Mouse
-    // Full FASTA filename from metadata in order use in output: for storeDir checking
-    // Full GTF filename from metadata in order use in output: for storeDir checking:
-    // Release from metadata
+    tuple val(species), val(fa_name), val(gtf_name), val(genome_version), val(assembly), val(release)
+    // species        : "Human" or "Mouse"
+    // fa_name        : Full FASTA filename (used in output block for storeDir checking)
+    // gtf_name       : Full GTF filename (used in output block for storeDir checking)
+    // genome_version : Version string (e.g., "GRCh38.115")
+    // assembly       : Assembly name (e.g., "GRCh38")
+    // release        : Ensembl release number (e.g., "115")
 
+    // =================================================================================
+    // OUTPUT
+    // =================================================================================
     output:
-    tuple val(species), path(fa_name), path(gtf_name), val(version), val(assembly), val(release),   emit: ref_tuple
+    tuple val(species), path(fa_name), path(gtf_name), val(genome_version), val(assembly), val(release),
+        emit: ref_tuple
 
+    // =================================================================================
+    // EXECUTION
+    // =================================================================================
     script:
 
     def LOG = "DOWNLOAD_ENSEMBL_REF.error.log"
 
     """
     set -euo pipefail
-    echo "Starting reference download for: ${species}" >> "${LOG}"
 
-    # Determine Ensembl species code
+    # Map pipeline species name to Ensembl URL path component
     if [[ "${species}" == "Human" ]]; then
         ensembl_species="homo_sapiens"
     elif [[ "${species}" == "Mouse" ]]; then
         ensembl_species="mus_musculus"
     else
-        echo "Unsupported species: ${species}" >&2
+        echo "❌ ERROR: Unsupported species: ${species}" | tee -a "${LOG}" >&2
         exit 1
     fi
 
     # --- Download FASTA ---
-    # We wrap this in a loop to handle temporary DNS failures
+    # Retry loop handles transient DNS/connection failures
     success=false
     for i in {1..5}; do
         if wget --retry-connrefused --waitretry=10 --read-timeout=30 --tries=10 \
@@ -41,20 +69,17 @@ process DOWNLOAD_ENSEMBL_REF {
             success=true
             break
         else
-            echo "Download attempt \$i failed. Retrying in 20s..." >> "${LOG}"
+            echo "FASTA download attempt \$i failed. Retrying in 30s..." >> "${LOG}"
             sleep 30
         fi
     done
-
-    if [ "\$success" = false ]; then
-        echo "Failed to download Fasta after 5 attempts." >> "${LOG}"
-        exit 1
-    fi
+    \$success || { echo "❌ ERROR: FASTA download failed after 5 attempts" | tee -a "${LOG}" >&2; exit 1; }
 
     gunzip -f "${fa_name}.gz" 2>> "${LOG}"
+    echo "✅ SUCCESS: FASTA downloaded and decompressed" >> "${LOG}"
 
     # --- Download GTF ---
-    # We wrap this in a loop to handle temporary DNS failures
+    # Retry loop handles transient DNS/connection failures
     success=false
     for i in {1..5}; do
         if wget --retry-connrefused --waitretry=10 --read-timeout=30 --tries=10 \
@@ -63,18 +88,15 @@ process DOWNLOAD_ENSEMBL_REF {
             success=true
             break
         else
-            echo "Download attempt \$i failed. Retrying in 20s..." >> "${LOG}"
+            echo "GTF download attempt \$i failed. Retrying in 30s..." >> "${LOG}"
             sleep 30
         fi
     done
-
-    if [ "\$success" = false ]; then
-        echo "Failed to download GTF after 5 attempts." >> "${LOG}"
-        exit 1
-    fi
+    \$success || { echo "❌ ERROR: GTF download failed after 5 attempts" | tee -a "${LOG}" >&2; exit 1; }
 
     gunzip -f "${gtf_name}.gz" 2>> "${LOG}"
+    echo "✅ SUCCESS: GTF downloaded and decompressed" >> "${LOG}"
 
-    echo "✅ Download completed for ${species}" >> "${LOG}"
+    echo "✅ SUCCESS: Reference download completed for ${species} (release ${release})" >> "${LOG}"
     """
 }
