@@ -30,8 +30,7 @@ chooseCRANmirror(ind=1)
 ### 1. Non-CRAN Repository Managers (CRAN)
 # Installs BiocManager and remotes (needed for Bioconductor and GitHub packages)
 install.packages(pkgs = c("BiocManager", "remotes"),
-                 repos = 'http://cran.us.r-project.org',
-                 force = FALSE,
+                 repos = "https://cloud.r-project.org",
                  INSTALL_opts = '--no-lock')
 
 # Load httr library to set up proxy configuration before GitHub installs
@@ -45,7 +44,7 @@ library("httr")
 ### 2. Annotation Packages (Bioconductor)
 BiocManager::install(pkgs = c("AnnotationHub", "ensembldb", 
                               "org.Hs.eg.db", "org.Mm.eg.db"),
-                     force = FALSE,
+                     update = FALSE,
                      INSTALL_opts = '--no-lock')
 
 
@@ -53,21 +52,19 @@ BiocManager::install(pkgs = c("AnnotationHub", "ensembldb",
 BiocManager::install(pkgs = c("fgsea", "clusterProfiler", "decoupleR", 
                               "DESeq2", "sva", "GSVA", "glmGamPoi", "tximport",
                               "ashr", "OmnipathR"),
-                     force = FALSE,
+                     update = FALSE,
                      INSTALL_opts = '--no-lock')
 
 
 ### 4. Single-Cell Data Analysis Packages (CRAN)
 install.packages(pkgs = c("Seurat", "harmony", "hdf5r", "clustree"),
-                 repos = 'http://cran.us.r-project.org',
-                 force = FALSE,
+                 repos = 'https://cloud.r-project.org',
                  INSTALL_opts = '--no-lock')
 
 
 ### 5. Single-Cell Data Analysis Packages (Bioconductor)
 BiocManager::install(pkgs = c("infercnv", "UCell", "scDblFinder", "RcisTarget",
                               "DropletUtils"),
-                     force = FALSE,
                      INSTALL_opts = '--no-lock')
 
 
@@ -78,7 +75,6 @@ remotes::install_github(repo = c("mojaveazure/seurat-disk",
                                  "immunogenomics/presto", 
                                  "chris-mcginnis-ucsf/DoubletFinder",
                                  "satijalab/seurat-data"),
-                        force = FALSE,
                         INSTALL_opts = '--no-lock')
 
 
@@ -87,14 +83,13 @@ BiocManager::install(pkgs = c("oligo", "oligoData", "illuminaHumanv4.db",
                               "hgu133plus2.db", "GEOquery", "affy", "lumi",
                               "NanoStringNCTools", "GeomxTools", 
                               "GeoMxWorkflows"),
-                     force = FALSE,
+                     update = FALSE,
                      INSTALL_opts = '--no-lock')
 
 
 ### 8. Data Wrangling Packages (CRAN)
 install.packages(pkgs = c("openxlsx", "dplyr", "tibble", "stringr", "purrr"),
-                 repos = 'http://cran.us.r-project.org',
-                 force = FALSE,
+                 repos = 'https://cloud.r-project.org',
                  INSTALL_opts = '--no-lock')
 
 
@@ -104,23 +99,22 @@ install.packages(pkgs = c("ggplot2", "ggplotify", "ggrepel", "ggpubr",
                           "VennDiagram", "survival", "survminer", "UpSetR", 
                           "umap", "plot3D", "cowplot", "viridis", 
                           "RColorBrewer", "colorspace", "ragg"),
-                 repos = 'http://cran.us.r-project.org',
-                 force = FALSE,
+                 repos = 'https://cloud.r-project.org',
                  INSTALL_opts = '--no-lock')
 
 
 ### 10. Visualization Packages (Bioconductor)
 BiocManager::install(pkgs = c("enrichplot", "ComplexHeatmap"),
-                     force = FALSE,
+                     update = FALSE,
                      INSTALL_opts = '--no-lock')
 
 # List outdated packages
 utils::old.packages(lib.loc = .libPaths(),
-             repos = 'http://cran.us.r-project.org')
+             repos = 'https://cloud.r-project.org')
 
 # Update outdated packages
 utils::update.packages(lib.loc = .libPaths(),
-                    repos = 'http://cran.us.r-project.org')
+                    repos = 'https://cloud.r-project.org')
 
 # List all packages
 all_pkgs <- c(

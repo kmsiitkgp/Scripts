@@ -1497,37 +1497,29 @@ plot_heatmap(data, metadata_column, metadata_row, plot_genes,
                bar_width, bar_height, expr_legend)		
 
 
-# ---- new survivl curves ---
+# ═══════════════════════════════════════════════════════════════════════════
+# SURVIVAL ANALYSIS — COMPLETE SCRIPT
+# TCGA BLCA | Overall Survival | Cox PH + Multivariate + FDR
+# ═══════════════════════════════════════════════════════════════════════════
 
-#source from utils.R
-metadata      <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Past/Xinyi/Dr.Chao project/TCGA_BLCA_Metadata.xlsx"
-expr_data     <-  "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Past/Xinyi/Dr.Chao project/TCGA_BLCA_Normalized.xlsx"
-output_dir    <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop"
-
-metadata  <- load_smart(metadata)
-expr_data <- load_smart(expr_data)
-
-time_col             <- "Time"
-status_col           <- "Status"
-
-# facet_var            <- NULL
-# global_cutoff        <- TRUE
-# cutoff_method        <- "optimal"
-show_all_bins        <- FALSE
-# calc_signature_score <- TRUE
-conf_interval        <- FALSE
-plot_curve           <- TRUE
-plot_risk_table      <- TRUE
-time_units           <- "months"
-# title                <- NULL
-# filename             <- "Survival_Plot_new"
-# facet_var            <- "consensusClass"
-
+library(dplyr)
+library(stringr)
+library(purrr)
+library(openxlsx)
 library(BLCAsubtyping)
 library(consensusMIBC)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SECTION 1: Setup
+# ═══════════════════════════════════════════════════════════════════════════
+
+metadata      <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Past/Xinyi/Dr.Chao project/TCGA_BLCA_Metadata.xlsx"
+expr_data     <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data/Past/Xinyi/Dr.Chao project/TCGA_BLCA_Normalized.xlsx"
+metadata      <- load_smart(metadata)
+expr_data     <- load_smart(expr_data)
+
 row_id               <- "SYMBOL"
 if (any(duplicated(expr_data[[row_id]]))) {
-  
   expr_matrix <- expr_data %>%
     as.data.frame() %>%
     #tibble::rownames_to_column(row_id) %>%
@@ -1546,169 +1538,316 @@ tcga_cl <- getConsensusClass(x = expr_matrix, gene_id = c("hgnc_symbol")) %>%
 metadata <- dplyr::left_join(x = metadata %>% dplyr::mutate(Sample_ID = make.names(Sample_ID)), 
                              y = tcga_cl,
                              by = c("Sample_ID" = "Sample_ID"))
+
+output_dir <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Survival_Results"
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+# ── Stage recoding — done ONCE, used for all stage-stratified calls ───────
+metadata_staged <- metadata %>%
+  dplyr::mutate(Stage = dplyr::case_when(
+    grepl("T1", Stage) ~ "I",
+    grepl("T2", Stage) ~ "II",
+    grepl("T3", Stage) ~ "III",
+    grepl("T4", Stage) ~ "IV",
+    TRUE ~ NA_character_   # T0, TX, NA → excluded from stage analyses
+  )) %>%
+  dplyr::filter(Stage %in% c("I", "II", "III", "IV"))
+
+# ── Stage binary for multivariate covariate — done ONCE ──────────────────
+metadata <- metadata %>%
+  dplyr::mutate(Stage_binary = dplyr::case_when(
+    grepl("T1|T2", Stage) ~ "Early",
+    grepl("T3|T4", Stage) ~ "Late",
+    TRUE ~ NA_character_
+  ))
+
+scaffold_genes <- c("DLG2", "DLG4", "HOMER1", "HOMER2", "HOMER3", "SHANK1", 
+                    "SHANK2", "SHANK3")
+cam_genes      <- c("CDH2", "CDH12", "LRFN1", "DAG1", "NLGN1", "NLGN2", "NLGN3",
+                    "LRRTM1", "LRRTM2", "ADGRL2", "ADGRL3", "EPHB2", "EPHB3", 
+                    "ADGRB1", "ADGRB3")
+combo_genes    <- c(scaffold_genes, cam_genes)
+ampa_genes     <- c("GRIA1", "GRIA2", "GRIA3", "GRIA4")
+gria1_gria2_genes  <- c("GRIA1", "GRIA2")
+
+# Define your sets in a list for the loop
+gene_groups <- list(
+  cam      = cam_genes,
+  scaffold = scaffold_genes,
+  combo    = combo_genes,
+  ampa     = ampa_genes,
+  gria12   = gria1_gria2_genes
+)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SECTION 2: All Patients — Univariate + Multivariate
+# ═══════════════════════════════════════════════════════════════════════════
+
+for (group_name in names(gene_groups)) {
   
+  current_genes <- gene_groups[[group_name]]
+  
+  # ── Individual genes | All patients | UV + MV (Age + Stage_binary) ────────
+  plot_survival(metadata             = metadata,
+                stratify_var        = current_genes,
+                covariate_cols       = c("Age", "Stage_binary"),
+                expr_data            = expr_data,
+                cutoff_method        = "optimal",
+                calc_signature_score = FALSE,
+                filename             = paste0(group_name, "_individual_all_patients"),
+                output_dir           = output_dir)
+  
+  # ── Combined score | All patients | UV + MV (Age + Stage_binary) ──
+  plot_survival(metadata             = metadata,
+                stratify_var        = current_genes,
+                covariate_cols       = c("Age", "Stage_binary"),
+                expr_data            = expr_data,
+                cutoff_method        = "optimal",
+                calc_signature_score = TRUE,
+                filename             = paste0(group_name, "_combinedscore_all_patients"),
+                output_dir           = output_dir)
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 3: Stage-Stratified — Univariate + Multivariate
+  # Note: covariate_cols = Age ONLY — cannot adjust for Stage when faceting by it
+  # ═══════════════════════════════════════════════════════════════════════════
+  
+  # ── Individual genes | Stage-stratified | UV + MV (Age only) ─────────────
+  plot_survival(metadata             = metadata_staged,
+                stratify_var        = current_genes,
+                covariate_cols       = c("Age"),
+                facet_var            = "Stage",
+                expr_data            = expr_data,
+                cutoff_method        = "optimal",
+                global_cutoff        = FALSE,
+                calc_signature_score = FALSE,
+                filename             = paste0(group_name, "_individual_stage"),
+                output_dir           = output_dir)
+  
+  # ── Combined score | Stage-stratified | UV + MV (Age only) ────────
+  plot_survival(metadata             = metadata_staged,
+                stratify_var        = current_genes,
+                covariate_cols       = c("Age"),
+                facet_var            = "Stage",
+                expr_data            = expr_data,
+                cutoff_method        = "optimal",
+                global_cutoff        = FALSE,
+                calc_signature_score = TRUE,
+                filename             = paste0(group_name, "_combinedscore_stage"),
+                output_dir           = output_dir)
+  
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECTION 4: Subclass-Stratified — Univariate + Multivariate
+  # Note: covariate_cols = Age + Stage_binary
+  # ═══════════════════════════════════════════════════════════════════════════
+  
+  # ── Individual genes | Subclass-stratified | UV + MV (Age + Stage_binary) ─
+  plot_survival(metadata             = metadata,
+                stratify_var        = current_genes,
+                covariate_cols       = c("Age", "Stage_binary"),
+                facet_var            = "consensusClass",
+                expr_data            = expr_data,
+                cutoff_method        = "optimal",
+                global_cutoff        = FALSE,
+                calc_signature_score = FALSE,
+                filename             = paste0(group_name, "individual_subclass"),
+                output_dir           = output_dir)
+  
+  # ── Combined score | Subclass-stratified | UV + MV (Age + Stage_binary)
+  plot_survival(metadata             = metadata,
+                stratify_var        = current_genes,
+                covariate_cols       = c("Age", "Stage_binary"),
+                facet_var            = "consensusClass",
+                expr_data            = expr_data,
+                cutoff_method        = "optimal",
+                global_cutoff        = FALSE,
+                calc_signature_score = TRUE,
+                filename             = paste0(group_name, "combinedscore_subclass"),
+                output_dir           = output_dir)
+  
+  # ── QC: Subclass survival (no expression — metadata-based) ────────────────
+  plot_survival(metadata             = metadata,
+                stratify_var         = "consensusClass",
+                filename             = "QCSurv",
+                output_dir           = output_dir)
+}
 
-plot_survival(metadata             = metadata,
-              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
-              expr_data            = expr_data,
-              cutoff_method        = "optimal",
-              calc_signature_score = FALSE,
-              filename             = "GRIA1-4_individual_all_patients",
-              output_dir           = output_dir)
+# ═══════════════════════════════════════════════════════════════════════════
+# SECTION 5: Merge All Results + FDR Correction
+# ═══════════════════════════════════════════════════════════════════════════
 
-plot_survival(metadata             = metadata,
-              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
-              expr_data            = expr_data,
-              cutoff_method        = "optimal",
-              calc_signature_score = TRUE,
-              filename             = "GRIA1-4_combinedscore_all_patients",
-              output_dir           = output_dir)
+# ── 5a. File list — all outputs from Sections 2-4 ─────────────────────────
+files <- list.files(output_dir, pattern = "\\.xlsx$")
+# Exclude the final Master file if it already exists from a previous run
+files <- files[!grepl("MASTER_", files)]
 
-plot_survival(metadata             = metadata,
-              stratify_var         = c("GRIA1", "GRIA2"),
-              expr_data            = expr_data,
-              cutoff_method        = "optimal",
-              calc_signature_score = TRUE,
-              filename             = "GRIA1-2_combinedscore_all_patients",
-              output_dir           = output_dir)
+numeric_cols <- c("HR", "pval", "CI_lower", "CI_upper",
+                  "p_logrank", "p_logrank_late", "p_gehan_breslow",
+                  "p_tarone_ware", "p_peto_peto", "p_mod_peto",
+                  "p_fleming_harrington")
 
-plot_survival(metadata             = metadata,
-              stratify_var         = "consensusClass",
-              filename             = "QCSurv",
-              output_dir           = output_dir)
+# ── 5b. Helper to parse filename into metadata columns ────────────────────
+parse_filename <- function(f) {
+  base  <- gsub("\\.xlsx$", "", f)
+  parts <- str_split(base, "_")[[1]]
+  
+  # Gene set: always first two parts joined
+  gene_set <- paste(parts[1], parts[2], sep = "_")
+  
+  # Score type and grouping from remaining parts
+  rest     <- parts[-(1:2)]
+  type     <- rest[1]
+  grouping <- paste(rest[-1], collapse = "_")
+  
+  list(gene_set = gene_set, score_type = type, grouping = grouping)
+}
 
-plot_survival(metadata             = metadata,
-              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
-              facet_var            = "consensusClass",
-              expr_data            = expr_data,
-              cutoff_method        = "optimal",
-              global_cutoff        = FALSE,
-              calc_signature_score = FALSE,
-              filename             = "GRIA1-4_individual_subclass",
-              output_dir           = output_dir)
-
-plot_survival(metadata             = metadata,
-              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
-              facet_var            = "consensusClass",
-              expr_data            = expr_data,
-              cutoff_method        = "optimal",
-              global_cutoff        = FALSE,
-              calc_signature_score = TRUE,
-              filename             = "GRIA1-4_combinedscore_subclass",
-              output_dir           = output_dir)
-
-plot_survival(metadata             = metadata,
-              stratify_var         = c("GRIA1", "GRIA2"),
-              facet_var            = "consensusClass",
-              expr_data            = expr_data,
-              cutoff_method        = "optimal",
-              global_cutoff        = FALSE,
-              calc_signature_score = TRUE,
-              filename             = "GRIA1-2_combinedscore_subclass",
-              output_dir           = output_dir)
-
-plot_survival(metadata             = metadata %>% 
-                dplyr::mutate(Stage = dplyr::case_when(grepl(pattern="T0", x=Stage) ~ "Unknown",
-                                                       grepl(pattern="T1", x=Stage) ~ "I",
-                                                       grepl(pattern="T2", x=Stage) ~ "II",
-                                                       grepl(pattern="T3", x=Stage) ~ "III",
-                                                       grepl(pattern="T4", x=Stage) ~ "IV",
-                                                       TRUE ~ "Unknown")) %>%
-                dplyr::filter(Stage %in% c("I", "II", "III", "IV")),
-              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
-              facet_var            = "Stage",
-              expr_data            = expr_data,
-              cutoff_method        = "optimal",
-              global_cutoff        = FALSE,
-              calc_signature_score = FALSE,
-              filename             = "GRIA1-4_individual_stage",
-              output_dir           = output_dir)
-
-plot_survival(metadata             = metadata %>% 
-                dplyr::mutate(Stage = dplyr::case_when(grepl(pattern="T0", x=Stage) ~ "Unknown",
-                                                       grepl(pattern="T1", x=Stage) ~ "I",
-                                                       grepl(pattern="T2", x=Stage) ~ "II",
-                                                       grepl(pattern="T3", x=Stage) ~ "III",
-                                                       grepl(pattern="T4", x=Stage) ~ "IV",
-                                                       TRUE ~ "Unknown")) %>%
-                dplyr::filter(Stage %in% c("I", "II", "III", "IV")),
-              stratify_var         = c("GRIA1", "GRIA2", "GRIA3", "GRIA4"),
-              facet_var            = "Stage",
-              expr_data            = expr_data,
-              cutoff_method        = "optimal",
-              global_cutoff        = FALSE,
-              calc_signature_score = TRUE,
-              filename             = "GRIA1-4_combinedscore_stage",
-              output_dir           = output_dir)
-
-plot_survival(metadata             = metadata %>% 
-                dplyr::mutate(Stage = dplyr::case_when(grepl(pattern="T0", x=Stage) ~ "Unknown",
-                                                       grepl(pattern="T1", x=Stage) ~ "I",
-                                                       grepl(pattern="T2", x=Stage) ~ "II",
-                                                       grepl(pattern="T3", x=Stage) ~ "III",
-                                                       grepl(pattern="T4", x=Stage) ~ "IV",
-                                                       TRUE ~ "Unknown")) %>%
-                dplyr::filter(Stage %in% c("I", "II", "III", "IV")),
-              stratify_var         = c("GRIA1", "GRIA2"),
-              facet_var            = "Stage",
-              expr_data            = expr_data,
-              cutoff_method        = "optimal",
-              global_cutoff        = FALSE,
-              calc_signature_score = TRUE,
-              filename             = "GRIA1-2_combinedscore_stage",
-              output_dir           = output_dir)
-
-# 1. Setup Path and Files
-base_path <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/16th. Oct. 2025/"
-
-files <- c("GRIA1_2_combinedscore_all_patients.xlsx",
-           "GRIA1_2_combinedscore_stage.xlsx",
-           "GRIA1_2_combinedscore_subclass.xlsx",
-           "GRIA1_4_combinedscore_all_patients.xlsx",
-           "GRIA1_4_combinedscore_stage.xlsx",
-           "GRIA1_4_combinedscore_subclass.xlsx",
-           "GRIA1_4_individual_all_patients.xlsx",
-           "GRIA1_4_individual_stage.xlsx",
-           "GRIA1_4_individual_subclass.xlsx")
-
-# 2. Map through files and target "cox_stats"
+# ── 5c. Merge cox_stats sheets ────────────────────────────────────────────
 master_cox_df <- map_df(files, function(f) {
-  
-  full_path <- file.path(base_path, f)
-  
-  # Safety checks
-  if (!file.exists(full_path)) return(NULL)
+  full_path <- file.path(output_dir, f)
+  if (!file.exists(full_path))            return(NULL)
   if (!("cox_stats" %in% getSheetNames(full_path))) return(NULL)
   
-  # Metadata extraction
-  parts    <- str_split(gsub(".xlsx", "", f), "_")[[1]]
-  gene_set <- paste(parts[1], parts[2], sep = "_")
-  type     <- parts[3]
-  grouping <- paste(parts[4:length(parts)], collapse = "_")
+  meta <- parse_filename(f)
   
-  # Read and tag
   read.xlsx(full_path, sheet = "cox_stats") %>%
-    mutate(
-      Filename    = f,           # Add filename here
-      Gene_Set    = gene_set,
-      Score_Type  = type,
-      Grouping    = grouping
-    ) %>%
-    mutate(across(everything(), as.character)) # Clean merge
-})
-
-# 3. Final cleanup and column reordering
-numeric_cols <- c("HR", "pval", "CI_lower", "CI_upper", 
-                  "p_logrank", "p_logrank_late", "p_gehan_breslow", 
-                  "p_tarone_ware", "p_peto_peto", "p_mod_peto", "p_fleming_harrington")
-
-master_cox_df <- master_cox_df %>%
-  # Restore numeric types
+    mutate(Filename   = f,
+           Gene_Set   = meta$gene_set,
+           Score_Type = meta$score_type,
+           Grouping   = meta$grouping) %>%
+    mutate(across(everything(), as.character))
+}) %>%
   mutate(across(any_of(numeric_cols), as.numeric)) %>%
-  # Force Filename to be the 1st column
-  relocate(Filename, .before = everything())
+  relocate(Filename, Gene_Set, Score_Type, Grouping, .before = everything())
 
-# 4. Save the result
-write.xlsx(master_cox_df, file.path(base_path, "MASTER_MERGED_COX_STATS.xlsx"))
+# ── 5d. Merge mv_cox_stats sheets ─────────────────────────────────────────
+master_mv_df <- map_df(files, function(f) {
+  full_path <- file.path(output_dir, f)
+  if (!file.exists(full_path))              return(NULL)
+  if (!("mv_cox_stats" %in% getSheetNames(full_path))) return(NULL)
+  
+  meta <- parse_filename(f)
+  
+  df <- read.xlsx(full_path, sheet = "mv_cox_stats")
+  
+  # Skip empty sheets
+  if (is.null(df) || nrow(df) == 0) {
+    return(NULL)
+  }
+  
+  df %>%
+    mutate(
+      Filename   = f,
+      Gene_Set   = meta$gene_set,
+      Score_Type = meta$score_type,
+      Grouping   = meta$grouping) %>%
+    mutate(across(everything(), as.character))
+}) %>%
+  mutate(across(any_of(c("HR", "CI_lower", "CI_upper", "pval", "n")), as.numeric)) %>%
+  relocate(Filename, Gene_Set, Score_Type, Grouping, .before = everything())
 
-message("Success! The merged file with 'Filename' as the first column is ready.")
+# ── 5e. Merge PH assumption sheets ────────────────────────────────────────
+master_ph_df <- map_df(files, function(f) {
+  full_path <- file.path(output_dir, f)
+  if (!file.exists(full_path))                    return(NULL)
+  if (!("PH_global_only" %in% getSheetNames(full_path))) return(NULL)
+  
+  meta <- parse_filename(f)
+  
+  read.xlsx(full_path, sheet = "PH_global_only") %>%
+    mutate(Filename   = f,
+           Gene_Set   = meta$gene_set,
+           Score_Type = meta$score_type,
+           Grouping   = meta$grouping) %>%
+    mutate(across(everything(), as.character))
+}) %>%
+  mutate(across(any_of(c("chisq", "df", "p")), as.numeric)) %>%
+  relocate(Filename, Gene_Set, Score_Type, Grouping, .before = everything())
+
+# ── 5f. FDR correction (Benjamini-Hochberg) ───────────────────────────────
+# Applied SEPARATELY within each stratification family:
+#   - all_patients: one family
+#   - stage: one family per stage (II, III, IV)
+#   - subclass: one family per subclass
+# Rationale: each stratum represents a distinct biological hypothesis.
+# Within each family, correction applied across all gene/score tests.
+
+# Univariate FDR
+master_cox_df <- master_cox_df %>%
+  group_by(Grouping, Facet) %>%
+  mutate(FDR_BH = p.adjust(pval, method = "BH")) %>%
+  mutate(FDR_significant = FDR_BH < 0.05) %>%
+  ungroup()
+
+# Multivariate FDR — applied only to gene/score rows (not Age, Stage covariates)
+master_mv_df <- master_mv_df %>%
+  group_by(Grouping, Facet) %>%
+  mutate(FDR_BH = ifelse(
+    grepl("model_", Term),
+    p.adjust(pval[grepl("model_", Term)], method = "BH")[
+      cumsum(grepl("model_", Term))[grepl("model_", Term)]
+    ],
+    NA_real_
+  )) %>%
+  mutate(FDR_significant = ifelse(!is.na(FDR_BH), FDR_BH < 0.05, NA)) %>%
+  ungroup()
+
+# ── 5g. Save master Excel ─────────────────────────────────────────────────
+wb <- openxlsx::createWorkbook()
+
+# UV Cox — all results
+openxlsx::addWorksheet(wb, "UV_cox_all")
+openxlsx::writeData(wb, "UV_cox_all", master_cox_df)
+
+# UV Cox — significant only (pval < 0.05, valid models only)
+uv_sig <- master_cox_df %>%
+  filter(pval < 0.05,
+         !is.na(CI_upper),
+         HR > 0.001)
+openxlsx::addWorksheet(wb, "UV_cox_significant")
+openxlsx::writeData(wb, "UV_cox_significant", uv_sig)
+
+# MV Cox — all results
+openxlsx::addWorksheet(wb, "MV_cox_all")
+openxlsx::writeData(wb, "MV_cox_all", master_mv_df)
+
+# MV Cox — gene/score rows only, significant (excludes Age/Stage covariate rows)
+mv_sig <- master_mv_df %>%
+  filter(grepl("model_", Term),
+         pval < 0.05,
+         !is.na(CI_upper),
+         HR > 0.001)
+openxlsx::addWorksheet(wb, "MV_cox_significant")
+openxlsx::writeData(wb, "MV_cox_significant", mv_sig)
+
+# PH assumption
+openxlsx::addWorksheet(wb, "PH_assumption")
+openxlsx::writeData(wb, "PH_assumption", master_ph_df)
+
+# Highlight FDR survivors in UV sheet
+fdr_rows <- which(master_cox_df$FDR_significant == TRUE) + 1
+if (length(fdr_rows) > 0) {
+  green_style <- openxlsx::createStyle(bgFill = "#E2EFDA")
+  openxlsx::addStyle(wb, "UV_cox_all", green_style,
+                     rows = fdr_rows,
+                     cols = 1:ncol(master_cox_df),
+                     gridExpand = TRUE)
+}
+
+# Highlight failed models in red (HR near zero or NA CI)
+failed_rows <- which(master_cox_df$HR < 0.001 | is.na(master_cox_df$CI_upper)) + 1
+if (length(failed_rows) > 0) {
+  red_style <- openxlsx::createStyle(bgFill = "#FCE4D6")
+  openxlsx::addStyle(wb, "UV_cox_all", red_style,
+                     rows = failed_rows,
+                     cols = 1:ncol(master_cox_df),
+                     gridExpand = TRUE)
+}
+
+openxlsx::saveWorkbook(wb,
+                       file      = file.path(output_dir, paste0("MASTER_SURVIVAL_RESULTS.xlsx")),
+                       overwrite = TRUE)
+
+message("Done! MASTER_SURVIVAL_RESULTS.xlsx saved to: ", output_dir)
+message("Sheets: UV_cox_all | UV_cox_significant | MV_cox_all | MV_cox_significant | PH_assumption")
+message("Green rows = FDR survivors | Red rows = failed models")

@@ -168,3 +168,196 @@ spatial_markers <- FindMarkers(tumor_subset, ident.1 = "Near", ident.2 = "Far")
 # 8. Visualization
 # Show the expression of a top marker spatially
 ImageFeaturePlot(xenium_obj, features = "VEGFA")
+
+# ------
+
+# =============================================================================
+
+# Xenium Distance-Based Spatial Analysis
+
+# =============================================================================
+
+library(Seurat)
+library(dplyr)
+library(RANN)
+
+# -----------------------------------------------------------------------------
+
+# USER SETTINGS
+
+# -----------------------------------------------------------------------------
+
+tumor_label <- "Tumor"
+
+target_cell_types <- c(
+  "Endothelial",
+  "CD8_T",
+  "Treg",
+  "Macrophage",
+  "Fibroblast"
+)
+
+output_dir <- "Spatial_Distance_Results"
+
+dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+
+# -----------------------------------------------------------------------------
+
+# CHECK CELL TYPES
+
+# -----------------------------------------------------------------------------
+
+cat("\nAvailable cell types:\n")
+print(sort(unique(xenium_obj$cell_type)))
+
+# -----------------------------------------------------------------------------
+
+# MAIN LOOP
+
+# -----------------------------------------------------------------------------
+
+for(target_type in target_cell_types){
+  
+  cat("\n=====================================================\n")
+  cat("Analyzing:", target_type, "\n")
+  cat("=====================================================\n")
+  
+  meta <- xenium_obj@meta.data
+           
+  tumor_meta <- meta %>%
+    filter(cell_type == tumor_label)
+  
+  target_meta <- meta %>%
+    filter(cell_type == target_type)
+  
+  if(nrow(tumor_meta) < 10){
+    cat("Skipping:", target_type,
+        "- too few tumor cells\n")
+    next
+  }
+  
+  if(nrow(target_meta) < 10){
+    cat("Skipping:", target_type,
+        "- too few target cells\n")
+    next
+  }
+  
+  tumor_coords <- tumor_meta %>%
+    select(x_centroid, y_centroid)
+  
+  target_coords <- target_meta %>%
+    select(x_centroid, y_centroid)
+  
+  # ---------------------------------------------------------------------------
+  # Calculate nearest-neighbor distance
+  # ---------------------------------------------------------------------------
+  
+  nn <- nn2(
+    data = as.matrix(target_coords),
+    query = as.matrix(tumor_coords),
+    k = 1
+  )
+  
+  dist_col <- paste0(
+    "dist_to_",
+    gsub("[^A-Za-z0-9]", "_", target_type)
+  )
+  
+  xenium_obj[[dist_col]] <- NA_real_
+  
+  [xenium_obj@meta.data](mailto:xenium_obj@meta.data)[
+    rownames(tumor_meta),
+    dist_col
+  ] <- nn$nn.dists[,1]
+  
+  # ---------------------------------------------------------------------------
+  # Create tumor-only object
+  # ---------------------------------------------------------------------------
+  
+  tumor_subset <- subset(
+    xenium_obj,
+    subset = cell_type == tumor_label
+  )
+  
+  distances <- tumor_subset[[dist_col]][,1]
+  
+  q25 <- quantile(
+    distances,
+    0.25,
+    na.rm = TRUE
+  )
+  
+  q75 <- quantile(
+    distances,
+    0.75,
+    na.rm = TRUE
+  )
+  
+  keep_cells <- rownames(
+    tumor_subset@meta.data[distances <= q25 | distances >= q75,]
+  )
+  
+  tumor_subset <- subset(
+    tumor_subset,
+    cells = keep_cells
+  )
+  
+  tumor_subset$spatial_group <- ifelse(
+    tumor_subset[[dist_col]][,1] <= q25,
+    "Near",
+    "Far"
+  )
+  
+  Idents(tumor_subset) <- "spatial_group"
+  
+  # ---------------------------------------------------------------------------
+  # Differential Expression
+  # ---------------------------------------------------------------------------
+  
+  DefaultAssay(tumor_subset) <- "SCT"
+  
+  markers <- FindMarkers(
+    tumor_subset,
+    ident.1 = "Near",
+    ident.2 = "Far",
+    min.pct = 0.10,
+    logfc.threshold = 0.25
+  )
+  
+  markers$gene <- rownames(markers)
+  
+  write.csv(
+    markers,
+    file = file.path(
+      output_dir,
+      paste0(
+        "Tumor_vs_",
+        target_type,
+        "_Distance_DE.csv"
+      )
+    ),
+    row.names = FALSE
+  )
+  
+  cat(
+    "Completed:",
+    target_type,
+    "\n"
+  )
+}
+
+# -----------------------------------------------------------------------------
+# SAVE UPDATED OBJECT
+# -----------------------------------------------------------------------------
+
+saveRDS(
+  xenium_obj,
+  file.path(
+    output_dir,
+    "xenium_with_distance_metrics.rds"
+  )
+)
+
+cat("\nAll analyses completed.\n")
+cat("Results written to:", output_dir, "\n")
+cat("Updated Seurat object saved.\n")

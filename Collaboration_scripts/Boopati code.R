@@ -762,3 +762,192 @@ for (gmt_file in gmt_files){
 #   geom_point(size = 0.01)
 # 
 # ggsave("1.jpg")
+
+
+#### Reviewer 3 
+
+output_dir    <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop"
+path          <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Collaboration projects data"
+
+glycolysis_genes <- read.xlsx(file.path(path, "Past", "Boopati", "input", "Bipul_Gene_Sets.xlsx")) %>%
+  dplyr::filter(GROUP == "KEGG_GLYCOLYSIS_GLUCONEOGENESIS") %>%
+  dplyr::pull(Human)
+
+tcga_metadata    <- read.xlsx(file.path(path, "TCGA", "TCGA.PanAtlas_metadata.xlsx"))
+tcga_norm_counts <- read_tsv(file.path(path, "TCGA", "TCGA.PanAtlas_Norm_Counts.tsv"))
+
+imvigor210_metadata    <- read.xlsx(file.path(path, "TCGA", "IMvigor210_metadata.xlsx")) %>%
+  dplyr::mutate(Project_ID = "IMVigor210")
+imvigor210_norm_counts <- read.xlsx(file.path(path, "TCGA", "IMVigor210_Norm_Counts.xlsx"))
+
+imvigor010_metadata    <- read.xlsx(file.path(path, "TCGA", "IMvigor010_metadata.xlsx")) %>%
+  dplyr::mutate(Project_ID = "IMVigor010")
+imvigor010_norm_counts <- read.xlsx(file.path(path, "TCGA", "IMVigor010_Norm_Counts.xlsx"))
+  
+
+run_loy_workflow <- function(meta_raw, counts_raw, dataset_name, out_dir) {
+  
+  message(paste(">>> Starting Workflow for:", dataset_name))
+  
+  # ── Step A: Pre-processing ───────────────────────────────────────────────
+  counts_clean <- counts_raw %>%
+    dplyr::select(-dplyr::any_of(c("ENTREZ_ID", "ENTREZ_SYMBOL", "ENSEMBL_ID", "ENSEMBL_SYMBOL"))) %>%
+    dplyr::mutate(across(where(is.numeric), ~log2(. + 1)))
+  
+  meta_male <- meta_raw %>%
+    dplyr::filter(Sex == "Male")
+
+  # ── Step B: Y Status survival — all males ────────────────────────────────
+  res_loy <- plot_survival(
+    metadata             = meta_male,
+    expr_data            = counts_clean,
+    stratify_var         = c("DDX3Y", "UTY", "KDM5D", "USP9Y",
+                             "ZFY", "RPS4Y1", "TMSB4Y", "EIF1AY", "NLGN4Y"),
+    calc_signature_score = TRUE,
+    cutoff_method        = "optimal",
+    facet_var            = "Project_ID",
+    global_cutoff        = FALSE,
+    filename             = paste0("Survival_Y_", dataset_name),
+    output_dir           = file.path(out_dir, dataset_name)
+  )
+  
+  # ── Step C: Glycolysis survival — all males ──────────────────────────────
+  res_glycolysis <- plot_survival(
+    metadata             = meta_male,
+    expr_data            = counts_clean,
+    stratify_var         = glycolysis_genes,
+    calc_signature_score = TRUE,
+    cutoff_method        = "optimal",
+    facet_var            = "Project_ID",
+    global_cutoff        = FALSE,
+    filename             = paste0("Survival_Glycolysis_", dataset_name),
+    output_dir           = file.path(out_dir, dataset_name)
+  )
+  
+  # ── Step D: DDR2 survival — all males ───────────────────────────────────
+  res_ddr2 <- plot_survival(
+    metadata             = meta_male,
+    expr_data            = counts_clean,
+    stratify_var         = "DDR2",
+    calc_signature_score = FALSE,
+    cutoff_method        = "optimal",
+    facet_var            = "Project_ID",
+    global_cutoff        = FALSE,
+    filename             = paste0("Survival_DDR2_", dataset_name),
+    output_dir           = file.path(out_dir, dataset_name)
+  )
+  
+  # ── Step E: Merge classifications + save + violins ───────────────────────
+  meta_male <- meta_male %>%
+    dplyr::left_join(
+      res_loy$surv_data %>%
+        dplyr::select(Sample_ID, Y_Score = sig_score, Y_Status = model_sig_score),
+      by = "Sample_ID") %>%
+    dplyr::left_join(
+      res_glycolysis$surv_data %>%
+        dplyr::select(Sample_ID, Glycolysis_Score = sig_score, Glycolysis_Status = model_sig_score),
+      by = "Sample_ID") %>%
+    dplyr::left_join(
+      res_ddr2$surv_data %>%
+        dplyr::select(Sample_ID, DDR2_Expr = DDR2, DDR2_Status = model_DDR2),
+      by = "Sample_ID")
+  
+  # Save classified metadata
+  write.csv(meta_male,
+            file.path(out_dir, dataset_name, paste0("meta_classified_", dataset_name, ".csv")),
+            row.names = FALSE)
+  
+  # Dynamic sizing
+  n_facets <- length(unique(meta_male$Project_ID))
+  p_width  <- if (n_facets > 1) 11.5 else 6
+  p_height <- if (n_facets > 1) 11.5 else 5
+  
+  # Violin 1: DDR2 expression by Y Status — all males
+  p_violin <- ggplot(meta_male, aes(x = Y_Status, y = DDR2_Expr, fill = Y_Status)) +
+    geom_violin(trim = FALSE, alpha = 0.6, color = "black") +
+    geom_boxplot(width = 0.1, fill = "white", outlier.shape = NA, color = "black") +
+    facet_wrap(~Project_ID, scales = "free_y") +
+    theme_minimal(base_size = 14) +
+    scale_fill_manual(values = c("HIGH" = "#C10020", "LOW" = "#00538A")) +
+    labs(title = paste(dataset_name, ": DDR2 Expression by Y Status"),
+         subtitle = "Stratified by Cancer Type",
+         x = "Y Status", y = "DDR2 Expression (log2)") +
+    theme(strip.text = element_text(face = "bold"), legend.position = "bottom")
+  
+  ggsave(file.path(out_dir, dataset_name, paste0("DDR2_YStatus_Violin_", dataset_name, ".pdf")),
+         plot = p_violin, width = p_width, height = p_height)
+  
+  # Violin 2: DDR2 expression by Glycolysis Status — LOY patients only
+  p_violin <- ggplot(meta_male %>% dplyr::filter(Y_Status == "LOW"),
+                     aes(x = Glycolysis_Status, y = DDR2_Expr, fill = Glycolysis_Status)) +
+    geom_violin(trim = FALSE, alpha = 0.6, color = "black") +
+    geom_boxplot(width = 0.1, fill = "white", outlier.shape = NA, color = "black") +
+    facet_wrap(~Project_ID, scales = "free_y") +
+    theme_minimal(base_size = 14) +
+    scale_fill_manual(values = c("HIGH" = "#C10020", "LOW" = "#00538A")) +
+    labs(title = paste(dataset_name, ": DDR2 Expression by Glycolysis Status (LOY Patients)"),
+         subtitle = "Stratified by Cancer Type",
+         x = "Glycolysis Status", y = "DDR2 Expression (log2)") +
+    theme(strip.text = element_text(face = "bold"), legend.position = "bottom")
+  
+  ggsave(file.path(out_dir, dataset_name, paste0("DDR2_Glycolysis_Violin_", dataset_name, ".pdf")),
+         plot = p_violin, width = p_width, height = p_height)
+  
+  # ── Step F: Glycolysis survival — LOY patients only ──────────────────────
+  plot_survival(
+    metadata             = meta_male %>% dplyr::filter(Y_Status == "LOW"),
+    expr_data            = counts_clean,
+    stratify_var         = glycolysis_genes,
+    calc_signature_score = TRUE,
+    cutoff_method        = "optimal",
+    facet_var            = "Project_ID",
+    global_cutoff        = FALSE,
+    filename             = paste0("Survival_Glycolysis_in_LOY_", dataset_name),
+    output_dir           = file.path(out_dir, dataset_name)
+  )
+  
+  # ── Step G: DDR2 survival — LOY patients only ────────────────────────────
+  plot_survival(
+    metadata             = meta_male %>% dplyr::filter(Y_Status == "LOW"),
+    expr_data            = counts_clean,
+    stratify_var         = "DDR2",
+    calc_signature_score = FALSE,
+    cutoff_method        = "optimal",
+    facet_var            = "Project_ID",
+    global_cutoff        = FALSE,
+    filename             = paste0("Survival_DDR2_in_LOY_", dataset_name),
+    output_dir           = file.path(out_dir, dataset_name)
+  )
+  
+  # ── Step H: DDR2 survival — LOY + Glycolysis HIGH patients ───────────────
+  plot_survival(
+    metadata             = meta_male %>% dplyr::filter(Y_Status == "LOW", Glycolysis_Status == "HIGH"),
+    expr_data            = counts_clean,
+    stratify_var         = "DDR2",
+    calc_signature_score = FALSE,
+    cutoff_method        = "optimal",
+    facet_var            = "Project_ID",
+    global_cutoff        = FALSE,
+    filename             = paste0("Survival_DDR2_in_LOY_GlycolysisHIGH_", dataset_name),
+    output_dir           = file.path(out_dir, dataset_name)
+  )
+  
+  # ── Step I: DDR2 survival — LOY + Glycolysis LOW patients ───────────────
+  plot_survival(
+    metadata             = meta_male %>% dplyr::filter(Y_Status == "LOW", Glycolysis_Status == "LOW"),
+    expr_data            = counts_clean,
+    stratify_var         = "DDR2",
+    calc_signature_score = FALSE,
+    cutoff_method        = "optimal",
+    facet_var            = "Project_ID",
+    global_cutoff        = FALSE,
+    filename             = paste0("Survival_DDR2_in_LOY_GlycolysisLOW_", dataset_name),
+    output_dir           = file.path(out_dir, dataset_name)
+  )
+  
+  return(invisible(meta_male))
+}
+
+run_loy_workflow(imvigor210_metadata, imvigor210_norm_counts, "IMVigor210", output_dir)
+run_loy_workflow(imvigor010_metadata, imvigor010_norm_counts, "IMVigor010", output_dir)
+run_loy_workflow(tcga_metadata,       tcga_norm_counts,       "TCGA",       output_dir)

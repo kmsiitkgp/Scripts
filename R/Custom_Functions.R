@@ -8888,9 +8888,7 @@ plot_t_score <- function(data, disp_genes, suffix, save_path){
 plot_venn <- function(data, filename, output_dir){
   
   # ---- ⚙️ Validate Input Parameters ----
-  
-  validate_inputs(metadata = data, output_dir = output_dir, filename = filename)
-  
+
   # Validate column count (upto 4 columns)
   if (ncol(data) < 1 || ncol(data) > 4) {
     stop("`data` must have between 1 and 4 columns.")
@@ -8940,6 +8938,19 @@ plot_venn <- function(data, filename, output_dir){
   # ---- 📊 Generate Venn Diagram ----
   
   file_name <- file.path(output_dir, paste0("Venn_Diagram_", filename, ".tiff"))
+  
+  # Determine if inversion is needed to keep Column 1 on the left
+  # VennDiagram puts the larger set on the left by default. 
+  # If Column 1 is smaller than Column 2, we invert it to keep Column 1 on the left.
+  should_invert <- FALSE
+  if (ncol(data) == 2) {
+    size_set1 <- sum(!is.na(data[, 1]))
+    size_set2 <- sum(!is.na(data[, 2]))
+    if (size_set1 < size_set2) {
+      should_invert <- TRUE
+    }
+  }
+  
   VennDiagram::venn.diagram(x = genes,
                             main = filename,
                             category.names = annotation$Labels,
@@ -8953,6 +8964,9 @@ plot_venn <- function(data, filename, output_dir){
                             resolution = 600,
                             compression = "lzw",
                             margin = 0.3, # Amount of white space around Venn Diagram in grid units
+                            
+                            # 🔄 FIX: Keeps the first column on the left side
+                            inverted = should_invert,
                             
                             # 1️⃣ Line Formatting
                             lwd = 1.5,                 # line thickness
@@ -9023,9 +9037,10 @@ plot_venn <- function(data, filename, output_dir){
   }
   
   # 2️⃣ Format Results into a Data Frame for Saving
-  
+
   # Identify maximum number of genes present in any single unique overlap region
   max_len = max(lengths(overlap_list))
+  if(max_len < 1) max_len <- 1 # Safeguard for zero total overlaps
   
   # Create an empty data frame structure to hold all results
   results = data.frame(matrix("", nrow = max_len, ncol = length(overlap_list)))
