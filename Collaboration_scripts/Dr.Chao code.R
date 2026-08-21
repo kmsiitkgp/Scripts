@@ -880,6 +880,14 @@ for (p in c("cam_genes", "scaffold_genes", "combo")){
 
 ##### 
 
+# Ensure BiocManager is available
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install(c("GEOquery", "limma", "sva"))
+install.packages(c("dplyr", "purrr", "tibble"))
+
 remotes::install_github("cit-bioinfo/BLCAsubtyping", build_vignettes = TRUE)
 library(BLCAsubtyping)
 remotes::install_github("cit-bioinfo/consensusMIBC", build_vignettes = TRUE)
@@ -894,6 +902,7 @@ library(consensusMIBC)
 # cl <- getConsensusClass(x, minCor = .2, gene_id = c("entrezgene", "ensembl_gene_id", "hgnc_symbol")[2])
 
 # --- 1. Load Required Libraries (Run this first) ---
+
 library(GEOquery)
 library(limma) # Needed for exprs()
 library(dplyr) # Needed for %>% , group_by, summarize, full_join
@@ -902,12 +911,18 @@ library(tibble) # Needed for column_to_rownames
 library(sva) # Needed for ComBat
 
 # --- 2. Configuration ---
-gse_list <- c("GSE5287", "GSE13507", "GSE31684", "GSE32894", "GSE48075", 
-              "GSE52219", "GSE48276", "GSE87304", "GSE281689") #"GSE83586" <- no probeid even
+gse_list <- c("GSE5287", "GSE13507", "GSE31684", "GSE32894", 
+              "GSE48075", "GSE52219", "GSE48276", "GSE87304")
+# "GSE281689" <- no metadata in cl_1750 
+# "GSE83586" <- no probeid even
+
+# --- Global Connection Options for GEOquery (Run once before the loop) ---
+options(download.file.method.GEOquery = "libcurl")
+options(timeout = 600) # Increases timeout limit for large platform downloads
 
 # --- 3. Function to Process a Single GSE (Data Retrieval & Gene Summarization) ---
 process_and_summarize_gse <- function(gse_id) {
-  message(paste("/n--- Processing GSE:", gse_id, "---"))
+  message(paste("\n--- Processing GSE:", gse_id, "---"))
   
   # a. Data Retrieval
   gset <- getGEO(gse_id, GSEMatrix = TRUE)
@@ -915,6 +930,10 @@ process_and_summarize_gse <- function(gse_id) {
     gset <- gset[[1]]
   }
   exprs_data <- exprs(gset)
+  
+  # Ensure expression matrix is numeric
+  exprs_data <- apply(exprs_data, 2, as.numeric)
+  rownames(exprs_data) <- rownames(exprs(gset))
   
   # b. Prefix column names with GSE ID (CRITICAL for merging)
   colnames(exprs_data) <- paste0(gse_id, "_", colnames(exprs_data))
@@ -925,19 +944,21 @@ process_and_summarize_gse <- function(gse_id) {
   gpl_table <- Table(gpl)
   
   # d. Prepare Annotation Table
-  if (any(colnames(gpl_table) %in% c("Symbol", "symbol", "Gene Name", "Gene Symbol"))){
-  annot <- gpl_table %>%
-    select(PROBEID = ID, GeneSymbol = matches("Symbol|symbol|Gene Name|Gene Symbol")) %>%
-    filter(!is.na(GeneSymbol) & GeneSymbol != "" & GeneSymbol != "---") %>%
-    mutate(GeneSymbol = gsub("///.*", "", GeneSymbol)) %>% # Clean up multiple symbols
-    distinct(PROBEID, .keep_all = TRUE)
-  } else{
-    #"GSE87304" has gene symbols in ID column
+  sym_col <- colnames(gpl_table)[colnames(gpl_table) %in% c("Symbol", "symbol", "Gene Name", "Gene Symbol", "GENE_SYMBOL")]
+  
+  if (length(sym_col) > 0) {
     annot <- gpl_table %>%
-      select(PROBEID = ID, GeneSymbol = ID) %>%
-      filter(!is.na(GeneSymbol) & GeneSymbol != "" & GeneSymbol != "---") %>%
-      mutate(GeneSymbol = gsub("///.*", "", GeneSymbol)) %>% # Clean up multiple symbols
-      distinct(PROBEID, .keep_all = TRUE)
+      dplyr::select(PROBEID = ID, GeneSymbol = dplyr::all_of(sym_col[1])) %>%
+      dplyr::filter(!is.na(GeneSymbol) & GeneSymbol != "" & GeneSymbol != "---") %>%
+      dplyr::mutate(GeneSymbol = gsub("///.*", "", GeneSymbol)) %>% # Clean up multiple symbols
+      dplyr::distinct(PROBEID, .keep_all = TRUE)
+  } else {
+    # Fallback if no explicit symbol column exists (e.g., GSE87304)
+    annot <- gpl_table %>%
+      dplyr::select(PROBEID = ID, GeneSymbol = ID) %>%
+      dplyr::filter(!is.na(GeneSymbol) & GeneSymbol != "" & GeneSymbol != "---") %>%
+      dplyr::mutate(GeneSymbol = gsub("///.*", "", GeneSymbol)) %>%
+      dplyr::distinct(PROBEID, .keep_all = TRUE)
   }
   
   # e. Merge and Summarize to Gene Level (using mean)
@@ -945,9 +966,9 @@ process_and_summarize_gse <- function(gse_id) {
   merged <- merge(exprs_df, annot, by = "PROBEID")
   
   gene_level <- merged %>%
-    group_by(GeneSymbol) %>%
-    summarize(across(where(is.numeric) & !starts_with("PROBEID"), mean, na.rm = TRUE), .groups = 'drop') %>%
-    select(-any_of("PROBEID")) # Remove PROBEID column after merge
+    dplyr::group_by(GeneSymbol) %>%
+    dplyr::summarize(dplyr::across(dplyr::where(is.numeric) & !dplyr::starts_with("PROBEID"), mean, na.rm = TRUE), .groups = 'drop') %>%
+    dplyr::select(-any_of("PROBEID")) # Remove PROBEID column after merge
   
   return(gene_level)
 }
@@ -962,128 +983,159 @@ final_merged_df <- results_list %>%
   purrr::reduce(full_join, by = "GeneSymbol") %>%
   dplyr::rename(SYMBOL = GeneSymbol)
 
+# Save the merged data frame to your working directory or project folder
+saveRDS(final_merged_df, file = "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Past Collboration projects data/Xinyi/16th. Oct. 2025/final_merged_bladder_expression.rds")
+
+# To load it back into R later without re-running GEO queries:
+#final_merged_df <- readRDS("C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Past Collboration projects data/Xinyi/16th. Oct. 2025/final_merged_bladder_expression.rds")
+
+
 # --- 5. Prepare metadata ---
+excel_path <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/Past Collboration projects data/Xinyi/16th. Oct. 2025/1-s2.0-S0302283819306955-mmc9.xlsx"
+
 Sjodahl <- openxlsx::read.xlsx(
-  xlsxFile = "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/16th. Oct. 2025/1-s2.0-S0302283819306955-mmc9.xlsx",
+  xlsxFile = excel_path,
   sheet = "Sjodahl2012,2017")
 
 cl_1750 <- openxlsx::read.xlsx(
-  xlsxFile = "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop/16th. Oct. 2025/1-s2.0-S0302283819306955-mmc9.xlsx",
+  xlsxFile = excel_path,
   startRow = 2) %>%
   dplyr::select("ID", "Dataset", "Consensus_class", "Gender", "Age", "Stage") %>%
-  dplyr::mutate(GSE = dplyr::case_when(Dataset == "Dyrskjot" ~ "GSE5287", #"GSE3167",
-                                       Dataset == "Kim" ~ "GSE13507",
-                                       Dataset == "Riester" ~ "GSE31684",
-                                       Dataset == "Sjodahl2012" ~ "GSE32894",
-                                       Dataset == "Choi MDA discovery" ~ "GSE48075",
-                                       Dataset == "Choi MDA MVAC" ~ "GSE52219",
-                                       Dataset == "Choi MDA validation" ~ "GSE48276",
-                                       Dataset == "Choi Philadelphia NAC" ~ "GSE48276",
-                                       Dataset == "Seiler" ~ "GSE87304")) %>%
+  dplyr::mutate(GSE = dplyr::case_when(
+    Dataset == "Dyrskjot" ~ "GSE5287",
+    Dataset == "Kim" ~ "GSE13507",
+    Dataset == "Riester" ~ "GSE31684",
+    Dataset == "Sjodahl2012" ~ "GSE32894",
+    Dataset == "Choi MDA discovery" ~ "GSE48075",
+    Dataset == "Choi MDA MVAC" ~ "GSE52219",
+    Dataset == "Choi MDA validation" ~ "GSE48276",
+    Dataset == "Choi Philadelphia NAC" ~ "GSE48276",
+    Dataset == "Seiler" ~ "GSE87304")) %>%
   # Dataset == "Sjodahl2017" ~ "GSE83586")) %>%
   dplyr::filter(!is.na(GSE)) %>%
   tidyr::separate(
     col = ID, # The column to split
     into = c("Sample_ID", "GSM_temp"), # The names of the new columns
-    sep = "//.", # The delimiter (the comma)
+    sep = "\\.", # The delimiter (the comma)
     remove = FALSE # Keep the original 'Full_Name_Code' column
   ) %>%
-  dplyr::mutate(GSM_temp = dplyr::case_when(is.na(GSM_temp) ~ Sample_ID,
-                                            TRUE ~ GSM_temp),
-                Sample_ID = GSM_temp) %>%
-  dplyr::left_join(Sjodahl,by=c("Sample_ID"="Sample_ID")) %>%
-  dplyr::mutate(GSM = dplyr::case_when(is.na(GSM) ~ GSM_temp,
-                                       TRUE ~ GSM),
-                Sample_ID = paste0(GSE, "_", GSM)) %>%
-  dplyr::select(everything(), -GSM_temp) %>%
+  dplyr::mutate(
+    GSM_temp = dplyr::case_when(is.na(GSM_temp) ~ Sample_ID, TRUE ~ GSM_temp),
+    Sample_ID = GSM_temp
+  ) %>%
+  dplyr::left_join(Sjodahl, by = c("Sample_ID" = "Sample_ID")) %>%
+  dplyr::mutate(
+    GSM = dplyr::case_when(is.na(GSM) ~ GSM_temp, TRUE ~ GSM),
+    Sample_ID = paste0(GSE, "_", GSM)
+  ) %>%
+  dplyr::select(dplyr::everything(), -GSM_temp) %>%
   dplyr::filter(Sample_ID %in% colnames(final_merged_df))
-
-
 
 # --- 6. Plot heatmap for each dataset ---
 
 heatmap_plot_list <- list()
+sample_counts     <- c()
+
 for (gse_id in gse_list){
   
-  c3_genes <- c("CADM2", "CDH12", "CNTNAP2", "CSMD1", "CSMD3", "CTNNA2", "CTNNA3",
-                "DLG2", "DMD", "DPP10", "EYS", "GRID2", "LINGO1", "NRG1", "PCDH15",
-                "PTPRD", "RASGEF1B", "RBFOX1", "SLC26A3", "TMEM132D")
-  scaffold_genes <- c("DLG2", "DLG4", "HOMER1", "HOMER2", "HOMER3", "SHANK1", 
-                      "SHANK2", "SHANK3")
-  cam_genes <- c("CDH2", "CDH12", "LRFN1", "DAG1", "NLGN1", "NLGN2", "NLGN3",
-                 "LRRTM1", "LRRTM2", "ADGRL2", "ADGRL3", "EPHB2", "EPHB3", 
-                 "ADGRB1", "ADGRB3") #"NRXN1", "NRXN2", "NRXN3",
   ne_genes <- c("MSI1", "PLEKHG4B", "GNG4", "PEG10", "RND2", "APLP1", "SOX2",
                 "TUBB2B", "CHGA", "CHGB", "NCAM1", "SYP")
   
-  combo <- c(cam_genes, scaffold_genes)
-   
+  scaffold_genes <- c("DLG2", "DLG4", "HOMER1", "HOMER2", "HOMER3", "SHANK1", 
+                      "SHANK2", "SHANK3")
   
-  df_c3 <- data.frame(SYMBOL = c3_genes, Category = "C3")
-  df_scaffold <- data.frame(SYMBOL = scaffold_genes, Category = "Scaffold")
-  df_cam <- data.frame(SYMBOL = cam_genes, Category = "CAM")
-  df_ne <- data.frame(SYMBOL = ne_genes, Category = "Neuroendocrine")
-  metadata_row <- rbind(df_c3, df_scaffold, df_cam, df_ne) %>%
-    dplyr::distinct(SYMBOL, .keep_all = TRUE)
+  cam_genes <- c("CDH2", "CDH12", "LRFN1", "DAG1", "NLGN1", "NLGN2", "NLGN3",
+                 "LRRTM1", "LRRTM2", "ADGRL2", "ADGRL3", "EPHB2", "EPHB3", 
+                 "ADGRB1", "ADGRB3")
   
-  metadata_col <- cl_1750 %>% dplyr::filter(GSE %in% gse_id) %>%
+  # c3_genes <- c("CADM2", "CDH12", "CNTNAP2", "CSMD1", "CSMD3", "CTNNA2", "CTNNA3",
+  #               "DLG2", "DMD", "DPP10", "EYS", "GRID2", "LINGO1", "NRG1", "PCDH15",
+  #               "PTPRD", "RASGEF1B", "RBFOX1", "SLC26A3", "TMEM132D")
+
+  #combo <- c(cam_genes, scaffold_genes)
+  
+  #df_c3       <- data.frame(SYMBOL = c3_genes, Category = "C3")
+  df_scaffold  <- data.frame(SYMBOL = scaffold_genes, Category = "Scaffold")
+  df_cam       <- data.frame(SYMBOL = cam_genes,      Category = "CAM")
+  df_ne        <- data.frame(SYMBOL = ne_genes,       Category = "Neuroendocrine")
+  metadata_row <- rbind(df_scaffold, df_cam, df_ne) %>%
+    dplyr::distinct(SYMBOL, .keep_all = TRUE) %>%
+    dplyr::arrange(Category, SYMBOL)
+  
+  metadata_col <- cl_1750 %>% 
+    dplyr::filter(GSE %in% gse_id) %>%
     dplyr::select(Sample_ID, Consensus_class, Gender, Age, Stage)
   
+  disp_genes <- intersect(final_merged_df$SYMBOL, c(ne_genes, cam_genes, scaffold_genes)) #c3_genes
+  
   norm_counts <- final_merged_df %>% 
-    dplyr::select(SYMBOL, metadata_col$Sample_ID) %>%
+    dplyr::select(SYMBOL, dplyr::any_of(metadata_col$Sample_ID)) %>%
     dplyr::filter(SYMBOL %in% disp_genes) %>%
-    tibble::column_to_rownames("SYMBOL")
+    # 4. Match the exact row order defined in metadata_row
+    dplyr::slice(match(metadata_row$SYMBOL, SYMBOL))
   
-  disp_genes <- intersect(c(c3_genes, ne_genes, cam_genes, scaffold_genes), final_merged_df$SYMBOL)
+  # Print dimensions of norm_counts for this cohort
+  cat("Cohort:", gse_id, "→ Rows (genes):", nrow(norm_counts), "| Columns (samples):", ncol(norm_counts) - 1, "\n")
   
-  # Heatmap overrides
-  heatmap.override <- list(
-    #force.log        = TRUE,                 # Force log transformation
-    col.ann          = c("Consensus_class"),  # Column annotation
-    row.ann          = c("Category"),         # Row annotation
-    col.gaps         = c("Consensus_class"),                  # Column gaps
-    row.gaps         = c("Category"),                  # Row gaps
-    col.cluster      = c("Consensus_class"),  # Column clustering
-    row.cluster      = c("Category"),         # Row clustering
-    palette         = "rdbu",                # Heatmap palette
-    ann.palette     = "discrete",             # Annotation palette
-    border.color    = NA,                     # Cell border color
-    show.expr.legend = TRUE,                  # Show expression legend
-    title           = "",                     # Heatmap title
-    format           = "tiff"                 # Output file format
+  # Define your fixed colors using your CUSTOM_PALETTE hex codes
+  my_fixed_colors <- list(
+    Consensus_class = c("Ba/Sq"       = "#9467bd",
+                        "LumNS"       = "#8c564b",
+                        "LumP"        = "#e377c2",
+                        "LumU"        = "#7f7f7f",
+                        "NE-like"     = "#bcbd22",
+                        "Stroma-rich" = "#17becf"),
+    Category = c("CAM"            = "#ff7f0e",
+                 "Neuroendocrine" = "#2ca02c",
+                 "Scaffold"       = "#d62728",
+                 "C3"             = "#1f77b4")
+  )
+
+  
+  res <- plot_heatmap(
+    df              = norm_counts,
+    row_id          = "SYMBOL",
+    col_id          = "Sample_ID",
+    data_type       = "auto",
+    metadata_col    = metadata_col,
+    metadata_row    = metadata_row,
+    col_annotations = c("Consensus_class"),
+    row_annotations = c("Category"),
+    col_gap_by      = "Consensus_class",
+    row_gap_by      = "Category",
+    col_cluster_by  = "Consensus_class",
+    #row_cluster_by  = "Category",
+    row_cluster_by  = "none",
+    plot_title      = paste0("Cohort: ", gse_id),
+    heatmap_palette = "rdbu",
+    custom_ann_colors = my_fixed_colors,
+    show_expr_legend  = TRUE,   # Turn off expression legend
+    show_ann_legend   = TRUE,
+    plot_width  = 4,
+    plot_height = 6,
+    expression_range  = c(-3, 3)
   )
   
-  parent.dir <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop"
-  gmt.dir    <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Documents/GitHub/R-Scripts/GSEA_genesets"
-  scripts.dir <- NULL
-  
-  proj.params <- setup_project(
-    proj               = "proj",
-    species = "species",
-    contrasts = "contrasts",
-    parent.dir = parent.dir,
-    gmt.dir = gmt.dir,
-    scripts.dir      = scripts.dir,
-    #deseq2.override  = deseq2.override,
-    heatmap.override = heatmap.override,
-    #volcano.override = volcano.override
-  )
-  
-  proj.params$heatmap$title <- gse_id
-  ph <- plot_heatmap(norm_counts, proj.params, metadata_col, metadata_row, disp_genes)
-  heatmap_plot_list[[length(heatmap_plot_list) + 1]] <- ph$ph$gtable
+  if (!is.null(res)) {
+    # Extract the gtable object correctly returned by the new plot_heatmap()
+    heatmap_plot_list[[gse_id]] <- res$ph$gtable
+    sample_counts[gse_id]       <- ncol(res$mat)
+  }
 }
 
 heatmap_output_path <- "C:/Users/kailasamms/OneDrive - Cedars-Sinai Health System/Desktop"
-if (length(heatmap_plot_list) > 0) {
-  pdf(file.path(heatmap_output_path, paste0("Heatmaps_Dr.Chao.pdf")),
-      width = 11, height = 11)
-  for (ht in heatmap_plot_list) {
-    grid::grid.newpage()
-    grid::grid.draw(ht)
-  }
-  dev.off()
+
+dir.create(heatmap_output_path, recursive = TRUE, showWarnings = FALSE)
+
+pdf(file.path(heatmap_output_path, "all_heatmap.pdf"), width = 10, height = 11.5, onefile = TRUE)
+
+for (gse_id in names(heatmap_plot_list)) {
+  grid::grid.newpage()
+  grid::grid.draw(heatmap_plot_list[[gse_id]])
 }
+
+dev.off()
+
 
 ## bulk RNASeq Xinyi
 

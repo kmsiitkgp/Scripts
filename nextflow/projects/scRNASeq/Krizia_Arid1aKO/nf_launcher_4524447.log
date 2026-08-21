@@ -1,0 +1,105 @@
+✅ Configuration file Krizia_Arid1aKO_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        PROJECT VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+Experiment             : ---             : scRNASeq
+Species                : ---             : Mouse
+Project Name           : ---             : Krizia_Arid1aKO
+
+Input Reads            : ✔ FOUND       : /common/bhowmicknlab/scRNASeq/Krizia_Arid1aKO/input
+Fastq Map File         : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Krizia_Arid1aKO/Krizia_Arid1aKO_fastq_map.txt
+Metadata File          : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Krizia_Arid1aKO/Krizia_Arid1aKO_metadata.xlsx
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Krizia_Arid1aKO/Krizia_Arid1aKO_config.yaml
+
+Final Results          : ✔ FOUND       : /home/kailasamms/analysis
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+Image Cache            : ✔ FOUND       : /home/kailasamms/resources/containers
+Ref Genomes            : ✔ FOUND       : /home/kailasamms/resources/genomes
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /common/bhowmicknlab/scRNASeq/Krizia_Arid1aKO/input          -> /common/bhowmicknlab/scRNASeq/Krizia_Arid1aKO/input
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /common --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.3 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Krizia_Arid1aKO_2026-06-05_15-25-17] DSL2 - revision: 4854fc20c4
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+SCRNA-SEQ PIPELINE
+===========================================
+Experiment               : scRNASeq
+Species                  : Mouse
+Project                  : Krizia_Arid1aKO
+Mapping File             : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Krizia_Arid1aKO/Krizia_Arid1aKO_fastq_map.txt
+Input FastQ Dir          : /common/bhowmicknlab/scRNASeq/Krizia_Arid1aKO/input
+Reference Dir            : /home/kailasamms/resources/genomes
+===========================================
+
+==> Validating file naming conventions
+WARN: There's no process matching config selector: HMMCOPY_REFWIG
+WARN: There's no process matching config selector: HMMCOPY_READCOUNTER
+WARN: There's no process matching config selector: ICHORCNA_RUN
+[6b/78e8b3] Cached process > SCRNASEQ:FETCH_10X_VERSIONS (Fetching latest Ensembl metadata for Mouse)
+[skipping] Stored process > SCRNASEQ:DOWNLOAD_10X_REF (1)
+[4e/61c49d] Submitted process > SCRNASEQ:RENAME_FASTQS (Renaming FASTQ files)
+
+ ============================================================
+ FASTQ INPUT VALIDATION SUMMARY
+ ============================================================
+ FILE FORMAT         : fastq.gz
+  - .fq.gz           : 0
+  - .fastq.gz        : 8
+------------------------------------------------------------
+ SEQUENCING MODE     : PAIRED_END
+ READ TAGS USED      :
+  - R1 tag           : _R1
+  - R2 tag           : _R2
+ TAG DISTRIBUTION    :
+  - Uppercase (R1/R2): 4 / 4
+  - Lowercase (r1/r2): 0 / 0
+------------------------------------------------------------
+ SAMPLE SUMMARY      :
+  - Total samples    : 4
+  - Tumor samples    : 0
+  - Normal samples   : 0
+  - Other samples    : 4
+ TOTAL FASTQ FILES   : 8
+============================================================
+
+[46/3a86f3] Submitted process > SCRNASEQ:CELLRANGER_COUNT (Cell Ranger count: Arid1aKO_1)
+[8b/ab655c] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / Arid1aKO_1 (raw))
+[49/0eb581] Submitted process > SCRNASEQ:CELLRANGER_COUNT (Cell Ranger count: WT_1)
+[6e/de60e5] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / Arid1aKO_1 (raw))
+[c4/8140ff] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT_1 (raw))
+[84/156760] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT_1 (raw))
+[b3/c5f7c1] Submitted process > SCRNASEQ:LOAD_CELLRANGER (Sample: WT_1)
+[d3/99f1c7] Submitted process > SCRNASEQ:LOAD_CELLRANGER (Sample: Arid1aKO_1)
+[3c/c1cda1] Submitted process > SCRNASEQ:MULTIQC (MultiQC: Mouse)
+COMPLETED: WT_1 -> /home/kailasamms/scratch/Krizia_Arid1aKO/b3/c5f7c14e44f93b6a68be3ead60b552/WT_1.LOAD_CELLRANGER.rds
+[87/0ce1ab] Submitted process > SCRNASEQ:CLASSIFY_EMPTY_DROPLETS (Sample: WT_1)
+COMPLETED: Arid1aKO_1 -> /home/kailasamms/scratch/Krizia_Arid1aKO/d3/99f1c7f363e7643c25ec252177f9f8/Arid1aKO_1.LOAD_CELLRANGER.rds
+[fd/a56d16] Submitted process > SCRNASEQ:CLASSIFY_EMPTY_DROPLETS (Sample: Arid1aKO_1)
+[16/165243] Submitted process > SCRNASEQ:CALC_QC_METRICS (Sample: WT_1)
+[25/89c69a] Submitted process > SCRNASEQ:CALC_QC_METRICS (Sample: Arid1aKO_1)
+[bc/4d4a03] Submitted process > SCRNASEQ:FILTER_SINGLETS (Sample: Arid1aKO_1)
+[48/eb75af] Submitted process > SCRNASEQ:FILTER_SINGLETS (Sample: WT_1)
+[b7/9e47fc] Submitted process > SCRNASEQ:MERGE_FILTERED (Merging all samples)
+[8a/0ef291] Submitted process > SCRNASEQ:SCT_TRANSFORM (SCTransform on merged object)
+[b4/383630] Submitted process > SCRNASEQ:INTEGRATE_AND_CLUSTER (Integrating SCT data)
+[9e/d18fe6] Submitted process > SCRNASEQ:CALC_MODULE_SCORES (Calculating module scores)
+[bd/773116] Submitted process > SCRNASEQ:ANNOTATE_CLUSTERS (Annotating clusters)
+[28/6b3e30] Submitted process > SCRNASEQ:IDENTIFY_MARKERS (Identifying cluster markers)

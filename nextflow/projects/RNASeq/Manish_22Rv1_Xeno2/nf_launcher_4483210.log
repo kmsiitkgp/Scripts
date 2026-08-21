@@ -1,0 +1,270 @@
+✅ Configuration file Manish_22Rv1_Xeno2_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        PROJECT VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+Experiment             : ---             : RNASeq
+Species                : ---             : Xenograft
+Project Name           : ---             : Manish_22Rv1_Xeno2
+
+Input Reads            : ✔ FOUND       : /common/bhowmicknlab/RNASeq/Manish_22Rv1_Xeno2/input
+Fastq Map File         : ❌ MISSING     : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_Xeno2/Manish_22Rv1_Xeno2_fastq_map.txt
+Metadata File          : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_Xeno2/Manish_22Rv1_Xeno2_metadata.xlsx
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_Xeno2/Manish_22Rv1_Xeno2_config.yaml
+
+Final Results          : ✔ FOUND       : /home/kailasamms/analysis
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+Image Cache            : ✔ FOUND       : /home/kailasamms/resources/containers
+Ref Genomes            : ✔ FOUND       : /home/kailasamms/resources/genomes
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /common/bhowmicknlab/RNASeq/Manish_22Rv1_Xeno2/input         -> /common/bhowmicknlab/RNASeq/Manish_22Rv1_Xeno2/input
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /common --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.1 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Manish_22Rv1_Xeno2_2026-05-19_12-01-06] DSL2 - revision: 4854fc20c4
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+RNA-SEQ PIPELINE
+===========================================
+Experiment               : RNASeq
+Species                  : Xenograft
+Project                  : Manish_22Rv1_Xeno2
+Mapping File             : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_Xeno2/Manish_22Rv1_Xeno2_fastq_map.txt
+Input FastQ Dir          : /common/bhowmicknlab/RNASeq/Manish_22Rv1_Xeno2/input
+Reference Dir            : /home/kailasamms/resources/genomes
+===========================================
+
+No map file found. Passing raw FASTQs directly to validation.
+==> Validating file naming conventions
+WARN: There's no process matching config selector: CALC_MODULE_SCORES
+WARN: There's no process matching config selector: ANNOTATE_CLUSTERS
+
+ ============================================================
+ FASTQ INPUT VALIDATION SUMMARY
+ ============================================================
+ FILE FORMAT         : fq.gz
+  - .fq.gz           : 16
+  - .fastq.gz        : 0
+------------------------------------------------------------
+ SEQUENCING MODE     : PAIRED_END
+ READ TAGS USED      :
+  - R1 tag           : _R1
+  - R2 tag           : _R2
+ TAG DISTRIBUTION    :
+  - Uppercase (R1/R2): 8 / 8
+  - Lowercase (r1/r2): 0 / 0
+------------------------------------------------------------
+ SAMPLE SUMMARY      :
+  - Total samples    : 8
+  - Tumor samples    : 0
+  - Normal samples   : 0
+  - Other samples    : 8
+ TOTAL FASTQ FILES   : 16
+============================================================
+
+[6c/27d826] Submitted process > RNASEQ:FETCH_ENSEMBL_VERSIONS (Fetching latest Ensembl metadata for Human)
+[ed/5bc28e] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT5_R2.fq.gz)
+[88/6fbca3] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT8_R2.fq.gz)
+[19/ed2086] Submitted process > RNASEQ:FETCH_ENSEMBL_VERSIONS (Fetching latest Ensembl metadata for Mouse)
+[63/6b13e2] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT1_R1.fq.gz)
+[91/616440] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT7_R1.fq.gz)
+[fd/b8fd92] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT2_R2.fq.gz)
+[93/17c9b7] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT1_R2.fq.gz)
+[d7/75c86c] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT3_R2.fq.gz)
+[5b/6a0ced] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT6_R1.fq.gz)
+[ef/1ed380] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT7_R2.fq.gz)
+[4f/70f4fc] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT4_R2.fq.gz)
+[98/d4d593] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT6_R2.fq.gz)
+[92/0ce63a] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT4_R1.fq.gz)
+[f8/e64a7c] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT8_R1.fq.gz)
+[bc/75879a] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT5_R1.fq.gz)
+[e4/55199c] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT3_R1.fq.gz)
+[e3/7388b9] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT2_R1.fq.gz)
+[skipping] Stored process > RNASEQ:DOWNLOAD_ENSEMBL_REF (1)
+[skipping] Stored process > RNASEQ:DOWNLOAD_ENSEMBL_REF (2)
+[skipping] Stored process > RNASEQ:XENGSORT_INDEX (1)
+[skipping] Stored process > RNASEQ:CREATE_GENTROME (1)
+[skipping] Stored process > RNASEQ:RSEQC_BED (1)
+[skipping] Stored process > RNASEQ:STAR_INDEX (2)
+[skipping] Stored process > RNASEQ:SALMON_INDEX (1)
+[skipping] Stored process > RNASEQ:STAR_INDEX (1)
+[skipping] Stored process > RNASEQ:CREATE_GENTROME (2)
+[skipping] Stored process > RNASEQ:RSEQC_BED (2)
+[skipping] Stored process > RNASEQ:SALMON_INDEX (2)
+[48/a1ddff] Submitted process > RNASEQ:XENGSORT_CLASSIFY (Classifying graft/host reads for MT1)
+[ea/7c4320] Submitted process > RNASEQ:XENGSORT_CLASSIFY (Classifying graft/host reads for MT2)
+[bd/63d7b6] Submitted process > RNASEQ:XENGSORT_CLASSIFY (Classifying graft/host reads for MT3)
+[eb/b46386] Submitted process > RNASEQ:XENGSORT_CLASSIFY (Classifying graft/host reads for MT4)
+[80/f514e7] Submitted process > RNASEQ:CREATE_TX2GENE (Creating tx2gene: Mouse (GRCm39.115))
+[4f/fe2848] Submitted process > RNASEQ:CREATE_TX2GENE (Creating tx2gene: Human (GRCh38.115))
+[8e/79b911] Submitted process > RNASEQ:CREATE_TX2GENE (Creating tx2gene: Xenograft (GRCh38.115))
+[d0/44a902] Submitted process > RNASEQ:XENGSORT_CLASSIFY (Classifying graft/host reads for MT5)
+[e0/e5bc47] Submitted process > RNASEQ:XENGSORT_CLASSIFY (Classifying graft/host reads for MT6)
+[68/cf977e] Submitted process > RNASEQ:XENGSORT_CLASSIFY (Classifying graft/host reads for MT7)
+[83/04327c] Submitted process > RNASEQ:XENGSORT_CLASSIFY (Classifying graft/host reads for MT8)
+[1d/246222] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT1)
+[9c/e3b00e] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT1 (raw))
+[53/306f22] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT1)
+[cc/a3f0d9] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT2 (raw))
+[62/450c29] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT2)
+[33/64e99e] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT2)
+[fc/1b566e] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT3 (raw))
+[e9/8b2746] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT3)
+[14/eab1ab] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT3)
+[84/5682cc] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT4)
+[29/0f8443] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT4 (raw))
+[27/967e04] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT4)
+[1c/339cf7] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT5)
+[5d/110adc] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT5 (raw))
+[ef/07a816] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT5)
+[1d/ca1103] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT6)
+[26/9454c0] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT6 (raw))
+[1e/8e639c] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT6)
+[25/d59958] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT7)
+[19/43bd6a] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT7 (raw))
+[73/c8389e] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT7)
+[98/737a30] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT8)
+[20/050555] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT8 (raw))
+[22/3da0db] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / MT1 (raw))
+[bf/df7506] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT8)
+[76/102220] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / MT1)
+[ce/3a7fc0] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / MT1)
+[89/56f7a3] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / MT2 (raw))
+[e5/3da180] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / MT2)
+[99/cdd0af] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / MT3 (raw))
+[ac/56feac] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / MT3)
+[d5/ff876c] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / MT3)
+[65/ba9469] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / MT2)
+[76/189341] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / MT4 (raw))
+[89/415f05] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / MT4)
+[9c/98bd60] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / MT5)
+[2d/9149e0] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / MT5 (raw))
+[a8/e9d16e] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / MT4)
+[51/358bf6] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / MT7)
+[26/b07a49] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / MT5)
+[c0/66feab] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / MT6)
+[55/96ce52] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / MT7 (raw))
+[5d/261e3b] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / MT6)
+[fe/55d392] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / MT6 (raw))
+[78/7296c6] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / MT8)
+[a6/3a1bed] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / MT8 (raw))
+[3d/846e24] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / MT8)
+[b7/e18bad] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / MT7)
+[55/d20a6b] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Xenograft / MT2 (raw))
+[c2/d0e779] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Xenograft / MT1 (raw))
+[0a/82f057] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Xenograft / MT3 (raw))
+[b0/213c9b] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Xenograft / MT4 (raw))
+[ce/b0dcf5] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Xenograft / MT5 (raw))
+[a6/0f7d4c] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Xenograft / MT6 (raw))
+[f5/9a46fd] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Xenograft / MT8 (raw))
+[0d/1b6c13] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Xenograft / MT7 (raw))
+[84/bb9496] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT1)
+[37/c2ca4c] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT2)
+[34/b89002] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT4)
+[bb/d2b4b4] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT3)
+[30/df561e] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT6)
+[26/a7da66] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT5)
+[89/894b4b] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / MT1)
+[42/42f8c4] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT7)
+[68/4ab447] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / MT3)
+[5f/41485d] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT8)
+[1e/c57547] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / MT2)
+[7c/8e52e3] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / MT5)
+[f2/619c32] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / MT4)
+[da/837fae] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / MT6)
+[51/e36b2d] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / MT7)
+[aa/1c7d4c] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / MT8)
+[f9/8fac68] Submitted process > RNASEQ:MERGE_STAR_COUNTS (Merging STAR counts: Mouse)
+[2f/53b8b3] Submitted process > RNASEQ:MERGE_STAR_COUNTS (Merging STAR counts: Human)
+[90/b02433] Submitted process > RNASEQ:STAR_STATS (STAR stats)
+[f9/21488e] Submitted process > RNASEQ:SALMON_STATS (Salmon stats)
+[22/a3ef4c] Submitted process > RNASEQ:CREATE_TXI (Creating txi: Mouse)
+[a3/392a5b] Submitted process > RNASEQ:CREATE_TXI (Creating txi: Human)
+[62/610c31] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT4)
+[41/100b0c] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT2)
+[fa/5eba28] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT1)
+[96/3cf2ea] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / MT1)
+[9b/35eddc] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT3)
+[67/9858fa] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT6)
+[69/e42530] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT7)
+[14/339e0e] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / MT3)
+[a2/a44a07] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT5)
+[85/88d23a] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / MT6)
+[1d/350473] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / MT2)
+[8e/67c6c3] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / MT8)
+[65/d65341] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT8)
+[65/1f3ceb] Submitted process > RNASEQ:CREATE_DDS (Creating DESeq2 dataset: Human)
+[8c/a87614] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / MT5)
+[9a/2c6b2a] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / MT4)
+[b0/e62b50] Submitted process > RNASEQ:CREATE_DDS (Creating DESeq2 dataset: Mouse)
+[43/188ba2] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / MT7)
+[b3/f859c6] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / IRR-Vehicle)
+[95/56add1] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / SPB-Vehicle)
+[01/91fa6c] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / SPB_IRR-IRR)
+[ff/7ba911] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / SPB_IRR-Vehicle)
+[be/4e676b] Submitted process > RNASEQ:PLOT_DESEQ2_QC (Plotting DESeq2 QC: Human)
+[63/bf5d04] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse / IRR-Vehicle)
+[1b/f4925a] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse / SPB-Vehicle)
+[e9/e43efd] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse / SPB_IRR-Vehicle)
+[41/402f4a] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse / SPB_IRR-IRR)
+[fe/ad347f] Submitted process > RNASEQ:PLOT_DESEQ2_QC (Plotting DESeq2 QC: Mouse)
+[f5/23da3a] Submitted process > RNASEQ:DEEP_AUDIT (Auditing results)
+[33/f706ba] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / SPB-Vehicle)
+[ce/029b07] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / SPB-Vehicle)
+[67/ba6121] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Mouse / SPB_IRR-IRR)
+[bf/844d3f] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Mouse / SPB_IRR-Vehicle)
+[8d/2582a3] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Mouse / SPB_IRR-IRR)
+[38/638e74] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Mouse / SPB_IRR-IRR)
+[ba/dd2a04] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / SPB-Vehicle)
+[0f/e5394d] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Mouse / SPB-Vehicle)
+[84/9acc92] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Mouse / IRR-Vehicle)
+[2d/b208a5] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Mouse / SPB_IRR-Vehicle)
+[58/cd96b7] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Mouse / IRR-Vehicle)
+[87/72e0e1] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / SPB_IRR-Vehicle)
+[9b/e092e2] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Mouse / SPB-Vehicle)
+[80/e088d7] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / SPB_IRR-Vehicle)
+[cb/2e44ef] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / SPB_IRR-IRR)
+[13/e3a53d] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / SPB_IRR-IRR)
+[fb/0b5192] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Mouse / SPB_IRR-Vehicle)
+[d9/95aa5b] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / IRR-Vehicle)
+[8c/1b9a16] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / IRR-Vehicle)
+[82/864c7a] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Mouse / IRR-Vehicle)
+[54/96416f] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / SPB_IRR-Vehicle)
+[13/b18369] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Mouse / SPB-Vehicle)
+[cf/2a5f8f] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / SPB_IRR-IRR)
+[b0/380927] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / IRR-Vehicle)
+[1e/169d81] Submitted process > RNASEQ:MULTIQC (MultiQC: Human)
+[ab/c48368] Submitted process > RNASEQ:MULTIQC (MultiQC: Mouse)
+[cf/7d5665] Submitted process > RNASEQ:MULTIQC (MultiQC: Xenograft)
+[5b/00d07f] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / SPB-Vehicle)
+[04/e0cd2a] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / SPB-Vehicle)
+[05/419a34] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Mouse / SPB_IRR-Vehicle)
+[91/0453e4] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Mouse / SPB_IRR-IRR)
+[db/c7069c] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Mouse / SPB_IRR-IRR)
+[5d/7bba2d] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Mouse / SPB-Vehicle)
+[75/8b31d6] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Mouse / IRR-Vehicle)
+[67/e47a61] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Mouse / SPB_IRR-Vehicle)
+[f4/261673] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Mouse / SPB-Vehicle)
+[02/198955] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / SPB_IRR-IRR)
+[84/0e6141] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / IRR-Vehicle)
+[de/92b2b7] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / SPB_IRR-Vehicle)
+[03/c6f87b] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / SPB_IRR-IRR)
+[e6/23fae2] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Mouse / IRR-Vehicle)
+[f0/a3e209] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / IRR-Vehicle)
+[4f/3391b8] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / SPB_IRR-Vehicle)

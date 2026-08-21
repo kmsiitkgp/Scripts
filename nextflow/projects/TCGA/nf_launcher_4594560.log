@@ -1,0 +1,59 @@
+✅ Configuration file PanCancer_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        PROJECT VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+Experiment             : ---             : TCGA
+Species                : ---             : Human
+Project Name           : ---             : PanCancer
+
+Input Reads            : ❌ MISSING     : null
+Fastq Map File         : ❌ MISSING     : null
+Metadata File          : ❌ MISSING     : null
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/TCGA/PanCancer_config.yaml
+
+Final Results          : ✔ FOUND       : /home/kailasamms/analysis
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+Image Cache            : ✔ FOUND       : /home/kailasamms/resources/containers
+Ref Genomes            : ✔ FOUND       : /home/kailasamms/resources/genomes
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /home/kailasamms/scripts/nextflow/projects/TCGA/null         -> null
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /common --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.4 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [PanCancer_2026-06-18_13-16-22] DSL2 - revision: ae47bb3a88
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+TCGA DOWNLOAD PIPELINE
+===========================================
+Experiment               : TCGA
+Species                  : Human
+Project                  : PanCancer
+Manifest File            : /home/kailasamms/scripts/nextflow/resources/Datasets/gdc_manifest.2026-05-01.txt
+Sample Sheet             : /home/kailasamms/scripts/nextflow/resources/Datasets/gdc_sample_sheet.2026-05-01.tsv
+Output Dir               : /home/kailasamms/analysis/TCGA/PanCancer
+GDC Parallel Connections : 8
+GDC Retry Attempts       : 3
+===========================================
+
+WARN: There's no process matching config selector: SCRNASEQ:CELLRANGER_COUNT
+WARN: There's no process matching config selector: SCRNASEQ:(?!CELLRANGER_COUNT|.*FASTQC|MULTIQC).*
+WARN: There's no process matching config selector: ICHORCNA_RUN
+[37/c81591] Submitted process > TCGA:GDC_DOWNLOAD (GDC Download: gdc_manifest.2026-05-01.txt)
+[99/d2e565] Submitted process > TCGA:MD5_VALIDATE (MD5 Validate: failed_manifest.txt)

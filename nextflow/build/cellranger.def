@@ -1,25 +1,62 @@
 Bootstrap: docker
 From: ubuntu:22.04
 
+# =============================================================================
+# Cell Ranger 10.0.0 Apptainer Container
+# =============================================================================
+# Prerequisites: cellranger-10.0.0.tar.gz must be in the same folder as this
+#                def file before building.
+#
+# Download from: https://www.10xgenomics.com/support/software/cell-ranger/downloads
+# Note: 10x download URLs expire after a few days. If download fails with a
+#       403 error, go to the link above and get a fresh URL.
+#
+# Build command:
+#   sudo apptainer build cellranger_10.0.0.sif cellranger.def 2>&1 | tee build.log
+# =============================================================================
+
+%labels
+    Author      kailasamms
+    Version     10.0.0
+    Date        2026-04-30
+    Description "Cell Ranger 10.0.0"
+
 %files
+    # Copy the tarball from the build folder into /opt inside the container
     cellranger-10.0.0.tar.gz /opt/cellranger-10.0.0.tar.gz
 
 %post
+    # Install minimal system dependencies needed to run Cell Ranger
+    # --no-install-recommends keeps the image lean by skipping optional packages
     apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates locales unzip procps
-    
+        ca-certificates \
+        locales \
+        unzip \
+        procps
+
+    # Extract the tarball into /opt and remove it to save space
     cd /opt
     tar -xzvf cellranger-10.0.0.tar.gz
     rm cellranger-10.0.0.tar.gz
-    
+
+    # Ensure the cellranger binary is executable
+    chmod +x /opt/cellranger-10.0.0/cellranger
+
+    # Create a symlink so cellranger is available system-wide without needing
+    # to set PATH explicitly — /usr/local/bin is always in the default PATH
     ln -s /opt/cellranger-10.0.0/cellranger /usr/local/bin/cellranger
 
+    # Set up locale to avoid warnings from tools that expect UTF-8
+    locale-gen en_US.UTF-8
+    update-locale LANG=en_US.UTF-8
+
 %environment
-    export PATH="/opt/cellranger-10.0.0:$PATH"
-    export LC_ALL=C.UTF-8
-    export LANG=C.UTF-8
+    # Set locale environment variables at runtime
+    export LC_ALL=en_US.UTF-8
+    export LANG=en_US.UTF-8
 
 %test
+    # %environment is not sourced during %test, so PATH must be set explicitly
     export PATH="/opt/cellranger-10.0.0:$PATH"
     echo "Testing Cell Ranger installation..."
     cellranger --version

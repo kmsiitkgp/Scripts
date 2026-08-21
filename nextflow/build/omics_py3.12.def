@@ -1,0 +1,128 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+# =============================================================================
+# omics_py3.12 Apptainer Container
+# =============================================================================
+# Purpose: Python-side single-cell RNA velocity stack — kb-python quantification
+#          through merge/subset (anndata) through scVelo/veloVI modeling.
+#          Deliberately Python-only (no R/Seurat) — mirrors omics_r4.4.3.sif's
+#          language-focused container split. Cross-language handoff between
+#          the Seurat (R) and AnnData (Python) sides happens via plain CSV
+#          (SCRNA_export_metadata.R -> SCRNA_PREP_VELOCITY_INPUT), never by
+#          loading .rds into Python or .h5ad into R directly.
+#
+# Covers pipeline stages:
+#   SCRNA_KB_REF / SCRNA_KB_COUNT      -> kb-python (bundled kallisto/bustools)
+#   SCRNA_MERGE_H5AD                    -> anndata
+#   SCRNA_PREP_VELOCITY_INPUT           -> anndata, pandas
+#   SCRNA_SCVELO (future)                -> scvelo, scanpy, igraph, leidenalg
+#   veloVI (future, optional)           -> scvi-tools
+#
+# Build command:
+#   sudo apptainer build omics_py3.12.sif omics_py3.12.def 2>&1 | tee build.log
+# =============================================================================
+
+%labels
+    Author      kailasamms
+    Version     3.12
+    Date        2026-08-05
+    Description "Omics Python: 3.12 + kb-python + scVelo + veloVI (RNA velocity stack)"
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+
+    # =========================================================================
+    # 1. SYSTEM LIBRARIES
+    # =========================================================================
+    apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates locales \
+        python3 python3-pip python3-dev \
+        build-essential pkg-config \
+        libhdf5-dev procps git
+
+    ln -s /usr/bin/python3 /usr/bin/python
+
+    locale-gen en_US.UTF-8
+    update-locale LANG=en_US.UTF-8
+
+    # =========================================================================
+    # 2. kb-python (bundles its own precompiled kallisto/bustools binaries —
+    #    see kb-python.def notes: the Biocontainers image was missing a
+    #    working kallisto binary; installing via pip avoids that)
+    # =========================================================================
+    pip3 install --break-system-packages --no-cache-dir kb-python==0.30.2
+
+    # =========================================================================
+    # 3. Core scientific / AnnData stack
+    # =========================================================================
+    pip3 install --break-system-packages --no-cache-dir \
+        numpy \
+        scipy \
+        pandas \
+        h5py \
+        matplotlib \
+        anndata
+
+    # =========================================================================
+    # 4. scanpy + neighbor-graph / clustering deps (scVelo depends on these
+    #    for pp.moments / neighbor graph construction)
+    # =========================================================================
+    pip3 install --break-system-packages --no-cache-dir \
+        scanpy \
+        igraph \
+        leidenalg \
+        umap-learn \
+        pynndescent
+
+    # =========================================================================
+    # 5. scVelo — RNA velocity modeling (steady-state/stochastic/dynamical)
+    # =========================================================================
+    pip3 install --break-system-packages --no-cache-dir scvelo
+
+    # =========================================================================
+    # 6. scvi-tools — for veloVI (deep generative velocity model, successor
+    #    to scVelo's dynamical model)
+    # =========================================================================
+    pip3 install --break-system-packages --no-cache-dir scvi-tools
+
+    # =========================================================================
+    # 7. SLIM DOWN
+    # =========================================================================
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+    rm -rf /root/.cache/pip
+
+%environment
+    export LC_ALL=en_US.UTF-8
+    export LANG=en_US.UTF-8
+
+    # Give Numba a writable cache location inside the container runtime
+    export NUMBA_CACHE_DIR=/tmp/numba_cache
+
+%test
+    echo "Testing omics_py3.12 installation..."
+    mkdir -p /tmp/numba_cache
+    kb info
+
+    python3 -c "
+import kb_python
+import anndata
+import scanpy
+import scvelo
+import scvi
+import pandas
+import numpy
+import igraph
+import leidenalg
+
+print('kb_python:', kb_python.__version__)
+print('anndata:   ', anndata.__version__)
+print('scanpy:    ', scanpy.__version__)
+print('scvelo:    ', scvelo.__version__)
+print('scvi-tools:', scvi.__version__)
+print('pandas:    ', pandas.__version__)
+print('numpy:     ', numpy.__version__)
+
+print('SUCCESS: all core packages import cleanly')
+"

@@ -26,7 +26,7 @@ process GENERATE_MASTER_REPORT {
     label 'process_low'                           // Bash file scanning; minimal resources
 
     publishDir { "${params.proj_dir()}" },         mode: 'copy',    pattern: "*Master_Summary.txt"
-    publishDir { "${params.proj_dir()}/Logs" },    mode: 'copy',    pattern: "GENERATE_MASTER_REPORT.error.log"
+    publishDir { "${params.proj_dir()}/Logs" },    mode: 'copy',    pattern: "GENERATE_MASTER_REPORT.log"
 
     // =================================================================================
     // INPUT
@@ -41,7 +41,7 @@ process GENERATE_MASTER_REPORT {
     output:
     path("STAR_Master_Summary.txt"),             emit: star_summary      // STAR alignment stats across all samples
     path("Salmon_Master_Summary.txt"),           emit: salmon_summary    // Salmon mapping rates across all samples
-    path("GENERATE_MASTER_REPORT.error.log"),    emit: error_log,    optional: true    // Process log
+    path("GENERATE_MASTER_REPORT.log"),    emit: error_log,    optional: true    // Process log
 
     // =================================================================================
     // EXECUTION
@@ -49,7 +49,7 @@ process GENERATE_MASTER_REPORT {
     script:
 
     def script_path = "${workflow.projectDir}/modules"
-    def LOG         = "GENERATE_MASTER_REPORT.error.log"
+    def LOG         = "GENERATE_MASTER_REPORT.log"
 
     """
     bash "${script_path}/star_stats_collector.sh" "${proj_dir}" \

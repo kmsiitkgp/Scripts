@@ -29,7 +29,7 @@ process SALMON_STATS {
     // =================================================================================
     script:
     def script_path = "${workflow.projectDir}/modules"
-    def LOG         = "SALMON_STATS.error.log"
+    def LOG         = "SALMON_STATS.log"
 
     """
     bash ${script_path}/salmon_stats_collector.sh "${proj_dir}" > ${LOG} 2>&1

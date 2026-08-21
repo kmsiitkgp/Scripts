@@ -22,8 +22,8 @@ process RENAME_FASTQS {
     tag "Renaming FASTQ files"
     label 'process_low'                           // Simple file operations; minimal resources
 
-    publishDir { "${params.read_dir}/renamed" },    mode: 'copy',    pattern: "*.{fastq,fq}.gz"
-    publishDir { "${params.proj_dir()}" },            mode: 'copy',    pattern: "RENAME_FASTQS.error.log"
+    //publishDir { "${params.read_dir}/renamed" },    mode: 'copy',    pattern: "*.{fastq,fq}.gz"
+    //publishDir { "${params.proj_dir()}" },          mode: 'copy',    pattern: "RENAME_FASTQS.log"
 
     // =================================================================================
     // INPUT
@@ -37,20 +37,22 @@ process RENAME_FASTQS {
     // =================================================================================
     output:
     path("*.{fastq,fq}.gz"),            emit: renamed_fastqs    // Renamed FASTQ files
-    path("RENAME_FASTQS.error.log"),    emit: error_log         // Process log
+    path("RENAME_FASTQS.log"),    emit: error_log         // Process log
 
     // =================================================================================
     // EXECUTION
     // =================================================================================
     script:
 
-    def LOG = "RENAME_FASTQS.error.log"
+    def LOG = "RENAME_FASTQS.log"
 
     """
     # Allow loop to continue on individual failures so we can report all missing files
     set +e
 
     echo "=== FASTQ Rename Process ===" > "${LOG}"
+    echo "Working Directory: \$(pwd)" >> "${LOG}"
+    echo "Files in Directory: \$(ls *.fastq.gz 2>/dev/null | wc -l)" >> "${LOG}"
     echo "Start time: \$(date)" >> "${LOG}"
     echo "Mapping file: ${map_file}" >> "${LOG}"
     echo "" >> "${LOG}"
@@ -68,6 +70,7 @@ process RENAME_FASTQS {
         # Skip comment lines and empty lines
         [[ "\$OLD_NAME" =~ ^# ]] && continue
         [[ -z "\$OLD_NAME" ]] && continue
+        [[ -z "\$NEW_NAME" ]] && continue
 
         if [[ -f "\$OLD_NAME" ]]; then
             # Original file found → rename it

@@ -1,16 +1,30 @@
 #!/bin/bash
 
-# #$ -N NF_Launcher        # Job Name
-# #$ -cwd                  # Run in current directory
-# #$ -V                    # Export all environment variables
-# #$ -j y                  # Merge standard output and error logs
-# #$ -o launcher.o$JOB_ID  # Name of the output log
-# #$ -l h_vmem=8G          # The launcher itself needs very little RAM
+#SBATCH --job-name=NextFlow_Launcher
+#SBATCH --chdir=./
+#SBATCH --export=ALL
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=6G                        # Gives the "Master" plenty of room
+#SBATCH --time=96:00:00
+#SBATCH --output=nf_launcher_%j.log
 
-# # 1. Cleaner logging for HPC files
-# export NXF_ANSI_LOG=false
+# # Use in SGE
+# #$ -N NextFlow_Launcher        # Job Name
+# #$ -cwd                        # Run in current directory
+# #$ -V                          # Export all environment variables
+# #$ -j y                        # Merge standard output and error logs
+# #$ -l mem_free=6G              # Need atleast 6GB to start job
+# #$ -l h_vmem=6G                # Kill job if it exceeds 6G
+# #$ -l h_rt=96:00:00            # Wall clock limit (equivalent to SLURM's --time)
+# #$ -pe smp 1                   # Request 1 CPU slot (equivalent to SLURM's --cpus-per-task)
+# #$ -o nf_launcher_$JOB_ID.log  # Name of the output log
 
-# # 2. Safety limits for Java/Threads
+# 1. Cleaner logging for HPC files (Important for sbatch logs!)
+export NXF_ANSI_LOG=false
+
+# 2. Safety limits for Java (Keep -Xmx slightly below the --mem above)
+export NXF_OPTS="-Xms1g -Xmx5g"
 # export NXF_OPTS="-Xms1g -Xmx4g -XX:MaxMetaspaceSize=512m -XX:ActiveProcessorCount=2 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=2"
 
 # =========================================================================================
@@ -28,7 +42,7 @@
 # Prerequisites:
 #    - config.yaml configured with correct paths
 #    - Nextflow and Singularity modules available
-#    - Access to HPC cluster (if using -profile sge)
+#    - Access to HPC cluster (SLURM by default; SGE lines commented below)
 #
 # Resume a failed run:
 #    Just run the script again - Nextflow automatically resumes from last checkpoint
@@ -82,12 +96,12 @@ fi
 YAML_FILE=$(readlink -f "${YAML}")
 
 # -----------------------------------------------------------------------------------------
-# 🛠️ PIPELINE CLEANUP (YAML, NF, and R Scripts)
+# 2. CLEAN YAML CONFIG
 # -----------------------------------------------------------------------------------------
-# This sanitizes all files for Linux/HPC environments.
+# Sanitizes the YAML for Linux/HPC environments (Windows editors are the usual culprit)
 
 # Define your paths
-MODULE_DIR="/hpc/home/kailasamms/scripts/nextflow/modules"
+MODULE_DIR="/home/kailasamms/scripts/nextflow/modules"
 
 # # 1. CLEAN R MODULES & NEXTFLOW FILES [ ONLY ONCE is enough ]
 # # Removes Windows Line Endings (^M), BOM, and sets Executable permissions
@@ -120,12 +134,9 @@ fi
 # 3. EXTRACT PARAMETERS
 # -----------------------------------------------------------------------------------------
 EXPERIMENT=$(get_yaml_val "expt")
-SPECIES=$(get_yaml_val "species")
 PROJECT=$(get_yaml_val "project")
-
 READ_DIR=$(get_yaml_val "read_dir")
-MAP_FILE=$(get_yaml_val "map_file")
-METADATA_FILE=$(get_yaml_val "metadata_file")
+
 
 BASE_DIR=$(get_yaml_val "base_dir")
 WORK_DIR=$(get_yaml_val "work_dir")
@@ -133,37 +144,16 @@ CACHE_DIR=$(get_yaml_val "cache_dir")
 REF_DIR=$(get_yaml_val "ref_dir")
 
 # -----------------------------------------------------------------------------------------
-# 4. VERIFICATION BLOCK (User Confirmation)
+# 4. VERIFICATION BLOCK (Launcher-only)
 # -----------------------------------------------------------------------------------------
 echo "--------------------------------------------------------------------------------"
-echo "        PROJECT VERIFICATION"
+echo "        LAUNCHER VERIFICATION"
 echo "--------------------------------------------------------------------------------"
 printf "%-22s : %-15s : %s\n" "PARAMETER" "STATUS" "VALUE"
 echo "--------------------------------------------------------------------------------"
-printf "%-22s : %-15s : %s\n" "Experiment"      "---"            "$EXPERIMENT"
-printf "%-22s : %-15s : %s\n" "Species"         "---"            "$SPECIES"
-printf "%-22s : %-15s : %s\n" "Project Name"    "---"            "$PROJECT"
-echo ""
-printf "%-22s : %-15s : %s\n" "Input Reads"     "$(check_path "$READ_DIR")" "$READ_DIR"
-printf "%-22s : %-15s : %s\n" "Fastq Map File"  "$(check_path "$MAP_FILE")" "$MAP_FILE"
-printf "%-22s : %-15s : %s\n" "Metadata File"   "$(check_path "$METADATA_FILE")" "$METADATA_FILE"
 printf "%-22s : %-15s : %s\n" "YAML File"       "$(check_path "$YAML_FILE")" "$YAML_FILE"
-echo ""
-printf "%-22s : %-15s : %s\n" "Final Results"   "$(check_path "$BASE_DIR")" "$BASE_DIR"
 printf "%-22s : %-15s : %s\n" "Temporary Files" "$(check_path "$WORK_DIR")" "$WORK_DIR"
-printf "%-22s : %-15s : %s\n" "Image Cache"     "$(check_path "$CACHE_DIR")" "$CACHE_DIR"
-printf "%-22s : %-15s : %s\n" "Ref Genomes"     "$(check_path "$REF_DIR")" "$REF_DIR"
 echo "--------------------------------------------------------------------------------"
-
-# Critical Sanity Check: Exit immediately if mandatory paths are missing
-if [ ! -d "$READ_DIR" ]; then
-    echo "❌ FATAL ERROR: Required 'read_dir' is missing. Pipeline cannot start."
-    exit 1
-fi
-
-# User Confirmation
-echo "Please verify the settings above."
-read -p "Press [ENTER] to start the pipeline or [Ctrl+C] to cancel..."
 
 # -----------------------------------------------------------------------------------------
 # 5. RESOLVE PHYSICAL PATHS (For Singularity Binds)
@@ -195,7 +185,11 @@ echo "--------------------------------------------------------------------------
 # 7. BUILD SINGULARITY BIND MOUNTS
 # -----------------------------------------------------------------------------------------
 # Collect all physical paths and identify unique root directories (e.g., /hpc, /scratch)
-ALL_PATHS="$P_READ $P_BASE $P_WORK $P_CACHE $P_REF"
+if [ "$EXPERIMENT" == "TCGA" ]; then
+    ALL_PATHS="$P_BASE $P_WORK $P_CACHE /common/bhowmicknlab/TCGA"
+else
+    ALL_PATHS="$P_READ $P_BASE $P_WORK $P_CACHE $P_REF"
+fi
 UNIQUE_ROOTS=$(for p in $ALL_PATHS; do echo "$p" | cut -d'/' -f1-2; done | sort -u | grep '^/')
 
 BIND_FLAGS=""
@@ -211,10 +205,10 @@ echo "Singularity bind flags: $BIND_FLAGS"
 # 8. PIPELINE EXECUTION
 # -----------------------------------------------------------------------------------------
 # -params-file    : Injects YAML settings (FASTQ paths, species, etc.)
-# -name           : Labels the run in 'nextflow log' and SGE (highly recommended)
+# -name           : Labels the run in 'nextflow log' and SLURM/SGE (highly recommended)
 # -work-dir       : Explicitly sets the heavy data directory. We define this for SAFETY
 #                   to ensure task data stays in scratch even if the config changes.
-# -profile        : Sets executor to 'sge' (Sun Grid Engine)
+# -profile        : Sets executor (slurm below; sge commented alongside)
 # -resume         : Uses cached results to skip successfully completed steps
 # --dynamic_binds : Passes calculated physical paths to Singularity containers
 
@@ -228,11 +222,11 @@ cd "${WORK_DIR}/${PROJECT}"
 RUN_NAME="${PROJECT}_$(date +%Y-%m-%d_%H-%M-%S)"
 
 # We use absolute path to main.nf so the script works from anywhere
-NF_MAIN="/hpc/home/kailasamms/scripts/nextflow/main.nf"
+NF_MAIN="/home/kailasamms/scripts/nextflow/main.nf"
 
 # Load Nextflow and Singularity from HPC environment modules
-module load nextflow/24.10.5
-module load singularity-apptainer/1.1.8
+module load nextflow
+module load apptainer
 
 # Launch Nextflow
 nextflow \
@@ -241,101 +235,11 @@ nextflow \
     -params-file "${YAML_FILE}" \
     -name "${RUN_NAME}" \
     -work-dir "${WORK_DIR}/${PROJECT}" \
-    -profile sge \
+    -profile slurm \
     -resume \
     --dynamic_binds "$BIND_FLAGS" \
     --stop_after "END"
-
-# ###################################
-# # -----------------------------------------------------------------------------------------
-# # CLEAN THE PIPELINE CODE (Only if needed)
-# # -----------------------------------------------------------------------------------------
-# # Tip: Only run this loop if you've recently updated the code from a Windows machine.
-# # You can leave it active; it only takes a fraction of a second.
-
-# for file in "${NF_DIR}"/*.{nf,config}; do
-    # [ -f "$file" ] && sed -i '1s/^\xEF\xBB\xBF//' "$file"
-    # [ -f "$file" ] && sed -i 's/\r$//' "$file" # Also removes Windows line endings (CRLF)
-# done
-
-# # Enable nullglob so empty directories don't cause errors
-# shopt -s nullglob
-
-# # Define file list once to keep it DRY
-# NF_FILES=(
-  # "${NF_DIR}"/*.nf
-  # "${NF_DIR}"/*.config
-  # "${NF_DIR}"/*.txt
-  # "${NF_DIR}"/*.sh
-  # "${NF_DIR}"/modules/*.nf
-  # "${NF_DIR}"/workflows/*.nf
-  # "${NF_DIR}"/projects/*.yaml
-# )
-
-# # 1. Remove UTF-8 BOM
-# # 2. Strip trailing whitespace
-# # 3. Convert tabs to 4 standard spaces
-# # Using a loop handles the file list more reliably across different OS versions
-# for file in "${NF_FILES[@]}"; do
-
-    # # # 1. Convert to UTF-8 (and remove ANSI/ISO encoding)
-    # # # iconv -c ignores invalid characters to prevent crashing
-    # # if command -v iconv >/dev/null; then
-        # # iconv -f WINDOWS-1252 -t UTF-8 "$file" > "${file}.tmp" 2>/dev/null && mv "${file}.tmp" "$file"
-    # # fi
-
-    # # 2. Remove UTF-8 BOM (Byte Order Mark) if present
-    # # BOM appears as: 0xEF 0xBB 0xBF at file start (from some text editors)
-    # # Causes error: "Invalid character at start of file"
-    # sed -i '1s/^\xEF\xBB\xBF//' "$file"
-
-    # # # 3. Convert Windows Line Endings (CRLF) to Linux (LF)
-    # # # Using 'dos2unix' if available, otherwise 'sed'
-    # # if command -v dos2unix >/dev/null; then
-        # # dos2unix -q "$file"
-    # # else
-        # # sed -i 's/\r$//' "$file"
-    # # fi
-
-    # # 4. Clean up whitespace: Remove trailing spaces & convert tabs to 4 spaces
-    # # - Strip trailing whitespace (prevents unnecessary git diffs)
-    # # - Convert tabs to 4 spaces (consistent indentation)
-    # sed -i 's/[[:space:]]*$//' "$file"
-    # sed -i 's/\t/    /g' "$file"
-# done
-
-# echo "All files are now Unix-friendly (UTF-8, LF, No BOM)."
-
-# # Disable nullglob
-# shopt -u nullglob
-
-# See logs live
-# tail -f "${WORK_DIR}/${PROJECT}.nextflow.log"
-
-# Start tmux session
-# tmux new -s "${PROJECT}"
-# screen -S "${PROJECT}"
-
-# cd ~/scripts/nextflow/projects/Sandrine_Quadriceps/
-# sh ~/scripts/nextflow/run_nextflow.sh
-
-# Detach session
-# Press Ctrl+B first, release and press D (for tmux)
-# Press Ctrl+A first, release and press D (for screen)
-
-# Reattach session
-# tmux attach -t "${PROJECT}"
-# screen -r "${PROJECT}"
-
-# -----------------------------------------------------------------------------------------
-# DELETE WORD DIRS FROM FAILED RUNS (RUN AFTER SUCCESSFUL COMPLETION OF PROJECT)
-# -----------------------------------------------------------------------------------------
-
-# Dry run first — see what would be deleted
-#nextflow log -q -f status | grep -v 'OK' | cut -f1 | xargs -n 1 -I {} echo nextflow clean {} -f
-
-# If looks good, actually delete
-#nextflow log -q -f status | grep -v 'OK' | cut -f1 | xargs -n 1 -I {} nextflow clean {} -f
+    # -profile sge \    # Use in SGE environments instead of -profile slurm
 
 # -----------------------------------------------------------------------------------------
 # NOTES ON SINGULARITY BIND MOUNT CHALLENGES
@@ -358,44 +262,110 @@ nextflow \
 #   - Script calculates binds, passes to Nextflow, Nextflow passes to Singularity
 
 # -----------------------------------------------------------------------------------------
+# COMMON ISSUES AND SOLUTIONS
+# -----------------------------------------------------------------------------------------
+# "No such file or directory" inside container
+#   → Check path mappings printed above, ensure physical paths are bound
+#
+# "mapping values are not allowed here" in YAML
+#   → Run this script - it fixes tabs in YAML automatically
+#
+# Pipeline won't resume after failure
+#   → Don't run 'nextflow clean' - it deletes cache needed for -resume
+#
+# Out of disk space
+#   → Clear old work directories: rm -rf ${WORK_DIR}/*
+#   → Warning: This prevents -resume for those runs!
+#
+# Singularity can't download images
+#   → Check internet connection, verify cache_dir is writable
+
+# -----------------------------------------------------------------------------------------
+# SESSION MANAGEMENT (tmux/screen) — optional, for interactive monitoring
+# -----------------------------------------------------------------------------------------
+# tail -f "${WORK_DIR}/${PROJECT}.nextflow.log"   # See logs live
+
+# Start session:
+# tmux new -s "${PROJECT}"
+# screen -S "${PROJECT}"
+
+# Detach session:
+# Press Ctrl+B first, release and press D (for tmux)
+# Press Ctrl+A first, release and press D (for screen)
+
+# Reattach session
+# tmux attach -t "${PROJECT}"
+# screen -r "${PROJECT}"
+
+# -----------------------------------------------------------------------------------------
 # DEBUGGING TIPS
 # -----------------------------------------------------------------------------------------
 
 # Check for UTF-8 BOM in files:
-# head -c 3 "${NF_DIR}/main.nf" | od -c
-# If output shows: 0000000 357 273 277 # ! /
-#   → BOM present, needs removal
-# If output shows: 0000000 # ! /
-#   → No BOM, file is clean
+#   head -c 3 "${NF_DIR}/main.nf" | od -c
+#   Output "0000000 357 273 277 # ! /" → BOM present, needs removal
+#   Output "0000000 # ! /"             → No BOM, file is clean
 
 # View which work directories correspond to which processes:
-# nextflow log <run_name> -f name,workdir,status,duration
+#   nextflow log <run_name> -f name,workdir,status,duration
 
-# List all runs:
-# nextflow log
-
-# Clean up old run metadata:
-# nextflow clean -f
-
-# Remove temporary Nextflow config directories (safe after pipeline completes):
-# rm -rf ~/_nf_config_*
+# List all runs:            nextflow log
+# Clean up run metadata:     nextflow clean -f
+# Remove temp NF configs:    rm -rf ~/_nf_config_*
 
 # -----------------------------------------------------------------------------------------
-# COMMON ISSUES AND SOLUTIONS
+# DELETE WORK DIRS FROM FAILED RUNS (RUN AFTER SUCCESSFUL COMPLETION OF PROJECT)
 # -----------------------------------------------------------------------------------------
 
-# Issue: "No such file or directory" inside container
-# Solution: Check path mappings printed above, ensure physical paths are bound
+# Dry run first — see what would be deleted
+#nextflow log -q -f status | grep -v 'OK' | cut -f1 | xargs -n 1 -I {} echo nextflow clean {} -f
 
-# Issue: "mapping values are not allowed here" in YAML
-# Solution: Run this script - it fixes tabs in YAML automatically
+# If looks good, actually delete
+#nextflow log -q -f status | grep -v 'OK' | cut -f1 | xargs -n 1 -I {} nextflow clean {} -f
 
-# Issue: Pipeline won't resume after failure
-# Solution: Don't run 'nextflow clean' - it deletes cache needed for -resume
+# -----------------------------------------------------------------------------------------
+# CLEAN THE PIPELINE CODE (Only if needed)
+# -----------------------------------------------------------------------------------------
+# Tip: run manually after editing files on Windows
 
-# Issue: Out of disk space
-# Solution: Clear old work directories: rm -rf ${WORK_DIR}/*
-#           Warning: This prevents -resume for those runs!
+# #!/bin/bash
 
-# Issue: Singularity can't download images
-# Solution: Check internet connection, verify cache_dir is writable
+# # Enable nullglob so empty directories don't cause errors
+# shopt -s nullglob
+
+# NF_DIR="/home/kailasamms/scripts/nextflow"
+
+# # BOM appears as: 0xEF 0xBB 0xBF at file start (causes "Invalid character at start of file")
+# # Strip trailing whitespace (prevents unnecessary git diffs)
+# # Convert tabs to 4 spaces (consistent indentation)
+
+# find "${NF_DIR}" \
+    # -type d \( \
+        # -path "${NF_DIR}/resources" -o \
+        # -path "${NF_DIR}/md" -o \
+        # -path "${NF_DIR}/modules/junk" -o \
+        # -name ".nextflow" \
+    # \) -prune -o \
+    # -type f \( -name "*.nf" -o -name "*.config" -o -name "*.sh" \
+            # -o -name "*.txt" -o -name "*.R" -o -name "*.yaml" \) -print |
+# while IFS= read -r file; do
+    # sed -i '1s/^\xEF\xBB\xBF//' "$file"      # Remove UTF-8 BOM
+    # sed -i 's/\r$//' "$file"                 # CRLF → LF
+    # sed -i 's/[[:space:]]*$//' "$file"       # Strip trailing whitespace
+    # sed -i 's/\t/    /g' "$file"             # Tabs → 4 spaces
+    # echo "✅ Sanitized: $(basename "$file")"
+# done
+
+# # Executable bit only for scripts meant to be run directly
+# chmod +x "${NF_DIR}"/*.sh 2>/dev/null
+
+# echo "All files are now Unix-friendly (UTF-8, LF, No BOM)."
+
+# # Disable nullglob
+# shopt -u nullglob
+
+# # 1. Convert to UTF-8 (and remove ANSI/ISO encoding)
+# # iconv -c ignores invalid characters to prevent crashing
+# if command -v iconv >/dev/null; then
+        # iconv -f WINDOWS-1252 -t UTF-8 "$file" > "${file}.tmp" 2>/dev/null && mv "${file}.tmp" "$file"
+# fi

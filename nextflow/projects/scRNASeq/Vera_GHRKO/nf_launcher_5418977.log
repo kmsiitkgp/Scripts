@@ -1,0 +1,294 @@
+✅ Configuration file Vera_GHRKO_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        LAUNCHER VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_config.yaml
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /common/bhowmicknlab/scRNASeq/Vera_GHRKO/input               -> /common/bhowmicknlab/scRNASeq/Vera_GHRKO/input
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /common --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.6 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Vera_GHRKO_2026-08-11_16-37-09] DSL2 - revision: ae47bb3a88
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+SCRNA-SEQ PIPELINE
+===========================================
+Experiment                                   : ---             : scRNASeq
+Species                                      : ---             : Mouse
+Project                                      : ---             : Vera_GHRKO
+
+Mapping File                                 : ✅ FOUND         : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_fastq_map.txt
+Input FastQ Dir                              : ✅ FOUND         : /common/bhowmicknlab/scRNASeq/Vera_GHRKO/input
+Metadata File                                : ✅ FOUND         : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_metadata.xlsx
+Base Directory                               : ✅ FOUND         : /home/kailasamms/analysis
+Reference Dir                                : ✅ FOUND         : /home/kailasamms/resources/genomes
+Cache Dir                                    : ✅ FOUND         : /home/kailasamms/resources/containers
+
+Cell Cycle Marker File                       : ✅ FOUND         : /home/kailasamms/scripts/nextflow/resources/Cell_Cycle_Markers.xlsx
+Cell Type Marker File                        : ✅ FOUND         : /home/kailasamms/scripts/nextflow/resources/Cell_Type_Markers.xlsx
+Resolutions                                  : ---             : [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+Sparse Threshold                             : ---             : 5
+Avg Prob Threshold                           : ---             : 0.3
+Delta Threshold                              : ---             : 0.1
+Stability Threshold                          : ---             : 0.9
+Subcluster Branches                          : ---             : Epithelial, Mesenchymal, Hematopoietic, Endothelial, Neural
+
+CellRanger directory                         : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/03.CellRanger
+Kallisto-Bustools directory                  : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/04.KB
+Seurat directory                             : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat
+scVelo directory                             : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/06.scVelo
+[Whole] filtered_seurat.rds                  : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/filtered_seurat.rds
+[Epithelial_Initial] filtered_seurat.rds     : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Initial/filtered_seurat.rds
+[Mesenchymal_Initial] filtered_seurat.rds    : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Initial/filtered_seurat.rds
+[Hematopoietic_Initial] filtered_seurat.rds  : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Initial/filtered_seurat.rds
+[Endothelial_Initial] filtered_seurat.rds    : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Initial/filtered_seurat.rds
+[Neural_Initial] filtered_seurat.rds         : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Initial/filtered_seurat.rds
+[Epithelial_Final] filtered_seurat.rds       : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Final/filtered_seurat.rds
+[Mesenchymal_Final] filtered_seurat.rds      : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Final/filtered_seurat.rds
+[Hematopoietic_Final] filtered_seurat.rds    : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Final/filtered_seurat.rds
+[Endothelial_Final] filtered_seurat.rds      : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Final/filtered_seurat.rds
+[Neural_Final] filtered_seurat.rds           : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Final/filtered_seurat.rds
+[Whole] annotated_seurat.rds                 : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/annotated_seurat.rds
+[Epithelial_Initial] annotated_seurat.rds    : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Initial/annotated_seurat.rds
+[Mesenchymal_Initial] annotated_seurat.rds   : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Initial/annotated_seurat.rds
+[Hematopoietic_Initial] annotated_seurat.rds : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Initial/annotated_seurat.rds
+[Endothelial_Initial] annotated_seurat.rds   : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Initial/annotated_seurat.rds
+[Neural_Initial] annotated_seurat.rds        : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Initial/annotated_seurat.rds
+[Epithelial_Final] annotated_seurat.rds      : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Final/annotated_seurat.rds
+[Mesenchymal_Final] annotated_seurat.rds     : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Final/annotated_seurat.rds
+[Hematopoietic_Final] annotated_seurat.rds   : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Final/annotated_seurat.rds
+[Endothelial_Final] annotated_seurat.rds     : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Final/annotated_seurat.rds
+[Neural_Final] annotated_seurat.rds          : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Final/annotated_seurat.rds
+[Whole] annotated_seurat_final.rds           : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/annotated_seurat_final.rds
+[Whole] annotated_seurat_final_clean.rds     : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/annotated_seurat_final_clean.rds
+===========================================
+
+▶ [RUN] GENERATE_MD5
+==> Validating file naming conventions
+▶ [RUN] UPSTREAM RAW DATA PROCESSING, REFERENCE DOWNLOAD & CELLRANGER
+▶ [RUN] UPSTREAM RAW DATA PROCESSING, REFERENCE DOWNLOAD & KB
+▶ [RUN] MERGE_H5AD
+▶ [RUN] LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS → CALC_QC_AND_IDENTIFY_SINGLETS → MERGE_AND_PLOT_QC
+▶ [RUN][Epithelial] SUBSET_CELLS_INITIAL
+▶ [RUN][Mesenchymal] SUBSET_CELLS_INITIAL
+▶ [RUN][Hematopoietic] SUBSET_CELLS_INITIAL
+▶ [RUN][Endothelial] SUBSET_CELLS_INITIAL
+▶ [RUN][Neural] SUBSET_CELLS_INITIAL
+[b9/e0138f] Submitted process > SCRNASEQ:SCRNA_FETCH_10X_VERSIONS (Fetching 10X reference metadata for Mouse)
+[58/c0a4cb] Submitted process > SCRNASEQ:RNA_FETCH_ENSEMBL_VERSIONS (Fetching latest Ensembl metadata for Mouse)
+[25/87ff4b] Submitted process > SCRNASEQ:RENAME_FASTQS (Renaming FASTQ files)
+[skipping] Stored process > SCRNASEQ:SCRNA_DOWNLOAD_10X_REF (1)
+[be/fbda22] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_1_S1_L001_R2_001.fastq.gz)
+
+ ============================================================
+ FASTQ INPUT VALIDATION SUMMARY
+ ============================================================
+ FILE FORMAT         : fastq.gz
+  - .fq.gz           : 0
+  - .fastq.gz        : 72
+------------------------------------------------------------
+ SEQUENCING MODE     : PAIRED_END
+ READ TAGS USED      :
+  - R1 tag           : _R1
+  - R2 tag           : _R2
+ TAG DISTRIBUTION    :
+  - Uppercase (R1/R2): 36 / 36
+  - Lowercase (r1/r2): 0 / 0
+------------------------------------------------------------
+ SAMPLE SUMMARY      :
+  - Total samples    : 36
+  - Tumor samples    : 0
+  - Normal samples   : 0
+  - Other samples    : 36
+ READ FILES (R1/R2)  : 72
+ INDEX FILES (I1/I2) : 0
+ TOTAL VALID FILES   : 72
+============================================================
+
+[4a/d49596] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_1_S1_L001_R1_001.fastq.gz)
+[70/4c8786] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_1_S1_L002_R1_001.fastq.gz)
+[a2/486fe2] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_1_S1_L003_R1_001.fastq.gz)
+[55/14453f] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_1_S1_L002_R2_001.fastq.gz)
+[81/c0b145] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_2_S2_L001_R1_001.fastq.gz)
+[2a/5dbdcb] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_1_S1_L003_R2_001.fastq.gz)
+[c8/190f92] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_2_S2_L001_R2_001.fastq.gz)
+[f9/c69e4a] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_2_S2_L002_R1_001.fastq.gz)
+[be/48dbb6] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_2_S2_L002_R2_001.fastq.gz)
+[14/0079b7] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_2_S2_L003_R2_001.fastq.gz)
+[33/bdb2f0] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_2_S2_L003_R1_001.fastq.gz)
+[17/6f0d59] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_3_S3_L001_R1_001.fastq.gz)
+[53/3046a6] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_3_S3_L001_R2_001.fastq.gz)
+[54/b79c17] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_3_S3_L002_R2_001.fastq.gz)
+[ab/ef9148] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_3_S3_L002_R1_001.fastq.gz)
+[de/0eed08] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_3_S3_L003_R2_001.fastq.gz)
+[ec/ae7ca5] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO24m_3_S3_L003_R1_001.fastq.gz)
+[b2/24256e] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_1_S4_L001_R2_001.fastq.gz)
+[8e/260a63] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_1_S4_L002_R1_001.fastq.gz)
+[d5/73c4b6] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_1_S4_L002_R2_001.fastq.gz)
+[72/323c5b] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_1_S4_L001_R1_001.fastq.gz)
+[e9/683c21] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_1_S4_L003_R1_001.fastq.gz)
+[7b/a99da3] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO24m_1 (raw))
+[74/e9259b] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO24m_1 (raw))
+[ab/4aab06] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_1_S4_L003_R2_001.fastq.gz)
+[01/a0c597] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_2_S5_L001_R1_001.fastq.gz)
+[90/91a564] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: GHRKO24m_1)
+[4c/b5b580] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO24m_2 (raw))
+[0d/66f560] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_2_S5_L001_R2_001.fastq.gz)
+[16/86c05c] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: GHRKO24m_2)
+[db/a71ab0] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: GHRKO24m_3)
+[01/881e7c] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO24m_1 (raw))
+[00/f2e445] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_2_S5_L002_R1_001.fastq.gz)
+[60/6e7df9] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_2_S5_L002_R2_001.fastq.gz)
+[5c/a484fc] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_2_S5_L003_R2_001.fastq.gz)
+[e8/0ee851] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: GHRKO3m_1)
+[80/008af6] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_2_S5_L003_R1_001.fastq.gz)
+[d8/3a2232] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_3_S6_L001_R1_001.fastq.gz)
+[a2/99b21e] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_3_S6_L001_R2_001.fastq.gz)
+[f2/e4d7d5] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: GHRKO3m_2)
+[ba/f26f4f] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO24m_2 (raw))
+[e4/4b8aa3] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO24m_2 (raw))
+[d5/8f2bd2] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO24m_3 (raw))
+[48/d7d79b] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_3_S6_L002_R2_001.fastq.gz)
+[50/b3280d] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: GHRKO3m_3)
+[62/4286dc] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_3_S6_L002_R1_001.fastq.gz)
+[13/77b44d] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: WT24m_1)
+[26/fecf68] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_3_S6_L003_R1_001.fastq.gz)
+[b4/8740ad] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO24m_3 (raw))
+[5b/6e405d] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO24m_3 (raw))
+[1a/52f14d] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: WT24m_3)
+[8f/502116] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: GHRKO3m_3_S6_L003_R2_001.fastq.gz)
+[79/2e8dba] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: WT24m_2)
+[f6/0430e7] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_1_S7_L001_R1_001.fastq.gz)
+[52/6d5987] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_1_S7_L001_R2_001.fastq.gz)
+[d8/0aa381] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO3m_1 (raw))
+[e6/967b47] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: WT3m_2)
+[2d/72ae69] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO3m_1 (raw))
+[a1/004923] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_1_S7_L002_R1_001.fastq.gz)
+[be/133743] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_1_S7_L003_R1_001.fastq.gz)
+[e4/0731fe] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_1_S7_L003_R2_001.fastq.gz)
+[5a/d5d122] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO3m_1 (raw))
+[bf/664d94] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_1_S7_L002_R2_001.fastq.gz)
+[f3/0fc018] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: WT3m_1)
+[2a/49fe0f] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO3m_2 (raw))
+[b7/2ad36b] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO3m_2 (raw))
+[87/e51088] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_2_S8_L001_R1_001.fastq.gz)
+[00/bd182d] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO3m_3 (raw))
+[0e/467447] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_2_S8_L001_R2_001.fastq.gz)
+[6c/0fdced] Submitted process > SCRNASEQ:SCRNA_CELLRANGER_COUNT (Cell Ranger count: WT3m_3)
+[d6/31cc02] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_2_S8_L002_R1_001.fastq.gz)
+[39/bb3f3d] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO3m_2 (raw))
+[80/898c7e] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_2_S8_L003_R1_001.fastq.gz)
+[d3/9252d9] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO3m_3 (raw))
+[26/c54696] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_2_S8_L002_R2_001.fastq.gz)
+[40/44792b] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_2_S8_L003_R2_001.fastq.gz)
+[10/ea1203] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT24m_1 (raw))
+[72/2a59cd] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / GHRKO3m_3 (raw))
+[53/cf1c85] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT24m_1 (raw))
+[ac/c3f124] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_3_S9_L001_R1_001.fastq.gz)
+[77/ef10dc] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_3_S9_L001_R2_001.fastq.gz)
+[c9/c87491] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT24m_1 (raw))
+[14/50e6de] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT24m_2 (raw))
+[33/9c11fd] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT24m_2 (raw))
+[e1/285e7f] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT24m_2 (raw))
+[d0/bf2472] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_3_S9_L002_R2_001.fastq.gz)
+[a4/61213e] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_3_S9_L002_R1_001.fastq.gz)
+[54/50ba54] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_3_S9_L003_R2_001.fastq.gz)
+[50/0b7840] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT24m_3 (raw))
+[0d/7f6cf6] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT24m_3 (raw))
+[75/2a986e] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_1_S10_L001_R1_001.fastq.gz)
+[59/01c517] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT24m_3_S9_L003_R1_001.fastq.gz)
+[ab/462fd6] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_1_S10_L002_R1_001.fastq.gz)
+[ae/6102f3] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT3m_1 (raw))
+[b3/b7eacf] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT24m_3 (raw))
+[f4/c84132] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_1_S10_L001_R2_001.fastq.gz)
+[13/111775] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT3m_1 (raw))
+[05/19ad6a] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_1_S10_L002_R2_001.fastq.gz)
+[skipping] Stored process > SCRNASEQ:RNA_DOWNLOAD_ENSEMBL_REF (1)
+[skipping] Stored process > SCRNASEQ:SCRNA_KB_REF (1)
+[b5/164ba7] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT3m_1 (raw))
+[77/3f0789] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_1_S10_L003_R2_001.fastq.gz)
+[2c/dee147] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT3m_2 (raw))
+[e0/cc3b69] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT3m_2 (raw))
+[ea/c126d5] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_1_S10_L003_R1_001.fastq.gz)
+[08/fa2f0d] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_2_S11_L001_R1_001.fastq.gz)
+[46/fd90eb] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_2_S11_L001_R2_001.fastq.gz)
+[72/0ef932] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT3m_2 (raw))
+[0b/0a6648] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT3m_3 (raw))
+[6a/8a63d1] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_2_S11_L002_R1_001.fastq.gz)
+[3e/2692f5] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_2_S11_L002_R2_001.fastq.gz)
+[a7/ce8bca] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT3m_3 (raw))
+[a2/f223dc] Submitted process > SCRNASEQ:FASTQC_RAW (FastQC: Mouse / WT3m_3 (raw))
+[b6/e65570] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_2_S11_L003_R2_001.fastq.gz)
+[b3/43f69f] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_2_S11_L003_R1_001.fastq.gz)
+[e5/c17b3a] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_3_S12_L001_R1_001.fastq.gz)
+[e9/8e8a3f] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): WT3m_3)
+[bd/b2c4e4] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_3_S12_L001_R2_001.fastq.gz)
+[23/1a7749] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_3_S12_L002_R1_001.fastq.gz)
+[0f/6b1688] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): WT3m_2)
+[fe/67af05] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_3_S12_L003_R1_001.fastq.gz)
+[ef/ac3b30] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_3_S12_L002_R2_001.fastq.gz)
+[0a/12a932] Submitted process > SCRNASEQ:GENERATE_MD5 (MD5: WT3m_3_S12_L003_R2_001.fastq.gz)
+[2a/6fff8f] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): GHRKO24m_1)
+[a2/4be277] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): GHRKO24m_3)
+[0d/12d815] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): GHRKO24m_2)
+[d1/7a4cda] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): GHRKO3m_1)
+[a9/003423] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): GHRKO3m_2)
+[77/434ee8] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): GHRKO3m_3)
+[d8/5f9cbd] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): WT24m_1)
+[5d/b244da] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): WT24m_2)
+[e2/96443a] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): WT24m_3)
+[c4/9dc51f] Submitted process > SCRNASEQ:SCRNA_KB_COUNT (kb count (nac): WT3m_1)
+[bb/5d8974] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: GHRKO24m_2)
+[15/ceae2b] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: GHRKO24m_1)
+[0b/461d55] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: GHRKO24m_3)
+[2f/a5dae2] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: GHRKO3m_1)
+[c3/045c07] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: GHRKO3m_3)
+[14/40425c] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: GHRKO3m_2)
+[1c/08fae0] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: WT24m_1)
+[1b/2bd645] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: WT24m_2)
+[d8/79900a] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: WT24m_3)
+[13/3cda85] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: WT3m_2)
+[90/be9ef9] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: WT3m_1)
+[b6/9676d7] Submitted process > SCRNASEQ:SCRNA_LOAD_CELLRANGER_AND_CLASSIFY_DROPLETS (Sample: WT3m_3)
+[74/a74f14] Submitted process > SCRNASEQ:MULTIQC (MultiQC: Mouse)
+[dd/1cfa83] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: WT24m_3)
+[d5/92dfa7] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: GHRKO3m_3)
+[53/84cf2e] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: WT24m_1)
+[cf/034f6f] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: WT3m_2)
+[4b/736cda] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: GHRKO3m_1)
+[10/f5a8b8] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: GHRKO3m_2)
+[4f/e4dde8] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: WT24m_2)
+[26/f00919] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: WT3m_1)
+[43/d36ac9] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: WT3m_3)
+[83/169e26] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: GHRKO24m_2)
+[a9/498f47] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: GHRKO24m_1)
+[1f/279451] Submitted process > SCRNASEQ:SCRNA_CALC_QC_AND_IDENTIFY_SINGLETS (Sample: GHRKO24m_3)
+[e2/cd0e67] Submitted process > SCRNASEQ:SCRNA_MERGE_AND_PLOT_QC (Merging all samples)
+[7b/80f7c3] Submitted process > SCRNASEQ:SCRNA_MERGE_H5AD (Merging 12 sample h5ad files)
+Waiting for file transfers to complete (1 files)
+▶ [RUN][Whole] SCT_TRANSFORM
+[40/9805bb] Submitted process > SCRNASEQ:SCRNA_SCT_TRANSFORM (SCTransform on merged object: Whole)
+▶ [RUN][Whole] INTEGRATE
+[28/93adce] Submitted process > SCRNASEQ:SCRNA_INTEGRATE (Harmony integration: Whole)
+▶ [RUN][Whole] CLUSTER_AND_FINDMARKERS
+[ec/0d8a87] Submitted process > SCRNASEQ:SCRNA_CLUSTER_AND_FINDMARKERS (Clustering, marker finding, junk flagging: Whole)
+▶ [RUN][Whole] ANNOTATE_CLUSTERS
+⚪ [SKIP][Whole] manual_annotation template not filled or set — annotation will not run in this pass.
+Waiting for file transfers to complete (1 files)

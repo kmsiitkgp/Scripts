@@ -1,0 +1,321 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%labels
+    Author      kailasamms
+    Version     1.0
+    Date        2026-04-29
+    Description "Omics All-in-One: R 4.4.3 + Bulk + SingleCell + Microarray + HPC-Safe + Pre-cached Networks"
+
+# Copy files from current directory to the container
+%files
+    collectri_human.rds /opt/omnipathr_cache/
+    collectri_mouse.rds /opt/omnipathr_cache/
+    progeny_human.rds   /opt/omnipathr_cache/
+    progeny_mouse.rds   /opt/omnipathr_cache/
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+    export CRAN_REPO="https://cloud.r-project.org"
+
+    # =========================================================================
+    # 1. SYSTEM LIBRARIES
+    # =========================================================================
+    apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates gnupg software-properties-common locales \
+        libcurl4-openssl-dev libssl-dev libxml2-dev libgsl-dev \
+        libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
+        libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
+        libcairo2-dev libxt-dev pkg-config cmake libmagick++-dev \
+        libbz2-dev liblzma-dev build-essential pandoc procps gfortran \
+        libgit2-dev libudunits2-dev libglpk-dev libgmp-dev \
+        libnetcdf-dev libhdf5-dev python3 python3-pip \
+        libuv1-dev libfftw3-dev libwebp-dev
+
+    # Pin HDF5 to 1.14.x to ensure hdf5r compatibility
+    # HDF5 2.x breaks hdf5r due to removed symbols (H5FD_family_init etc)
+    apt-mark hold libhdf5-dev
+
+    #ln -sf /usr/include/freetype2/ft2build.h /usr/include/ft2build.h
+
+    locale-gen en_US.UTF-8
+    update-locale LANG=en_US.UTF-8
+
+    # =========================================================================
+    # 2. PINNED R 4.4.3
+    # =========================================================================
+    curl -fsSL https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | \
+        gpg --dearmor -o /usr/share/keyrings/cran-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/cran-archive-keyring.gpg] https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" \
+        > /etc/apt/sources.list.d/cran.list
+
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        r-base-core=4.4.3* \
+        r-base-dev=4.4.3*
+
+    apt-mark hold r-base-core r-base-dev
+
+    # =========================================================================
+    # FIX: Patch Makeconf + Makevars to enforce C++14 for RcppArmadillo packages.
+    # Packages declaring CXX_STD=CXX11 ignore Makevars; Makeconf must be patched.
+    # =========================================================================
+    sed -i 's/CXX11STD = -std=gnu++11/CXX11STD = -std=gnu++14/' /usr/lib/R/etc/Makeconf
+
+    mkdir -p /root/.R
+    cat <<'EOF' > /root/.R/Makevars
+CXX = g++
+CXX11 = g++
+CXX14 = g++
+CXX17 = g++
+CXX11STD = -std=gnu++14
+CXX14STD = -std=gnu++14
+CXX17STD = -std=gnu++17
+CXXFLAGS = -O2 -fPIC
+CXX11FLAGS = -O2 -fPIC
+CXX14FLAGS = -O2 -fPIC
+CXX17FLAGS = -O2 -fPIC
+EOF
+
+    mkdir -p /usr/lib/R/etc
+    cp /root/.R/Makevars /usr/lib/R/etc/Makevars.site
+
+    export R_MAKEVARS_USER=/root/.R/Makevars
+
+    # =========================================================================
+    # 3. R PACKAGE INSTALLATION
+    # =========================================================================
+    R -e "options(repos='$CRAN_REPO'); install.packages('BiocManager', Ncpus=4)"
+    R -e "BiocManager::install(version='3.20', ask=FALSE)"
+
+    # -------------------------------------------------------------------------
+    # Block A: Core Utilities
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'dplyr', 'tibble', 'stringr', 'purrr', 'readr', 'tidyr',
+        'openxlsx', 'httr', 'crayon', 'glue', 'rlang', 'remotes',
+        'scales', 'Matrix', 'BiocParallel'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block B: Visualization
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'ggplot2', 'ggrepel', 'ggpubr', 'ggbeeswarm', 'ggfortify',
+        'ggplotify', 'ggridges', 'ggtext', 'gridtext',
+        'pheatmap', 'ComplexHeatmap', 'VennDiagram', 'UpSetR',
+        'cowplot', 'plot3D', 'ragg',
+        'viridis', 'RColorBrewer', 'colorspace'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block C: Dimensionality Reduction
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'umap', 'uwot'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block D: Bulk RNA-seq — Differential Expression
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'DESeq2', 'edgeR', 'limma', 'ashr', 'apeglm'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block E: Bulk RNA-seq — Count Import & Batch Correction
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'tximport', 'sva'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block F: Genome Annotation
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'rtracklayer', 'AnnotationHub', 'ensembldb',
+        'org.Hs.eg.db', 'org.Mm.eg.db'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block G: Pathway & TF Analysis
+    # Install OmnipathR BEFORE decoupleR, then verify both loaded.
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install('OmnipathR', ask=FALSE, update=FALSE, Ncpus=4)"
+    R -e "if (!requireNamespace('OmnipathR', quietly=TRUE)) stop('OmnipathR install FAILED — fix before proceeding')"
+
+    R -e "BiocManager::install(c(
+        'fgsea', 'GSVA', 'pathview',
+        'metap', 'multtest',
+        'decoupleR'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block H: Survival Analysis
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'survival', 'survminer', 'emmeans'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block I: Data Access
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'GEOquery'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block J: Single Cell — QC & Preprocessing
+    # glmGamPoi and presto both need C++14 (handled by Makevars written above).
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'SingleCellExperiment', 'DropletUtils', 'scDblFinder', 'glmGamPoi'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+    R -e "remotes::install_github('chris-mcginnis-ucsf/DoubletFinder')"
+    R -e "remotes::install_github('immunogenomics/presto')"
+
+    # -------------------------------------------------------------------------
+    # Block K: Single Cell — Integration & Scoring
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'UCell'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+    R -e "remotes::install_github('immunogenomics/harmony')"
+
+    # -------------------------------------------------------------------------
+    # Block L: Single Cell — Cell Communication
+    # -------------------------------------------------------------------------
+    R -e "remotes::install_github('jinworks/CellChat')"
+    R -e "remotes::install_github('zktuong/ktplots')"
+
+    # -------------------------------------------------------------------------
+    # Block M: Single Cell — CNV & Regulatory
+    # -------------------------------------------------------------------------
+    R -e "remotes::install_github('navinlabcode/copykat')"
+
+    # -------------------------------------------------------------------------
+    # Block N: Single Cell — Clustering & HDF5
+    # hdf5r built against system libhdf5 1.14.x (pinned above)
+    # -------------------------------------------------------------------------
+    R -e "install.packages(c('clustree', 'hdf5r', 'leidenbase'), Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block O: Seurat Ecosystem (install last — depends on all above)
+    # -------------------------------------------------------------------------
+    R -e "install.packages('Seurat', Ncpus=4)"
+    R -e "remotes::install_github('satijalab/seurat-data')"
+    R -e "remotes::install_github('mojaveazure/seurat-disk')"
+    R -e "remotes::install_github('satijalab/seurat-wrappers')"
+
+    # -------------------------------------------------------------------------
+    # Block P: Microarray & NanoString
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'affy', 'lumi', 'oligo',
+        'hgu133plus2.db', 'illuminaHumanv4.db',
+        'NanoStringNCTools', 'GeomxTools', 'GeoMxWorkflows'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+
+    # -------------------------------------------------------------------------
+    # Block Q: ctDNA — ichorCNA + HMMcopy
+    # -------------------------------------------------------------------------
+    R -e "BiocManager::install(c(
+        'HMMcopy',
+        'GenomicRanges',
+        'GenomeInfoDb',
+        'optparse'
+    ), ask=FALSE, update=FALSE, Ncpus=4)"
+    R -e "remotes::install_github('broadinstitute/ichorCNA')"
+
+    # =========================================================================
+    # 5. SLIM DOWN
+    # =========================================================================
+    apt-mark unhold r-base-dev
+    apt-get purge -y --auto-remove r-base-dev build-essential cmake gfortran pkg-config
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+    rm -rf /tmp/Rtmp*
+    rm -rf /tmp/downloaded_packages
+
+%environment
+    export LC_ALL=en_US.UTF-8
+    export LANG=en_US.UTF-8
+    export R_VERSION=4.4.3
+
+    # HPC-Safe cache logic: prefer $SCRATCH (SLURM) else fallback to $HOME
+    if [ -n "${SCRATCH}" ]; then
+        export CACHE_BASE="${SCRATCH}/.bioc_cache"
+    else
+        export CACHE_BASE="${HOME}/.cache"
+    fi
+
+    # Belt-and-suspenders: point R to the Makevars baked into the container
+    export R_MAKEVARS_USER=/root/.R/Makevars
+
+    export XDG_CACHE_HOME="${CACHE_BASE}"
+    export R_USER_CACHE_DIR="${CACHE_BASE}/R"
+    export ANNOTATIONHUB_CACHE="${CACHE_BASE}/annotationhub"
+    export EXPERIMENTHUB_CACHE="${CACHE_BASE}/experimenthub"
+    export OMNIPATHR_CONFIG_PATH="${CACHE_BASE}/omnipathr.yml"
+
+    # Pre-cached networks — frozen inside container, never hits server
+    export OMNIPATHR_CACHE="/opt/omnipathr_cache"
+
+%test
+    # Step 1: Verify all R packages load correctly
+    R -e "
+        pkgs <- c(
+            'BiocManager', 'remotes', 'scales', 'Matrix', 'BiocParallel',
+            'dplyr', 'tibble', 'stringr', 'purrr', 'readr', 'tidyr',
+            'openxlsx', 'httr', 'crayon', 'glue', 'rlang',
+            'ggplot2', 'ggrepel', 'ggpubr', 'ggbeeswarm', 'ggfortify',
+            'ggplotify', 'ggridges', 'ggtext', 'gridtext',
+            'pheatmap', 'ComplexHeatmap', 'VennDiagram', 'UpSetR',
+            'cowplot', 'plot3D', 'ragg', 'viridis', 'RColorBrewer', 'colorspace',
+            'umap', 'uwot',
+            'DESeq2', 'edgeR', 'limma', 'ashr', 'apeglm',
+            'tximport', 'sva',
+            'rtracklayer', 'AnnotationHub', 'ensembldb', 'org.Hs.eg.db', 'org.Mm.eg.db',
+            'fgsea', 'GSVA', 'pathview', 'metap', 'multtest', 'decoupleR', 'OmnipathR',
+            'survival', 'survminer', 'emmeans',
+            'GEOquery',
+            'SingleCellExperiment', 'DropletUtils', 'scDblFinder', 'glmGamPoi',
+            'harmony', 'UCell',
+            'CellChat', 'ktplots',
+            'copykat',
+            'clustree', 'hdf5r', 'leidenbase',
+            'presto', 'DoubletFinder',
+            'Seurat', 'SeuratData', 'SeuratDisk', 'SeuratWrappers',
+            'affy', 'lumi', 'oligo',
+            'hgu133plus2.db', 'illuminaHumanv4.db',
+            'NanoStringNCTools', 'GeomxTools', 'GeoMxWorkflows',
+            'HMMcopy', 'ichorCNA'
+        )
+        failed <- c()
+        for (p in pkgs) {
+            tryCatch({
+                library(p, character.only=TRUE)
+                message('OK  ', p, ' (', packageVersion(p), ')')
+            }, error = function(e) {
+                message('FAIL ', p, ': ', e$message)
+                failed <<- c(failed, p)
+            })
+        }
+        if (length(failed) > 0) {
+            stop(paste('CRITICAL FAILURE:', paste(failed, collapse=', ')))
+        } else {
+            message('SUCCESS: All ', length(pkgs), ' packages loaded.')
+        }
+    "
+
+    # Step 2: Verify pre-cached OmniPath network files exist
+    R -e "
+        expected <- c('collectri_human.rds', 'collectri_mouse.rds',
+                      'progeny_human.rds',   'progeny_mouse.rds')
+        found    <- list.files('/opt/omnipathr_cache/')
+        missing  <- setdiff(expected, found)
+        if (length(missing) > 0) {
+            stop('CACHE MISSING: ', paste(missing, collapse=', '))
+        }
+        message('SUCCESS: All network RDS files present in /opt/omnipathr_cache/')
+    "

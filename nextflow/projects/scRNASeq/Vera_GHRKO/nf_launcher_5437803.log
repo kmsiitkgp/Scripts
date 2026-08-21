@@ -1,0 +1,141 @@
+✅ Configuration file Vera_GHRKO_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        LAUNCHER VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_config.yaml
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /common/bhowmicknlab/scRNASeq/Vera_GHRKO/inputs              -> /common/bhowmicknlab/scRNASeq/Vera_GHRKO/inputs
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /common --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.6 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Vera_GHRKO_2026-08-13_12-41-19] DSL2 - revision: ae47bb3a88
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+SCRNA-SEQ PIPELINE
+===========================================
+Experiment                                   : ---             : scRNASeq
+Species                                      : ---             : Mouse
+Project                                      : ---             : Vera_GHRKO
+
+Mapping File                                 : ✅ FOUND         : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_fastq_map.txt
+Input FastQ Dir                              : ❌ MISSING       : /common/bhowmicknlab/scRNASeq/Vera_GHRKO/inputs
+Metadata File                                : ✅ FOUND         : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_metadata.xlsx
+Base Directory                               : ✅ FOUND         : /home/kailasamms/analysis
+Reference Dir                                : ✅ FOUND         : /home/kailasamms/resources/genomes
+Cache Dir                                    : ✅ FOUND         : /home/kailasamms/resources/containers
+
+Cell Cycle Marker File                       : ✅ FOUND         : /home/kailasamms/scripts/nextflow/resources/Cell_Cycle_Markers.xlsx
+Cell Type Marker File                        : ✅ FOUND         : /home/kailasamms/scripts/nextflow/resources/Cell_Type_Markers.xlsx
+Resolutions                                  : ---             : [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+Sparse Threshold                             : ---             : 5
+Avg Prob Threshold                           : ---             : 0.3
+Delta Threshold                              : ---             : 0.1
+Stability Threshold                          : ---             : 0.9
+Subcluster Branches                          : ---             : Epithelial, Mesenchymal, Hematopoietic, Endothelial, Neural
+
+CellRanger directory                         : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/03.CellRanger
+Kallisto-Bustools directory                  : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/04.KB
+Seurat directory                             : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat
+scVelo directory                             : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/06.scVelo
+[Whole] filtered_seurat.rds                  : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/filtered_seurat.rds
+[Epithelial_Initial] filtered_seurat.rds     : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Initial/filtered_seurat.rds
+[Mesenchymal_Initial] filtered_seurat.rds    : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Initial/filtered_seurat.rds
+[Hematopoietic_Initial] filtered_seurat.rds  : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Initial/filtered_seurat.rds
+[Endothelial_Initial] filtered_seurat.rds    : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Initial/filtered_seurat.rds
+[Neural_Initial] filtered_seurat.rds         : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Initial/filtered_seurat.rds
+[Epithelial_Final] filtered_seurat.rds       : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Final/filtered_seurat.rds
+[Mesenchymal_Final] filtered_seurat.rds      : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Final/filtered_seurat.rds
+[Hematopoietic_Final] filtered_seurat.rds    : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Final/filtered_seurat.rds
+[Endothelial_Final] filtered_seurat.rds      : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Final/filtered_seurat.rds
+[Neural_Final] filtered_seurat.rds           : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Final/filtered_seurat.rds
+[Whole] annotated_seurat.rds                 : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/annotated_seurat.rds
+[Epithelial_Initial] annotated_seurat.rds    : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Initial/annotated_seurat.rds
+[Mesenchymal_Initial] annotated_seurat.rds   : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Initial/annotated_seurat.rds
+[Hematopoietic_Initial] annotated_seurat.rds : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Initial/annotated_seurat.rds
+[Endothelial_Initial] annotated_seurat.rds   : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Initial/annotated_seurat.rds
+[Neural_Initial] annotated_seurat.rds        : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Initial/annotated_seurat.rds
+[Epithelial_Final] annotated_seurat.rds      : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Final/annotated_seurat.rds
+[Mesenchymal_Final] annotated_seurat.rds     : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Final/annotated_seurat.rds
+[Hematopoietic_Final] annotated_seurat.rds   : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Final/annotated_seurat.rds
+[Endothelial_Final] annotated_seurat.rds     : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Final/annotated_seurat.rds
+[Neural_Final] annotated_seurat.rds          : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Final/annotated_seurat.rds
+[Whole] annotated_seurat_final.rds           : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/annotated_seurat_final.rds
+[Whole] annotated_seurat_final_clean.rds     : ❌ MISSING       : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/annotated_seurat_final_clean.rds
+===========================================
+
+✅ [SKIP] All CellRanger outputs found → jumping to LOAD_CELLRANGER
+✅ [SKIP] All KB outputs found
+✅ [SKIP][Whole] filtered_seurat.rds found → bypassing LOAD_CELLRANGER_AND_MERGE
+✅ [SKIP][Whole] sct_seurat.rds found → bypassing SCT_TRANSFORM
+▶ [RUN][Epithelial] SUBSET_CELLS_INITIAL
+▶ [RUN][Mesenchymal] SUBSET_CELLS_INITIAL
+▶ [RUN][Hematopoietic] SUBSET_CELLS_INITIAL
+▶ [RUN][Endothelial] SUBSET_CELLS_INITIAL
+▶ [RUN][Neural] SUBSET_CELLS_INITIAL
+✅ [SKIP][Whole] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Whole] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+▶ [RUN][Whole] ANNOTATE_CLUSTERS
+[3f/7641c1] Submitted process > SCRNASEQ:SCRNA_ANNOTATE_CLUSTERS (Annotating clusters: Whole)
+[2e/679c06] Submitted process > SCRNASEQ:SCRNA_SUBSET_CELLS_INITIAL (Subsetting cells: Epithelial_Initial)
+[1a/fb866c] Submitted process > SCRNASEQ:SCRNA_SUBSET_CELLS_INITIAL (Subsetting cells: Mesenchymal_Initial)
+[5a/80d6f7] Submitted process > SCRNASEQ:SCRNA_SUBSET_CELLS_INITIAL (Subsetting cells: Hematopoietic_Initial)
+[46/d1c1a6] Submitted process > SCRNASEQ:SCRNA_SUBSET_CELLS_INITIAL (Subsetting cells: Neural_Initial)
+[8f/e5e266] Submitted process > SCRNASEQ:SCRNA_SUBSET_CELLS_INITIAL (Subsetting cells: Endothelial_Initial)
+▶ [RUN][Neural_Initial] SCT_TRANSFORM
+▶ [RUN][Endothelial_Initial] SCT_TRANSFORM
+[da/3374cd] Submitted process > SCRNASEQ:SCRNA_SCT_TRANSFORM_INITIAL (SCTransform on merged object: Neural_Initial)
+[60/f696e8] Submitted process > SCRNASEQ:SCRNA_SCT_TRANSFORM_INITIAL (SCTransform on merged object: Endothelial_Initial)
+▶ [RUN][Hematopoietic_Initial] SCT_TRANSFORM
+[42/1d6c63] Submitted process > SCRNASEQ:SCRNA_SCT_TRANSFORM_INITIAL (SCTransform on merged object: Hematopoietic_Initial)
+▶ [RUN][Mesenchymal_Initial] SCT_TRANSFORM
+[71/15c4ee] Submitted process > SCRNASEQ:SCRNA_SCT_TRANSFORM_INITIAL (SCTransform on merged object: Mesenchymal_Initial)
+▶ [RUN][Neural_Initial] INTEGRATE
+[f7/6fdabd] Submitted process > SCRNASEQ:SCRNA_INTEGRATE_INITIAL (Harmony integration: Neural_Initial)
+▶ [RUN][Endothelial_Initial] INTEGRATE
+[5d/6fba13] Submitted process > SCRNASEQ:SCRNA_INTEGRATE_INITIAL (Harmony integration: Endothelial_Initial)
+▶ [RUN][Neural_Initial] CLUSTER_AND_FINDMARKERS
+▶ [RUN][Endothelial_Initial] CLUSTER_AND_FINDMARKERS
+[10/2b1f36] Submitted process > SCRNASEQ:SCRNA_CLUSTER_AND_FINDMARKERS_INITIAL (Clustering, marker finding, junk flagging: Neural_Initial)
+[e1/fddb70] Submitted process > SCRNASEQ:SCRNA_CLUSTER_AND_FINDMARKERS_INITIAL (Clustering, marker finding, junk flagging: Endothelial_Initial)
+▶ [RUN][Epithelial_Initial] SCT_TRANSFORM
+[eb/aaf830] Submitted process > SCRNASEQ:SCRNA_SCT_TRANSFORM_INITIAL (SCTransform on merged object: Epithelial_Initial)
+▶ [RUN][Hematopoietic_Initial] INTEGRATE
+[4a/f2ee63] Submitted process > SCRNASEQ:SCRNA_INTEGRATE_INITIAL (Harmony integration: Hematopoietic_Initial)
+▶ [RUN][Neural_Initial] ANNOTATE_CLUSTERS_INITIAL
+⚪ [SKIP][Neural_Initial] manual_annotation template not filled or set — annotation will not run in this pass.
+▶ [RUN][Endothelial_Initial] ANNOTATE_CLUSTERS_INITIAL
+⚪ [SKIP][Endothelial_Initial] manual_annotation template not filled or set — annotation will not run in this pass.
+▶ [RUN][Hematopoietic_Initial] CLUSTER_AND_FINDMARKERS
+[f1/b32702] Submitted process > SCRNASEQ:SCRNA_CLUSTER_AND_FINDMARKERS_INITIAL (Clustering, marker finding, junk flagging: Hematopoietic_Initial)
+▶ [RUN][Hematopoietic_Initial] ANNOTATE_CLUSTERS_INITIAL
+⚪ [SKIP][Hematopoietic_Initial] manual_annotation template not filled or set — annotation will not run in this pass.
+▶ [RUN][Mesenchymal_Initial] INTEGRATE
+[65/0646ba] Submitted process > SCRNASEQ:SCRNA_INTEGRATE_INITIAL (Harmony integration: Mesenchymal_Initial)
+▶ [RUN][Mesenchymal_Initial] CLUSTER_AND_FINDMARKERS
+[a3/aa1a08] Submitted process > SCRNASEQ:SCRNA_CLUSTER_AND_FINDMARKERS_INITIAL (Clustering, marker finding, junk flagging: Mesenchymal_Initial)
+▶ [RUN][Epithelial_Initial] INTEGRATE
+[d0/7fd02b] Submitted process > SCRNASEQ:SCRNA_INTEGRATE_INITIAL (Harmony integration: Epithelial_Initial)
+▶ [RUN][Mesenchymal_Initial] ANNOTATE_CLUSTERS_INITIAL
+⚪ [SKIP][Mesenchymal_Initial] manual_annotation template not filled or set — annotation will not run in this pass.
+▶ [RUN][Epithelial_Initial] CLUSTER_AND_FINDMARKERS
+[9d/a4fe06] Submitted process > SCRNASEQ:SCRNA_CLUSTER_AND_FINDMARKERS_INITIAL (Clustering, marker finding, junk flagging: Epithelial_Initial)
+▶ [RUN][Epithelial_Initial] ANNOTATE_CLUSTERS_INITIAL
+⚪ [SKIP][Epithelial_Initial] manual_annotation template not filled or set — annotation will not run in this pass.
+Waiting for file transfers to complete (1 files)

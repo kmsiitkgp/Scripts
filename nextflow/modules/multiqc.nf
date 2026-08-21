@@ -5,8 +5,13 @@
 //
 // What it does:
 //   - Scans work directory recursively for recognized output files
-//   - Parses metrics from FastQC, STAR, Salmon, RSeQC
+//   - Parses metrics from whichever tools ran upstream (e.g. FastQC, STAR,
+//     Salmon, RSeQC for rnaseq.nf; FastQC, Cell Ranger for scrnaseq.nf)
 //   - Generates interactive HTML report and data directory
+//
+// This module is shared between rnaseq.nf and scrnaseq.nf - the calling
+// pipeline is responsible for assembling/flattening the right set of report
+// files/dirs into all_reports before invoking this process.
 //
 // Typical resources: <1GB RAM, 1-5 minutes
 // =============================================================================
@@ -16,17 +21,20 @@ process MULTIQC {
     tag "MultiQC: ${species}"
     label 'process_low'                           // Lightweight file parsing only
 
-    publishDir { "${params.proj_dir()}/${species}/06.MultiQC" },    mode: 'copy',    pattern: "*.html"
-    publishDir { "${params.proj_dir()}/${species}/06.MultiQC" },    mode: 'copy',    pattern: "*_data"
-    publishDir { "${params.proj_dir()}/${species}/07.Logs" },       mode: 'copy',    pattern: "MULTIQC.error.log"
+    publishDir = [
+        [path: { "${params.proj_dir()}/${species}/12.MultiQC" }, mode: 'copy', pattern: "*.html"],
+        [path: { "${params.proj_dir()}/${species}/12.MultiQC" }, mode: 'copy', pattern: "*_data"],
+        [path: { "${params.proj_dir()}/${species}/Logs" },      mode: 'copy', pattern: "MULTIQC.log"]
+    ]
 
     // =================================================================================
     // INPUT
     // =================================================================================
     input:
     tuple val(species), path(all_reports)
-    // all_reports: Flat list of all QC output files/dirs from FastQC, STAR, Salmon, RSeQC
-    //              Assembled and flattened in rnaseq.nf via .mix().groupTuple().map{flatten}
+    // all_reports: Flat list of all QC output files/dirs (FastQC + upstream tool
+    //              outputs). Assembled and flattened by the calling pipeline
+    //              (rnaseq.nf or scrnaseq.nf) via .mix().groupTuple().map{flatten}
 
     // =================================================================================
     // OUTPUT
@@ -34,14 +42,14 @@ process MULTIQC {
     output:
     path("*.html"),                    emit: multiqc_html     // Interactive HTML report
     path("*_data"),                    emit: multiqc_data     // Parsed data directory
-    path("MULTIQC.error.log"),         emit: error_log        // Process log
+    path("MULTIQC.log"),         emit: error_log        // Process log
 
     // =================================================================================
     // EXECUTION
     // =================================================================================
     script:
 
-    def LOG              = "MULTIQC.error.log"
+    def LOG              = "MULTIQC.log"
     def multiqc_title    = "${species} ${params.project} QC Report"
     def multiqc_filename = "${species}_${params.project}_multiqc"
 
@@ -71,11 +79,12 @@ process MULTIQC {
 // QUICK REFERENCE
 // =============================================================================
 //
-// Tools automatically detected and parsed:
-//   FastQC  : *_fastqc.zip
-//   STAR    : *.Log.final.out
-//   Salmon  : meta_info.json + quant.sf
-//   RSeQC   : *.read_distribution.txt, *.junction*, etc.
+// Tools automatically detected and parsed (depends on calling pipeline):
+//   FastQC      : *_fastqc.zip                          (rnaseq.nf, scrnaseq.nf)
+//   STAR        : *.Log.final.out                       (rnaseq.nf)
+//   Salmon      : meta_info.json + quant.sf              (rnaseq.nf)
+//   RSeQC       : *.read_distribution.txt, *.junction*   (rnaseq.nf)
+//   Cell Ranger : web_summary.html, metrics_summary.csv  (scrnaseq.nf)
 //
 // Output files:
 //   *_multiqc.html        : Main interactive report (open in browser)

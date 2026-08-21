@@ -1,0 +1,270 @@
+✅ Configuration file Vera_GHRKO_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        LAUNCHER VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_config.yaml
+Temporary Files        : ❌ MISSING     : /home/kailasamms/scratch
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /common/bhowmicknlab/scRNASeq/Vera_GHRKO/input               -> /common/bhowmicknlab/scRNASeq/Vera_GHRKO/input
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /common --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.6 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Vera_GHRKO_2026-08-20_17-16-34] DSL2 - revision: ae47bb3a88
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+SCRNA-SEQ PIPELINE
+===========================================
+Experiment                                   : ---             : scRNASeq
+Species                                      : ---             : Mouse
+Project                                      : ---             : Vera_GHRKO
+
+Mapping File                                 : ✅ FOUND         : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_fastq_map.txt
+Input FastQ Dir                              : ✅ FOUND         : /common/bhowmicknlab/scRNASeq/Vera_GHRKO/input
+Metadata File                                : ✅ FOUND         : /home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_metadata.xlsx
+Base Directory                               : ✅ FOUND         : /home/kailasamms/analysis
+Reference Dir                                : ✅ FOUND         : /home/kailasamms/resources/genomes
+Cache Dir                                    : ✅ FOUND         : /home/kailasamms/resources/containers
+
+Cell Cycle Marker File                       : ✅ FOUND         : /home/kailasamms/scripts/nextflow/resources/Cell_Cycle_Markers.xlsx
+Cell Type Marker File                        : ✅ FOUND         : /home/kailasamms/scripts/nextflow/resources/Cell_Type_Markers.xlsx
+Resolutions                                  : ---             : [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+Sparse Threshold                             : ---             : 5
+Avg Prob Threshold                           : ---             : 0.3
+Delta Threshold                              : ---             : 0.1
+Stability Threshold                          : ---             : 0.9
+Subcluster Branches                          : ---             : Epithelial, Mesenchymal, Hematopoietic, Endothelial, Neural
+
+CellRanger directory                         : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/03.CellRanger
+Kallisto-Bustools directory                  : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/04.KB
+Seurat directory                             : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat
+scVelo directory                             : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/06.scVelo
+Pseudobulk directory                         : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/07.Pseudobulk
+[Whole] filtered_seurat.rds                  : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/filtered_seurat.rds
+[Epithelial_Initial] filtered_seurat.rds     : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Initial/filtered_seurat.rds
+[Mesenchymal_Initial] filtered_seurat.rds    : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Initial/filtered_seurat.rds
+[Hematopoietic_Initial] filtered_seurat.rds  : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Initial/filtered_seurat.rds
+[Endothelial_Initial] filtered_seurat.rds    : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Initial/filtered_seurat.rds
+[Neural_Initial] filtered_seurat.rds         : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Initial/filtered_seurat.rds
+[Epithelial_Final] filtered_seurat.rds       : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Final/filtered_seurat.rds
+[Mesenchymal_Final] filtered_seurat.rds      : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Final/filtered_seurat.rds
+[Hematopoietic_Final] filtered_seurat.rds    : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Final/filtered_seurat.rds
+[Endothelial_Final] filtered_seurat.rds      : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Final/filtered_seurat.rds
+[Neural_Final] filtered_seurat.rds           : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Final/filtered_seurat.rds
+[Whole] annotated_seurat.rds                 : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/annotated_seurat.rds
+[Epithelial_Initial] annotated_seurat.rds    : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Initial/annotated_seurat.rds
+[Mesenchymal_Initial] annotated_seurat.rds   : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Initial/annotated_seurat.rds
+[Hematopoietic_Initial] annotated_seurat.rds : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Initial/annotated_seurat.rds
+[Endothelial_Initial] annotated_seurat.rds   : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Initial/annotated_seurat.rds
+[Neural_Initial] annotated_seurat.rds        : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Initial/annotated_seurat.rds
+[Epithelial_Final] annotated_seurat.rds      : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Epithelial_Final/annotated_seurat.rds
+[Mesenchymal_Final] annotated_seurat.rds     : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Mesenchymal_Final/annotated_seurat.rds
+[Hematopoietic_Final] annotated_seurat.rds   : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Hematopoietic_Final/annotated_seurat.rds
+[Endothelial_Final] annotated_seurat.rds     : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Endothelial_Final/annotated_seurat.rds
+[Neural_Final] annotated_seurat.rds          : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Neural_Final/annotated_seurat.rds
+[Whole] annotated_seurat_final.rds           : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/annotated_seurat_final.rds
+[Whole] annotated_seurat_final_clean.rds     : ✅ FOUND         : /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/Mouse/05.Seurat/Whole/annotated_seurat_final_clean.rds
+===========================================
+
+✅ [SKIP] MD5 manifest found → bypassing GENERATE_MD5
+==> Validating file naming conventions
+✅ [SKIP] All CellRanger outputs found → jumping to LOAD_CELLRANGER
+✅ [SKIP] All KB outputs found
+✅ [SKIP][Whole] merged.h5ad found → bypassing MERGE_H5AD
+✅ [SKIP][Whole] filtered_seurat.rds found → bypassing LOAD_CELLRANGER_AND_MERGE
+✅ [SKIP][Whole] annotated_seurat_final.rds found → final CellType already assembled
+▶ PREPARING RNA VELOCITY INPUTS
+✅ [SKIP][Epithelial_Initial] filtered_seurat.rds found → bypassing SUBSET_CELLS_INITIAL
+✅ [SKIP][Whole] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Mesenchymal_Initial] filtered_seurat.rds found → bypassing SUBSET_CELLS_INITIAL
+✅ [SKIP][Hematopoietic_Initial] filtered_seurat.rds found → bypassing SUBSET_CELLS_INITIAL
+✅ [SKIP][Endothelial_Initial] filtered_seurat.rds found → bypassing SUBSET_CELLS_INITIAL
+✅ [SKIP][Neural_Initial] filtered_seurat.rds found → bypassing SUBSET_CELLS_INITIAL
+✅ [SKIP][Epithelial_Initial] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Mesenchymal_Initial] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Whole] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Epithelial_Initial] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Hematopoietic_Initial] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Mesenchymal_Initial] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Endothelial_Initial] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Hematopoietic_Initial] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Epithelial_Initial] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Mesenchymal_Initial] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Endothelial_Initial] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Neural_Initial] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Epithelial_Initial] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_INITIAL
+✅ [SKIP][Mesenchymal_Initial] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_INITIAL
+✅ [SKIP][Whole] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Hematopoietic_Initial] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Endothelial_Initial] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Neural_Initial] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Hematopoietic_Initial] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_INITIAL
+✅ [SKIP][Endothelial_Initial] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_INITIAL
+✅ [SKIP][Whole] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS
+✅ [SKIP][Epithelial_Final] filtered_seurat.rds found → bypassing SUBSET_CELLS_FINAL
+✅ [SKIP][Mesenchymal_Final] filtered_seurat.rds found → bypassing SUBSET_CELLS_FINAL
+✅ [SKIP][Hematopoietic_Final] filtered_seurat.rds found → bypassing SUBSET_CELLS_FINAL
+✅ [SKIP][Endothelial_Final] filtered_seurat.rds found → bypassing SUBSET_CELLS_FINAL
+✅ [SKIP][Neural_Initial] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Neural_Initial] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_INITIAL
+✅ [SKIP][Neural_Final] filtered_seurat.rds found → bypassing SUBSET_CELLS_FINAL
+✅ [SKIP][Epithelial_Final] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Mesenchymal_Final] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Epithelial_Final] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Mesenchymal_Final] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Hematopoietic_Final] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Endothelial_Final] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Epithelial_Final] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Neural_Final] sct_seurat.rds found → bypassing SCT_TRANSFORM
+✅ [SKIP][Hematopoietic_Final] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Mesenchymal_Final] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Epithelial_Final] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_FINAL
+✅ [SKIP][Mesenchymal_Final] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_FINAL
+✅ [SKIP][Hematopoietic_Final] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Hematopoietic_Final] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_FINAL
+✅ [SKIP][Endothelial_Final] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Neural_Final] integrated_seurat.rds found → bypassing INTEGRATE
+✅ [SKIP][Endothelial_Final] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Endothelial_Final] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_FINAL
+✅ [SKIP][Neural_Final] clustered_seurat.rds found → bypassing CLUSTER_AND_FINDMARKERS
+✅ [SKIP][Neural_Final] annotated_seurat.rds found → bypassing ANNOTATE_CLUSTERS_FINAL
+[ce/fd7042] Submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Mesenchymal)
+[4e/a297f2] Submitted process > SCRNASEQ:SCRNA_PSEUDOBULK (Pseudobulk aggregation: Mouse / Goblet_cells)
+[b3/2c7830] Submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Epithelial)
+[bc/bec36e] Submitted process > SCRNASEQ:SCRNA_PSEUDOBULK (Pseudobulk aggregation: Mouse / Colonocytes)
+[c7/97fcb5] Submitted process > SCRNASEQ:RENAME_FASTQS (Renaming FASTQ files)
+[6d/301bdd] Submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Hematopoietic)
+[b9/62904e] Submitted process > SCRNASEQ:SCRNA_PSEUDOBULK (Pseudobulk aggregation: Mouse / Transit-amplifying_cells)
+[09/36aaa4] Submitted process > SCRNASEQ:SCRNA_PSEUDOBULK (Pseudobulk aggregation: Mouse / Crypt-Base_Stem_cells)
+[5f/a2fbf8] Submitted process > SCRNASEQ:SCRNA_PSEUDOBULK (Pseudobulk aggregation: Mouse / Fibroblasts)
+[cc/730bf8] Submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Neural)
+[33/f3209f] Submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Endothelial)
+
+ ============================================================
+ FASTQ INPUT VALIDATION SUMMARY
+ ============================================================
+ FILE FORMAT         : fastq.gz
+  - .fq.gz           : 0
+  - .fastq.gz        : 72
+------------------------------------------------------------
+ SEQUENCING MODE     : PAIRED_END
+ READ TAGS USED      :
+  - R1 tag           : _R1
+  - R2 tag           : _R2
+ TAG DISTRIBUTION    :
+  - Uppercase (R1/R2): 36 / 36
+  - Lowercase (r1/r2): 0 / 0
+------------------------------------------------------------
+ SAMPLE SUMMARY      :
+  - Total samples    : 36
+  - Tumor samples    : 0
+  - Normal samples   : 0
+  - Other samples    : 36
+ READ FILES (R1/R2)  : 72
+ INDEX FILES (I1/I2) : 0
+ TOTAL VALID FILES   : 72
+============================================================
+
+[cc/730bf8] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Neural)` terminated with an error exit status (137) -- Execution is retried (1)
+[ce/fa7217] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Neural)
+[6d/301bdd] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Hematopoietic)` terminated with an error exit status (137) -- Execution is retried (1)
+[55/a3ed40] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Hematopoietic)
+[ce/fd7042] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Mesenchymal)` terminated with an error exit status (137) -- Execution is retried (1)
+[35/5d6aaa] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Mesenchymal)
+[33/f3209f] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Endothelial)` terminated with an error exit status (137) -- Execution is retried (1)
+[b8/ff1edf] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Endothelial)
+[b3/2c7830] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Epithelial)` terminated with an error exit status (137) -- Execution is retried (1)
+[66/261c2f] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Epithelial)
+[ce/fa7217] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Neural)` terminated with an error exit status (137) -- Execution is retried (2)
+[ad/a896c3] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Neural)
+[db/4e1866] Submitted process > SCRNASEQ:RNA_CREATE_DDS (Creating DESeq2 dataset: Mouse|Colonocytes)
+[2b/81225b] Submitted process > SCRNASEQ:RNA_CREATE_DDS (Creating DESeq2 dataset: Mouse|Crypt-Base_Stem_cells)
+[55/a3ed40] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Hematopoietic)` terminated with an error exit status (137) -- Execution is retried (2)
+[89/f8a0cc] Submitted process > SCRNASEQ:RNA_CREATE_DDS (Creating DESeq2 dataset: Mouse|Goblet_cells)
+[95/6e2e81] Submitted process > SCRNASEQ:RNA_CREATE_DDS (Creating DESeq2 dataset: Mouse|Transit-amplifying_cells)
+[3f/1431db] Submitted process > SCRNASEQ:RNA_CREATE_DDS (Creating DESeq2 dataset: Mouse|Fibroblasts)
+[50/3226a1] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Hematopoietic)
+[35/5d6aaa] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Mesenchymal)` terminated with an error exit status (137) -- Execution is retried (2)
+[19/27fd15] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Mesenchymal)
+[66/261c2f] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Epithelial)` terminated with an error exit status (137) -- Execution is retried (2)
+[bd/6f59c1] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Epithelial)
+[63/b7a0f7] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Crypt-Base_Stem_cells | GHRKO_Late-WT_Late)
+[ba/2012c0] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Crypt-Base_Stem_cells | GHRKO_Early-WT_Early)
+[96/6780c8] Submitted process > SCRNASEQ:RNA_PLOT_DESEQ2_QC (Plotting DESeq2 QC: Mouse|Crypt-Base_Stem_cells)
+[b8/ff1edf] NOTE: Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Endothelial)` terminated with an error exit status (137) -- Execution is retried (2)
+[c1/1efddb] Re-submitted process > SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Endothelial)
+[8c/bb76c7] Submitted process > SCRNASEQ:RNA_PLOT_DESEQ2_QC (Plotting DESeq2 QC: Mouse|Colonocytes)
+[2d/db7c98] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Colonocytes | GHRKO_Late-WT_Late)
+[e3/e7c18c] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Colonocytes | GHRKO_Early-WT_Early)
+[eb/be6794] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Goblet_cells | GHRKO_Early-WT_Early)
+[8d/bf19d0] Submitted process > SCRNASEQ:RNA_PLOT_DESEQ2_QC (Plotting DESeq2 QC: Mouse|Goblet_cells)
+[02/55309b] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Goblet_cells | GHRKO_Late-WT_Late)
+[33/1a4f52] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Fibroblasts | GHRKO_Early-WT_Early)
+[8c/7fb1d5] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Fibroblasts | GHRKO_Late-WT_Late)
+[aa/84fbc6] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Transit-amplifying_cells | GHRKO_Early-WT_Early)
+[aa/628807] Submitted process > SCRNASEQ:RNA_PLOT_DESEQ2_QC (Plotting DESeq2 QC: Mouse|Transit-amplifying_cells)
+[ce/19e5bc] Submitted process > SCRNASEQ:RNA_PLOT_DESEQ2_QC (Plotting DESeq2 QC: Mouse|Fibroblasts)
+[91/f51b9d] Submitted process > SCRNASEQ:RNA_EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse|Transit-amplifying_cells | GHRKO_Late-WT_Late)
+[4e/402907] Submitted process > SCRNASEQ:RNA_PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Mouse|Crypt-Base_Stem_cells | GHRKO_Late-WT_Late)
+[27/e92202] Submitted process > SCRNASEQ:RNA_ANALYZE_TFS (TF analysis: Mouse|Crypt-Base_Stem_cells | GHRKO_Late-WT_Late)
+[82/35c6b2] Submitted process > SCRNASEQ:RNA_ANALYZE_PATHWAYS (Pathway analysis: Mouse|Crypt-Base_Stem_cells | GHRKO_Late-WT_Late)
+[c3/069426] Submitted process > SCRNASEQ:RNA_ANALYZE_PATHWAYS (Pathway analysis: Mouse|Crypt-Base_Stem_cells | GHRKO_Early-WT_Early)
+[e1/494b76] Submitted process > SCRNASEQ:RNA_ANALYZE_TFS (TF analysis: Mouse|Crypt-Base_Stem_cells | GHRKO_Early-WT_Early)
+[d0/314896] Submitted process > SCRNASEQ:RNA_PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Mouse|Crypt-Base_Stem_cells | GHRKO_Early-WT_Early)
+[65/f4039e] Submitted process > SCRNASEQ:RNA_ANALYZE_PATHWAYS (Pathway analysis: Mouse|Colonocytes | GHRKO_Late-WT_Late)
+ERROR ~ Error executing process > 'SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Neural)'
+
+Caused by:
+  Process `SCRNASEQ:SCRNA_PREP_VELOCITY_INPUT (Prepping velocity input: Neural)` terminated with an error exit status (137)
+
+
+Command executed:
+
+  python3 "/home/kailasamms/scripts/nextflow/modules/SCRNA/SCRNA_prep_velocity_input.py"         --merged "merged.h5ad"         --barcodes "barcodes.csv"         --output velocity_input.h5ad > "SCRNA_PREP_VELOCITY_INPUT.Neural.log" 2>&1
+  
+  EXIT_CODE=$?
+  if [ $EXIT_CODE -ne 0 ]; then
+      echo "❌ ERROR: SCRNA_PREP_VELOCITY_INPUT failed for Neural" | tee -a "SCRNA_PREP_VELOCITY_INPUT.Neural.log" >&2
+      exit $EXIT_CODE
+  fi
+  echo "✅ SUCCESS: SCRNA_PREP_VELOCITY_INPUT completed for Neural" >> "SCRNA_PREP_VELOCITY_INPUT.Neural.log"
+
+Command exit status:
+  137
+
+Command output:
+  (empty)
+
+Command error:
+  WARNING: DEPRECATED USAGE: Forwarding SINGULARITYENV_TMPDIR as environment variable will not be supported in the future, use APPTAINERENV_TMPDIR instead
+  WARNING: DEPRECATED USAGE: Forwarding SINGULARITYENV_NXF_TASK_WORKDIR as environment variable will not be supported in the future, use APPTAINERENV_NXF_TASK_WORKDIR instead
+  WARNING: DEPRECATED USAGE: Forwarding SINGULARITYENV_NXF_DEBUG as environment variable will not be supported in the future, use APPTAINERENV_NXF_DEBUG instead
+  .command.sh: line 2:    43 Killed                  python3 "/home/kailasamms/scripts/nextflow/modules/SCRNA/SCRNA_prep_velocity_input.py" --merged "merged.h5ad" --barcodes "barcodes.csv" --output velocity_input.h5ad > "SCRNA_PREP_VELOCITY_INPUT.Neural.log" 2>&1
+
+Work dir:
+  /home/kailasamms/scratch/Vera_GHRKO/ad/a896c3528c6126f65b64f312627060
+
+Container:
+  /home/kailasamms/resources/containers/omics_py3.12.sif
+
+Tip: you can replicate the issue by changing to the process work dir and entering the command `bash .command.run`
+
+ -- Check '/home/kailasamms/scratch/Vera_GHRKO.nextflow.log' file for details
+[73/494fc7] Submitted process > SCRNASEQ:RNA_PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Mouse|Colonocytes | GHRKO_Late-WT_Late)
+WARN: Killing running tasks (10)

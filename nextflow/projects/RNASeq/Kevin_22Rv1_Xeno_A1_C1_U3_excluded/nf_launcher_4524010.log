@@ -1,0 +1,81 @@
+✅ Configuration file Kevin_22Rv1_Xeno_A1_C1_U3_excluded_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        PROJECT VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+Experiment             : ---             : RNASeq
+Species                : ---             : Xenograft
+Project Name           : ---             : Kevin_22Rv1_Xeno_A1_C1_U3_excluded
+
+Input Reads            : ❌ MISSING     : null
+Fastq Map File         : ❌ MISSING     : null
+Metadata File          : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Kevin_22Rv1_Xeno_A1_C1_U3_excluded/Kevin_22Rv1_Xeno_A1_C1_U3_excluded_metadata.xlsx
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Kevin_22Rv1_Xeno_A1_C1_U3_excluded/Kevin_22Rv1_Xeno_A1_C1_U3_excluded_config.yaml
+
+Final Results          : ✔ FOUND       : /home/kailasamms/analysis
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+Image Cache            : ✔ FOUND       : /home/kailasamms/resources/containers
+Ref Genomes            : ✔ FOUND       : /home/kailasamms/resources/genomes
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /home/kailasamms/scripts/nextflow/projects/RNASeq/Kevin_22Rv1_Xeno_A1_C1_U3_excluded/null -> null
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.3 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Kevin_22Rv1_Xeno_A1_C1_U3_excluded_2026-06-05_11-46-25] DSL2 - revision: 4854fc20c4
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+WARN: There's no process matching config selector: SCRNASEQ:CELLRANGER_COUNT
+WARN: There's no process matching config selector: SCRNASEQ:(?!CELLRANGER_COUNT|.*FASTQC|MULTIQC).*
+WARN: There's no process matching config selector: HMMCOPY_REFWIG
+WARN: There's no process matching config selector: HMMCOPY_READCOUNTER
+WARN: There's no process matching config selector: ICHORCNA_RUN
+[f1/d1b3c7] Submitted process > RNASEQ:MERGE_STAR_COUNTS (Merging STAR counts: Human)
+[92/9da326] Submitted process > RNASEQ:CREATE_TX2GENE (Creating tx2gene: Human (GRCh38.115))
+[8e/7bbbb6] Submitted process > RNASEQ:CREATE_TXI (Creating txi: Human)
+[3c/247714] Submitted process > RNASEQ:CREATE_DDS (Creating DESeq2 dataset: Human)
+[e1/c50149] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / Carotuximab-Vehicle)
+[3d/093c1c] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / Apalutamide.Carotuximab-Vehicle)
+[c9/56a765] Submitted process > RNASEQ:PLOT_DESEQ2_QC (Plotting DESeq2 QC: Human)
+[a2/64c606] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / Apalutamide-Vehicle)
+[16/38beff] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / Apalutamide.Carotuximab-Apalutamide)
+[3d/385a04] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / Apalutamide.Carotuximab-Carotuximab)
+[fd/f974a0] Submitted process > RNASEQ:DEEP_AUDIT (Auditing results)
+[07/86e052] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / Carotuximab-Vehicle)
+[40/5cadfd] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / Carotuximab-Vehicle)
+[03/58aae5] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / Carotuximab-Vehicle)
+[f6/67d48b] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / Apalutamide.Carotuximab-Carotuximab)
+[01/f1a871] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / Apalutamide.Carotuximab-Apalutamide)
+[d9/3592bc] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / Apalutamide.Carotuximab-Apalutamide)
+[14/e8365d] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / Apalutamide.Carotuximab-Apalutamide)
+[b8/261d2c] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / Apalutamide.Carotuximab-Carotuximab)
+[b7/0b8885] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / Apalutamide.Carotuximab-Carotuximab)
+[95/0bacb2] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / Apalutamide-Vehicle)
+[f5/3e510d] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / Apalutamide-Vehicle)
+[32/54dc7b] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / Apalutamide-Vehicle)
+[99/fb7696] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / Apalutamide.Carotuximab-Vehicle)
+[68/7416ce] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / Apalutamide.Carotuximab-Vehicle)
+[22/0ac5b5] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / Apalutamide.Carotuximab-Vehicle)
+[96/8eca6c] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / Carotuximab-Vehicle)
+[63/1be232] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / Apalutamide.Carotuximab-Apalutamide)
+[01/41c9e5] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / Apalutamide.Carotuximab-Carotuximab)
+[a2/ca8aa4] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / Apalutamide-Vehicle)
+[bd/2b2a81] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / Apalutamide.Carotuximab-Vehicle)
+[b7/f788f6] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / Carotuximab-Vehicle)
+[ab/5bd497] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / Apalutamide.Carotuximab-Apalutamide)
+[70/7682dc] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / Apalutamide-Vehicle)
+[2f/2cd49b] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / Apalutamide.Carotuximab-Carotuximab)
+[dd/148995] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / Apalutamide.Carotuximab-Vehicle)

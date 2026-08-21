@@ -1,0 +1,191 @@
+✅ Configuration file Vera_HPrEC_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        PROJECT VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+Experiment             : ---             : RNASeq
+Species                : ---             : Human
+Project Name           : ---             : Vera_HPrEC
+
+Input Reads            : ✔ FOUND       : /common/bhowmicknlab/RNASeq/Vera_HPrEC/input
+Fastq Map File         : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Vera_HPrEC/Vera_HPrEC_fastq_map.txt
+Metadata File          : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Vera_HPrEC/Vera_HPrEC_metadata.xlsx
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Vera_HPrEC/Vera_HPrEC_config.yaml
+
+Final Results          : ✔ FOUND       : /home/kailasamms/analysis
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+Image Cache            : ✔ FOUND       : /home/kailasamms/resources/containers
+Ref Genomes            : ✔ FOUND       : /home/kailasamms/resources/genomes
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /common/bhowmicknlab/RNASeq/Vera_HPrEC/input                 -> /common/bhowmicknlab/RNASeq/Vera_HPrEC/input
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /common --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.1 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Vera_HPrEC_2026-05-19_12-02-21] DSL2 - revision: 4854fc20c4
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+RNA-SEQ PIPELINE
+===========================================
+Experiment               : RNASeq
+Species                  : Human
+Project                  : Vera_HPrEC
+Mapping File             : /home/kailasamms/scripts/nextflow/projects/RNASeq/Vera_HPrEC/Vera_HPrEC_fastq_map.txt
+Input FastQ Dir          : /common/bhowmicknlab/RNASeq/Vera_HPrEC/input
+Reference Dir            : /home/kailasamms/resources/genomes
+===========================================
+
+==> Validating file naming conventions
+WARN: There's no process matching config selector: CALC_MODULE_SCORES
+WARN: There's no process matching config selector: ANNOTATE_CLUSTERS
+[cb/f0e4b6] Submitted process > RNASEQ:RENAME_FASTQS (Renaming FASTQ files)
+[7a/1f22fb] Submitted process > RNASEQ:FETCH_ENSEMBL_VERSIONS (Fetching latest Ensembl metadata for Human)
+
+ ============================================================
+ FASTQ INPUT VALIDATION SUMMARY
+ ============================================================
+ FILE FORMAT         : fastq.gz
+  - .fq.gz           : 0
+  - .fastq.gz        : 24
+------------------------------------------------------------
+ SEQUENCING MODE     : PAIRED_END
+ READ TAGS USED      :
+  - R1 tag           : _R1
+  - R2 tag           : _R2
+ TAG DISTRIBUTION    :
+  - Uppercase (R1/R2): 12 / 12
+  - Lowercase (r1/r2): 0 / 0
+------------------------------------------------------------
+ SAMPLE SUMMARY      :
+  - Total samples    : 12
+  - Tumor samples    : 0
+  - Normal samples   : 0
+  - Other samples    : 12
+ TOTAL FASTQ FILES   : 24
+============================================================
+
+[36/5327d3] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_C1_R2.fastq.gz)
+[5c/9ec888] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_C1_R1.fastq.gz)
+[4c/a9078b] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_C2_R1.fastq.gz)
+[59/049f2e] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_C2_R2.fastq.gz)
+[69/5dfa3a] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_C3_R2.fastq.gz)
+[27/72d7f7] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_C3_R1.fastq.gz)
+[d0/159ef3] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_GH1_R2.fastq.gz)
+[eb/7b9ed9] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_GH1_R1.fastq.gz)
+[7d/599fcc] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_GH2_R1.fastq.gz)
+[0f/47a0ee] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_GH2_R2.fastq.gz)
+[96/7be768] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_GH3_R1.fastq.gz)
+[65/16a559] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC1_GH3_R2.fastq.gz)
+[89/8429d8] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_C1_R1.fastq.gz)
+[c6/723087] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_C1_R2.fastq.gz)
+[4c/bde12e] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_C2_R1.fastq.gz)
+[dd/0d7788] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_C3_R1.fastq.gz)
+[6b/c5161e] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_C2_R2.fastq.gz)
+[3d/f05dd4] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_GH1_R1.fastq.gz)
+[b2/678396] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_C3_R2.fastq.gz)
+[dc/ce817f] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_GH2_R1.fastq.gz)
+[d8/582cbf] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_GH1_R2.fastq.gz)
+[03/765b15] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_GH3_R1.fastq.gz)
+[84/eaa8a6] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_GH2_R2.fastq.gz)
+[85/2ae3f6] Submitted process > RNASEQ:GENERATE_MD5 (MD5: HPrEC2_GH3_R2.fastq.gz)
+[skipping] Stored process > RNASEQ:DOWNLOAD_ENSEMBL_REF (1)
+[skipping] Stored process > RNASEQ:RSEQC_BED (1)
+[skipping] Stored process > RNASEQ:CREATE_GENTROME (1)
+[skipping] Stored process > RNASEQ:STAR_INDEX (1)
+[skipping] Stored process > RNASEQ:SALMON_INDEX (1)
+[7d/f1a91f] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC1_C2)
+[f5/014c6e] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC1_C2)
+[d9/100c4b] Submitted process > RNASEQ:CREATE_TX2GENE (Creating tx2gene: Human (GRCh38.115))
+[9d/1c782d] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC1_C2 (raw))
+[2a/40fe7e] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC1_C1 (raw))
+[19/e4ec85] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC1_C1)
+[27/b71544] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC1_C3)
+[7e/32dc9c] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC1_C1)
+[86/442542] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC1_C3)
+[87/d0ee95] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC1_C3 (raw))
+[9d/4f3e39] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC1_GH1)
+[10/0a21c0] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC1_GH2)
+[94/3b2fdd] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC1_GH1 (raw))
+[61/4f4e18] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC1_GH1)
+[fa/073141] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC1_GH2)
+[3c/c11b20] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC1_GH2 (raw))
+[50/84db19] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC2_C1)
+[a0/fbe998] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC1_GH3)
+[a5/75139a] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC1_GH3)
+[40/d9432c] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC1_GH3 (raw))
+[90/993c1d] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC2_C1 (raw))
+[56/c5c35e] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC2_C1)
+[12/948f6a] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC2_C2)
+[58/5317ca] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC2_C2)
+[93/c2e949] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC2_C3)
+[8a/b81b2a] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC2_C2 (raw))
+[e3/fb3d41] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC2_C3)
+[7c/567cd6] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC2_C3 (raw))
+[d5/72c941] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC2_GH1)
+[41/002d8a] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC2_GH1)
+[21/d451fd] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC2_GH1 (raw))
+[a9/7c7642] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC2_GH2 (raw))
+[51/843bed] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC2_GH2)
+[61/796108] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / HPrEC2_GH3)
+[26/7b03b9] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC2_GH2)
+[a3/8ffa08] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / HPrEC2_GH3)
+[5a/ac3853] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / HPrEC2_GH3 (raw))
+[be/2c79a6] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC1_C2)
+[34/8297ad] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC1_C1)
+[03/f61fe8] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC1_C3)
+[ee/db6a76] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC1_GH3)
+[10/4c9711] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC1_GH1)
+[6a/0b7ec6] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC1_GH2)
+[ef/70edcc] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC2_C1)
+[c5/70e936] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC2_C2)
+[91/cd27d3] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC2_C3)
+[2f/fb92fd] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC2_GH2)
+[9e/00756f] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC2_GH1)
+[3a/d962bd] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / HPrEC2_GH3)
+[a1/e350c8] Submitted process > RNASEQ:MERGE_STAR_COUNTS (Merging STAR counts: Human)
+[34/574821] Submitted process > RNASEQ:STAR_STATS (STAR stats)
+[88/2f8816] Submitted process > RNASEQ:SALMON_STATS (Salmon stats)
+[d4/5e9259] Submitted process > RNASEQ:CREATE_TXI (Creating txi: Human)
+[b9/bd508b] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC1_C2)
+[8e/13ab39] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC1_C1)
+[47/13cf39] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC1_C3)
+[13/89b31d] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC1_GH3)
+[ca/4237bb] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC1_GH2)
+[eb/45b8e2] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC1_GH1)
+[6e/d4079f] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC2_C1)
+[35/7002af] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC2_C2)
+[14/593152] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC2_C3)
+[82/2f3dc9] Submitted process > RNASEQ:CREATE_DDS (Creating DESeq2 dataset: Human)
+[be/c9c61c] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC2_GH1)
+[0d/9cc310] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC2_GH2)
+[a1/d04f9e] Submitted process > RNASEQ:RSEQC (RSeQC: Human / HPrEC2_GH3)
+[14/a39088] Submitted process > RNASEQ:PLOT_DESEQ2_QC (Plotting DESeq2 QC: Human)
+[18/c13dd3] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / HPrEC2.GrowthHormone-HPrEC2.Control)
+[ad/f271fe] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / HPrEC1.GrowthHormone-HPrEC1.Control)
+[38/1d07c7] Submitted process > RNASEQ:DEEP_AUDIT (Auditing results)
+[2e/cb814f] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / HPrEC2.GrowthHormone-HPrEC2.Control)
+[a8/a691d6] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / HPrEC2.GrowthHormone-HPrEC2.Control)
+[41/fb5872] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / HPrEC2.GrowthHormone-HPrEC2.Control)
+[f4/7a64f1] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / HPrEC1.GrowthHormone-HPrEC1.Control)
+[91/04ec10] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / HPrEC1.GrowthHormone-HPrEC1.Control)
+[5c/db8463] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / HPrEC1.GrowthHormone-HPrEC1.Control)
+[47/9ced46] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / HPrEC2.GrowthHormone-HPrEC2.Control)
+[48/cd1e1a] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / HPrEC2.GrowthHormone-HPrEC2.Control)
+[ef/4c35d7] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / HPrEC1.GrowthHormone-HPrEC1.Control)
+[65/9152b0] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / HPrEC1.GrowthHormone-HPrEC1.Control)
+[b4/a6294f] Submitted process > RNASEQ:MULTIQC (MultiQC: Human)

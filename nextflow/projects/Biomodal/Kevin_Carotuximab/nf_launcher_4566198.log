@@ -1,0 +1,107 @@
+✅ Configuration file Kevin_Carotuximab_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        PROJECT VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+Experiment             : ---             : ctDNA
+Species                : ---             : Human
+Project Name           : ---             : Kevin_Carotuximab
+
+Input Reads            : ❌ MISSING     : /common/bhowmicknlab/Biomodal/Kevin_Carotuximab/input
+Fastq Map File         : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/Biomodal/Kevin_Carotuximab/Kevin_Carotuximab_fastq_map.txt
+Metadata File          : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/Biomodal/Kevin_Carotuximab/Kevin_Carotuximab_metadata.xlsx
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/Biomodal/Kevin_Carotuximab/Kevin_Carotuximab_config.yaml
+
+Final Results          : ✔ FOUND       : /home/kailasamms/analysis
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+Image Cache            : ✔ FOUND       : /home/kailasamms/resources/containers
+Ref Genomes            : ✔ FOUND       : /home/kailasamms/resources/genomes
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        :                                                              -> /common/bhowmicknlab/Biomodal/Kevin_Carotuximab/input
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.3 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Kevin_Carotuximab_2026-06-12_16-17-52] DSL2 - revision: ae47bb3a88
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+ctDNA PIPELINE
+===========================================
+Experiment               : ctDNA
+Species                  : Human
+Project                  : Kevin_Carotuximab
+BAM Dir                  : /home/kailasamms/analysis/Biomodal/Kevin_Carotuximab/02.bams
+Reference Dir            : /home/kailasamms/resources/genomes
+GC Content Wig           : /home/kailasamms/resources/genomes/ichorCNA/gc_hg38_1000kb.wig"
+Mappability Wig          : /home/kailasamms/resources/genomes/ichorCNA/map_hg38_1000kb.wig"
+Bin Size                 : 1000000
+
+===========================================
+
+Using pre-existing reference WIG files — skipping HMMCOPY_REFWIG
+WARN: There's no process matching config selector: SCRNASEQ:CELLRANGER_COUNT
+WARN: There's no process matching config selector: SCRNASEQ:(?!CELLRANGER_COUNT|.*FASTQC|MULTIQC).*
+WARN: There's no process matching config selector: ICHORCNA_RUN
+[44/2bf2e1] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 676C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[b4/148f6f] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 700C3.genome.GRCh38Decoy_primary_assembly.dedup)
+[6f/733b56] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 557C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[16/6ca261] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 692C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[e8/a086a3] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 657C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[ba/1a48c9] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 663C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[18/c1c195] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 283C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[25/44b4ad] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 772C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[51/2d2eb8] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 692C3.genome.GRCh38Decoy_primary_assembly.dedup)
+[31/90d2bf] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 663EOT.genome.GRCh38Decoy_primary_assembly.dedup)
+[b5/61c7fa] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 557C3.genome.GRCh38Decoy_primary_assembly.dedup)
+[e8/e13776] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 772C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[95/d16ca5] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 361C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[b3/6bf302] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 704C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[39/26c45e] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 361C3.genome.GRCh38Decoy_primary_assembly.dedup)
+[06/9a29ad] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 700C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[f9/6fd85b] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 704C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[f4/78e298] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 700C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[cb/11c45d] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 692C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[98/e9864b] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 361C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[34/d1566d] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 283C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[8e/e998b2] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 676C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[bf/d6e7a5] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 657EOT.genome.GRCh38Decoy_primary_assembly.dedup)
+[34/0cfe49] Submitted process > CTDNA:HMMCOPY_READCOUNTER (HMMcopy readCounter: 557C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[5a/bf3af0] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 657C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[f1/e34103] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 557C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[0c/520455] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 663C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[31/31ca90] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 283C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[6a/3f44c7] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 692C3.genome.GRCh38Decoy_primary_assembly.dedup)
+[d6/90ea79] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 772C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[e2/b7f81a] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 557C3.genome.GRCh38Decoy_primary_assembly.dedup)
+[df/f5457b] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 361C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[ce/ec3136] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 704C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[3e/14a618] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 700C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[e4/2e58ff] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 700C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[04/c7acb8] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 283C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[45/423c9a] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 361C3.genome.GRCh38Decoy_primary_assembly.dedup)
+[9d/cd8593] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 700C3.genome.GRCh38Decoy_primary_assembly.dedup)
+[13/e4318a] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 692C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[c3/de3a81] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 772C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[b5/0bfddf] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 704C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[de/3ee318] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 657EOT.genome.GRCh38Decoy_primary_assembly.dedup)
+[7c/e5a669] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 676C2.genome.GRCh38Decoy_primary_assembly.dedup)
+[2c/45c97c] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 663EOT.genome.GRCh38Decoy_primary_assembly.dedup)
+[f1/7cf0ed] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 692C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[e0/6366a3] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 676C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[9f/85c0b4] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 361C1.genome.GRCh38Decoy_primary_assembly.dedup)
+[31/c5b080] Submitted process > CTDNA:RUN_ICHORCNA (ichorCNA: 557C2.genome.GRCh38Decoy_primary_assembly.dedup)

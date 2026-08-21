@@ -1,25 +1,62 @@
 Bootstrap: docker
 From: ubuntu:22.04
 
+# =============================================================================
+# Space Ranger 4.1.0 Apptainer Container
+# =============================================================================
+# Prerequisites: spaceranger-4.1.0.tar.gz must be in the same folder as this
+#                def file before building.
+#
+# Download from: https://www.10xgenomics.com/support/software/space-ranger/downloads
+# Note: 10x download URLs expire after a few days. If download fails with a
+#       403 error, go to the link above and get a fresh URL.
+#
+# Build command:
+#   sudo apptainer build spaceranger_4.1.0.sif spaceranger.def 2>&1 | tee build.log
+# =============================================================================
+
+%labels
+    Author      kailasamms
+    Version     4.1.0
+    Date        2026-04-30
+    Description "Space Ranger 4.1.0"
+
 %files
-    spaceranger-4.0.1.tar.gz /opt/spaceranger-4.0.1.tar.gz
+    # Copy the tarball from the build folder into /opt inside the container
+    spaceranger-4.1.0.tar.gz /opt/spaceranger-4.1.0.tar.gz
 
 %post
+    # Install minimal system dependencies needed to run Space Ranger
+    # --no-install-recommends keeps the image lean by skipping optional packages
     apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates locales unzip procps
-    
+        ca-certificates \
+        locales \
+        unzip \
+        procps
+
+    # Extract the tarball into /opt and remove it to save space
     cd /opt
-    tar -xzvf spaceranger-4.0.1.tar.gz
-    rm spaceranger-4.0.1.tar.gz
-    
-    ln -s /opt/spaceranger-4.0.1/spaceranger /usr/local/bin/spaceranger
+    tar -xzvf spaceranger-4.1.0.tar.gz
+    rm spaceranger-4.1.0.tar.gz
+
+    # Ensure the spaceranger binary is executable
+    chmod +x /opt/spaceranger-4.1.0/spaceranger
+
+    # Create a symlink so spaceranger is available system-wide without needing
+    # to set PATH explicitly — /usr/local/bin is always in the default PATH
+    ln -s /opt/spaceranger-4.1.0/spaceranger /usr/local/bin/spaceranger
+
+    # Set up locale to avoid warnings from tools that expect UTF-8
+    locale-gen en_US.UTF-8
+    update-locale LANG=en_US.UTF-8
 
 %environment
-    export PATH="/opt/spaceranger-4.0.1:$PATH"
-    export LC_ALL=C.UTF-8
-    export LANG=C.UTF-8
+    # Set locale environment variables at runtime
+    export LC_ALL=en_US.UTF-8
+    export LANG=en_US.UTF-8
 
 %test
-    export PATH="/opt/spaceranger-4.0.1:$PATH"
+    # %environment is not sourced during %test, so PATH must be set explicitly
+    export PATH="/opt/spaceranger-4.1.0:$PATH"
     echo "Testing Space Ranger installation..."
     spaceranger --version

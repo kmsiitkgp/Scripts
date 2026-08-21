@@ -1,0 +1,410 @@
+# =========================================================================================
+# PROJECT CONFIGURATION FILE — UNIFIED TEMPLATE
+# =========================================================================================
+# Usage : nextflow run main.nf -params-file <this_file> -profile sge -resume -entry <WORKFLOW>
+#
+# One shared yaml for ALL workflows/experiment types. Every section below is banner-labeled
+# COMMON (read by every workflow) or <WORKFLOW>-SPECIFIC (read only by that one) — nothing
+# about the key NAMES or nested structure has changed from before; this is purely a
+# reorganization/relabeling pass for readability, so you know at a glance what to touch for
+# the workflow you're running. Keys you don't need for your current workflow can be left
+# as whatever/null — Nextflow does not validate that every key gets used.
+#
+#   expt = "RNASeq"   → uses RNASEQ-SPECIFIC blocks (star_align, salmon_quant, deseq2, ...)
+#   expt = "scRNASeq" → uses SCRNA-SPECIFIC blocks (cellranger_count, scrna)
+#   expt = "TCGA"     → uses TCGA-SPECIFIC blocks (gdc, manifest_file, sample_sheet_file)
+#   expt = "ctDNA"    → uses CTDNA-SPECIFIC blocks (bam_dir, ichorcna, ...) — see NOTE below
+#   (rename-only runs use nothing beyond COMMON)
+#
+# Quick Start:
+#   1. Fill in COMMON — PROJECT METADATA        — always required
+#   2. Fill in COMMON — INPUT FILES              — always required
+#   3. Fill in the block for your workflow's PRECOMPUTED INPUTS, if reusing existing
+#      upstream output instead of running from raw FASTQs/BAMs
+#   4. Fill in the ANALYSIS blocks for your workflow; ignore blocks for other workflows
+#   5. Fill in COMMON — OUTPUT DIRECTORIES       — always required
+#   6. Leave tool-parameter sections (STAR, Salmon, CellRanger, ichorCNA) unchanged unless needed
+#
+# run_mode: still read by tcga.nf/ctdna.nf (single top-level "which workflow" check — a
+#   remnant that predates Nextflow's own `-entry` selection, candidate for removal there too).
+#   NO LONGER READ by rnaseq.nf — that workflow now branches on file existence instead
+#   (raw FASTQs present → run upstream; otherwise reuse existing STAR/Salmon output on disk).
+#   scrnaseq.nf and rename.nf never read run_mode at all.
+# =========================================================================================
+
+
+# =========================================================================================
+# COMMON — PROJECT METADATA                                ← always fill this, every workflow
+# =========================================================================================
+
+expt:     "scRNASeq"             # "RNASeq" | "scRNASeq" | "TCGA" | "ctDNA"
+species:  "Mouse"                # "Human"  | "Mouse"    | "Xenograft"
+project:  "Vera_GHRKO"           # used in output directory naming
+run_mode: "downstream"           # see run_mode note above — still used by tcga.nf/ctdna.nf only
+
+
+# =========================================================================================
+# COMMON — INPUT FILES                                     ← always fill this, every workflow
+# =========================================================================================
+# read_dir / map_file are shared verbatim with rename.nf's own standalone renaming workflow
+# (same params, same meaning, same RENAME_FASTQS/SYMLINK_FASTQS operation) — not a coincidence,
+# genuinely the same concept reused across workflows.
+
+read_dir:      "/common/bhowmicknlab/scRNASeq/Vera_GHRKO/input"
+yaml_file:     "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_config.yaml"
+map_file:      "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_fastq_map.txt"
+metadata_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Vera_GHRKO_metadata.xlsx"
+
+# --- Debug / checkpoint (shared: RNASeq + ctDNA) ---
+# NOTE: this key is read throughout rnaseq.nf (e.g. stop_after == 'RENAME_FASTQS',
+# 'VALIDATE_INPUT', 'RNA_STAR_INDEX', 'RNA_SALMON_INDEX', 'RNA_RSEQC_INDEX',
+# 'RNA_SALMON_CREATE_TX2GENE') and ctdna.nf, but was entirely ABSENT from this yaml before
+# this pass — flagged gap, not a carried-over value. Leave null for "don't stop early".
+stop_after: null   # e.g. "RENAME_FASTQS" | "VALIDATE_INPUT" | "RNA_STAR_INDEX" | ... | null
+
+# =========================================================================================
+# COMMON — OUTPUT DIRECTORIES                              ← always fill this, every workflow
+# =========================================================================================
+# Output lands at: ${base_dir}/${expt}/${project}/
+# e.g. /home/kailasamms/analysis/RNASeq/Kevin_22Rv1_Xeno/
+#      /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/
+
+base_dir:  "/home/kailasamms/analysis"              # Analysis results (permanent)
+work_dir:  "/home/kailasamms/scratch"               # Nextflow intermediates (safe to delete after run)
+cache_dir: "/home/kailasamms/resources/containers"  # Singularity images (shared across projects)
+ref_dir:   "/home/kailasamms/resources/genomes"     # Reference genomes and indexes (shared) —
+gmt_dir:   "/home/kailasamms/resources/signatures"  # GMT gene set files for GSEA/ORA (shared)
+
+# =========================================================================================
+# RNASEQ-SPECIFIC — PRECOMPUTED INPUTS                     ← fill only if reusing existing
+#                                                             STAR/Salmon output instead of
+#                                                             running from raw FASTQs
+# =========================================================================================
+
+gene_counts: null    # path to dir containing *.ReadsPerGene.out.tab files
+salmon_dir:  null    # path to dir containing per-sample Salmon quant folders
+gtf:         null    # path to GTF file  e.g. Homo_sapiens.GRCh38.115.gtf
+fa:          null    # path to FASTA file e.g. Homo_sapiens.GRCh38.dna.primary_assembly.fa
+
+# --- Genome version info ---
+# Auto-detected when upstream runs. Fill manually only when reusing existing output above.
+genome_version: null   # e.g. "GRCh38.115"  or  "GRCh38.2024-A" (10X)
+assembly:       null   # e.g. "GRCh38"
+release:        null   # e.g. "115"  or  "2024-A" (10X)
+
+
+# =========================================================================================
+# TCGA-SPECIFIC — DOWNLOAD INPUTS                          ← TCGA only
+# =========================================================================================
+
+manifest_file:     null  # GDC manifest file (TSV)
+sample_sheet_file: null  # GDC sample sheet (TSV)
+
+
+# =========================================================================================
+# RNASEQ-SPECIFIC — DIFFERENTIAL EXPRESSION / PATHWAYS / TFS
+#   (design / batch_vars / independent_filtering_alpha / min_samples_per_group / gsea /
+#    decoupler / heatmap are also reused by scRNASeq pseudobulk — see each block's own
+#    comment for exactly which keys are shared vs RNASeq-only; the banner here just
+#    reflects where these blocks are "primary")
+# =========================================================================================
+
+deseq2:
+  design: "0+Group"               # DESeq2 design formula column
+                                  # "0+Column"      → group means, no intercept (recommended for
+                                  #                   multiple group comparisons with makeContrasts)
+                                  # "Batch+Column"  → corrects for batch in the model
+
+  independent_filtering_alpha: 0.1  # DESeq2 internal low-count filter threshold
+                                    # 0.1 recommended; do not set below 0.05
+
+  batch_vars: null                # Metadata column(s) for ComBat-seq batch correction
+                                  # Applied BEFORE DESeq2, not inside the model
+                                  # e.g. ["Batch"] if design = "Batch+Column" or
+                                  #           null if design = "0+Column"
+
+  min_samples_per_group: 2        # Per-contrast floor: a contrast is skipped (gracefully,
+                                  # not an error) if either group it references has fewer
+                                  # than this many samples.
+
+  contrasts:                      # Format: "Numerator-Denominator"
+    - "Treated-Control"           # Each contrast → its own output subfolder
+
+gsea:
+  padj_cutoff: 0.05   # FDR threshold for significant pathways
+  top_n: 10           # Top N up + top N down pathways to plot per collection
+  only_deg: false     # true = restrict GSEA input to significant DEGs only (ORA-style);
+                      # false = rank ALL genes by stat (standard preranked GSEA)
+  minsize: 15         # Minimum gene set size to test
+  maxsize: 500        # Maximum gene set size to test
+
+decoupler:
+  top_n: 20           # Top N up + top N down TFs/pathways to plot
+  methods: ["ulm", "mlm", "viper"]   # decoupleR statistics to run; a method that errors on
+                                     # a given network/input (e.g. mlm's collinearity
+                                     # failure) is dropped automatically, not fatal
+  minsize: 5          # Minimum number of network targets required per TF/pathway
+
+heatmap:
+  col_annotations: ["Group"]   # Metadata columns shown as color bars above heatmap
+                                   # must match column names in metadata_xlsx exactly
+
+  col_cluster_by: "Group"          # Column ordering strategy:
+                                   #   "all"          → single unsupervised clustering
+                                   #   "alphabetical" → sort by sample name
+                                   #   "Treatment"    → cluster within each group separately
+
+  heatmap_palette: "rdbu"          # "rdbu" (Red-Blue diverging, recommended for expression)
+                                   # or any viridis variant: "viridis" | "magma" | "plasma" | "inferno"
+
+
+# =========================================================================================
+# RNASEQ-SPECIFIC — TOOL PARAMETERS: STAR                  ← leave unchanged unless needed
+# =========================================================================================
+
+star_align:
+  runMode:                    "alignReads"
+  twopassMode:                "Basic"              # 2-pass mapping: improves novel junction detection
+  quantMode:                  "GeneCounts"         # Generate gene counts alongside BAM
+  sjdbOverhang:               100                  # ReadLength - 1; 100 works for 75–150 bp reads
+  readFilesCommand:           "zcat"               # "zcat" for .gz; "cat" for uncompressed
+  outFilterMultimapNmax:      10                   # Discard reads mapping to > 10 loci
+  outFilterMismatchNmax:      999                  # Disable absolute mismatch filter
+  outFilterMismatchNoverReadLmax: 0.04             # Max 4% mismatches per read (active filter)
+  outFilterType:              "BySJout"            # Remove spurious junctions (recommended)
+  alignEndsType:              "Local"              # Soft-clip read ends (handles adapter remnants)
+  alignIntronMin:             20                   # Gaps < 20 bp = deletion, not intron
+  alignIntronMax:             1000000              # Max intron size
+  alignMatesGapMax:           1000000              # Max insert size for paired-end reads
+  outSAMattributes:           "NH HI AS nM MD"     # MD tag required for RSeQC mismatch analysis
+  outSAMunmapped:             "Within"             # Retain unmapped reads in output BAM
+  outSAMtype:                 ["BAM", "SortedByCoordinate"]
+  limitSjdbInsertNsj:         1500000
+
+
+# =========================================================================================
+# RNASEQ-SPECIFIC — TOOL PARAMETERS: SALMON                ← leave unchanged unless needed
+# =========================================================================================
+
+salmon_quant:
+  libType:       "A"      # "A" = auto-detect strandedness (recommended)
+                          # "IU" = force unstranded if auto-detect fails
+  gcBias:        true     # Correct GC content bias (~2-5% accuracy gain)
+  seqBias:       true     # Correct hexamer priming bias
+  posBias:       true     # Correct positional bias (5'/3' read distribution)
+  numBootstraps: 0        # Bootstrap replicates for uncertainty estimation
+                          # Set to 30 if using sleuth or Swish for DE
+
+
+# =========================================================================================
+# SCRNA-SPECIFIC                                           ← scRNASeq only
+# =========================================================================================
+
+cellranger_count:
+  chemistry:                   "auto"    # Library chemistry; "auto" = auto-detect (recommended)
+                                         # Override only if auto-detect fails (e.g. "SC3Pv3")
+  include_introns:             "true"    # Count intronic reads (important for nascent RNA)
+  check_library_compatibility: "true"    # Validate FASTQ library type matches chemistry
+  create_bam:                  "false"   # BAM output; "false" saves significant disk space
+                                         # Set "true" only if you need BAM for downstream tools
+  cell_annotation_model:       "auto"    # 10X cell type annotation model; "auto" = recommended
+  tenx_cloud_token_path:       "/home/kailasamms/resources/tenx_token.txt"
+
+scrna:
+  kb:
+    workflow:   "nac"      # always "nac" — this pipeline only uses kb-python for velocity
+    technology: "10XV4"    # chemistry string, e.g. "10XV4" | "10XV3" — no auto-detect in kb-python,
+                            # must match actual chemistry (check Cell Ranger web_summary.html
+                            # "Chemistry" field per project — v3 vs v4 does matter for barcode parsing)
+  read10x:
+    gene_column: 2                 # Column in features.tsv.gz containing gene symbols
+                                   # 1 = Ensembl ID, 2 = gene symbol (default for 10X)
+
+  qc:
+    gene_cutoff:    250            # Min unique genes per cell          (below = empty droplet or debris)
+    umi_cutoff:     500            # Min UMI count per cell             (below = low quality)
+    mito_cutoff:    0.2            # Max mitochondrial fraction         (above = dying cell)
+    novelty_cutoff: 0.8            # Min log10(genes)/log10(UMIs) ratio (below = low complexity)
+    ribo_cutoff:    0.05           # Max ribosomal gene fraction        (above = stressed cell)
+
+  doubletfinder:
+    pN:    0.25                    # Proportion of artificial doublets to generate (0.25 = standard)
+
+  scdblfinder:
+    multiplet_rate: 0.004          # Doublet rate per 1k cells = 0.008 (for 10x v3); 0.004 (for 10x v4)
+
+  seurat:
+    cellcycle_marker_xlsx: "/home/kailasamms/scripts/nextflow/resources/Cell_Cycle_Markers.xlsx"
+    celltype_marker_xlsx:  "/home/kailasamms/scripts/nextflow/resources/Cell_Type_Markers.xlsx"
+    sparse_threshold:      5       # Clusters with less than threshold cells will be flagged CellType="Exclude"
+    avg_prob_threshold:    0.3
+    delta_threshold:       0.1
+    stability_threshold:   0.9
+    resolutions:           [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+    final_umap_reduction:  "integ_harmony"  # embedding SCRNA_ADD_SUBTYPES reuses for the
+                                            # final RunUMAP-only recompute on the clean object
+                                            # (no FindNeighbors, no reclustering)
+    subcluster_lineages:
+      - ["Epithelial"]
+      - ["Mesenchymal"]
+      - ["Hematopoietic"]
+      - ["Endothelial"]
+      - ["Neural"]
+      #- ["Germline"]
+    exclude_label:         "Exclude" # optional, defaults to "Exclude" in R if omitted
+    manual_annotation:
+      Whole:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res0.2_Whole.xlsx"
+        cluster_col:     "harmony_res0.2"  # ALWAYS annotate whole at low resolution 0.2 for accurate lineage annotation
+
+      Epithelial_Initial:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Epithelial_Initial.xlsx"
+        cluster_col:     "harmony_res1.2"  # CellType column here = Retain / Exclude only (mixed-population review)
+      Epithelial_Final:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Epithelial_Final.xlsx"
+        cluster_col:     "harmony_res1.2"  # CellType column here = real celltypes, on the clean re-clustered object
+
+      Mesenchymal_Initial:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Mesenchymal_Initial.xlsx"
+        cluster_col:     "harmony_res1.2"
+      Mesenchymal_Final:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Mesenchymal_Final.xlsx"
+        cluster_col:     "harmony_res1.2"
+
+      Hematopoietic_Initial:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Hematopoietic_Initial.xlsx"
+        cluster_col:     "harmony_res1.2"
+      Hematopoietic_Final:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Hematopoietic_Final.xlsx"
+        cluster_col:     "harmony_res1.2"
+
+      Endothelial_Initial:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Endothelial_Initial.xlsx"
+        cluster_col:     "harmony_res1.2"
+      Endothelial_Final:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Endothelial_Final.xlsx"
+        cluster_col:     "harmony_res1.2"
+
+      Neural_Initial:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Neural_Initial.xlsx"
+        cluster_col:     "harmony_res1.2"
+      Neural_Final:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Neural_Final.xlsx"
+        cluster_col:     "harmony_res1.2"
+
+      Germline_Initial:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Germline_Initial.xlsx"
+        cluster_col:     "harmony_res1.2"
+      Germline_Final:
+        annotation_xlsx: "/home/kailasamms/scripts/nextflow/projects/scRNASeq/Vera_GHRKO/Annotation_harmony_res1.2_Germline_Final.xlsx"
+        cluster_col:     "harmony_res1.2"
+
+  # --- Pseudobulk (Section 6 of scrnaseq.nf) ---
+  # Entry-driven, not exhaustive: only CellType/Lineage values explicitly named in an
+  # `analyses` entry below get a pseudobulk expr_mat/metadata/DEGs/Pathways/TFs run at
+  # all — a CellType present in the object but not listed here produces no output.
+  # Each entry selects cells via EITHER `cellType` OR `Lineage` (pick one), merging
+  # multiple values into a single population if a list of >1 is given, and carries its
+  # OWN `contrasts` list (independent of deseq2.contrasts, which is RNAseq-only — see
+  # the RNASEQ-SPECIFIC DIFFERENTIAL EXPRESSION section above).
+  pseudobulk:
+    enabled:              true
+    min_cells_per_sample:  100   # an individual Sample is dropped from an entry if it
+                                  # contributed fewer than this many cells to it (applies
+                                  # to the COMBINED cell count across every value merged
+                                  # into one entry below)
+    analyses:
+      # Scenario 1: Single cell type, multiple individual contrasts
+      #- cellType: ["Goblet Cells"]
+      #  contrasts:
+      #    - "GHRKO_Late-WT_Late"
+      #    - "GHRKO_Early-WT_Early"
+
+      # Scenario 2: Multiple cell types combined into ONE group, multiple contrasts
+      #- cellType: ["Goblet Cells", "Stem Cells"]
+      #  contrasts:
+      #    - "GHRKO_Late-WT_Late"
+      #    - "GHRKO_Early-WT_Early"
+
+      # Scenario 3: Using Lineage instead of cellType, with a single contrast
+      #- Lineage: ["Epithelial"]
+      #  contrasts:
+      #    - "GHRKO_Late-WT_Late"
+      - cellType:  ["Goblet cells"]
+        contrasts:
+          - "GHRKO_Late-WT_Late"
+          - "GHRKO_Early-WT_Early"
+      - cellType:  ["Colonocytes"]
+        contrasts:
+          - "GHRKO_Late-WT_Late"
+          - "GHRKO_Early-WT_Early"
+      - cellType:  ["Crypt-Base Stem cells"]
+        contrasts:
+          - "GHRKO_Late-WT_Late"
+          - "GHRKO_Early-WT_Early"
+      - cellType:  ["Transit-amplifying cells"]
+        contrasts:
+          - "GHRKO_Late-WT_Late"
+          - "GHRKO_Early-WT_Early"
+      #- cellType:  ["Colonocytes (Mature)"]
+      #  contrasts:
+      #    - "GHRKO_Late-WT_Late"
+      #    - "GHRKO_Early-WT_Early"
+      #- cellType:  ["Colonocytes (Terminal)"]
+      #  contrasts:
+      #    - "GHRKO_Late-WT_Late"
+      #    - "GHRKO_Early-WT_Early"
+      #- cellType:  ["Paneth Cells"]
+      #  contrasts:
+      #    - "GHRKO_Late-WT_Late"
+      #    - "GHRKO_Early-WT_Early"
+      - cellType:  ["Fibroblasts"]
+        contrasts:
+          - "GHRKO_Late-WT_Late"
+          - "GHRKO_Early-WT_Early"
+      #- cellType:  ["Fibroblasts (ECM producing)"]
+      #  contrasts:
+      #    - "GHRKO_Late-WT_Late"
+      #    - "GHRKO_Early-WT_Early"
+      #- cellType:  ["Fibroblasts (Pdgfra high)"]
+      #  contrasts:
+      #    - "GHRKO_Late-WT_Late"
+      #    - "GHRKO_Early-WT_Early"
+
+
+# =========================================================================================
+# TCGA-SPECIFIC — DOWNLOAD SETTINGS                        ← TCGA only
+# =========================================================================================
+
+gdc:
+  n_processes:     8               # Parallel download connections (GDC recommends ≤8)
+  retry_attempts:  3               # Number of retry attempts on download failure
+
+
+# =========================================================================================
+# CTDNA-SPECIFIC                                           ← ctDNA only
+# =========================================================================================
+# NOTE: this whole block is currently a placeholder. Only ichorcna: below has known-good
+# defaults (pulled from runIchorCNA.R's own coded fallbacks — ploidy/normal/max_cn/
+# include_homd; bin_size has no coded default, left null). Every other key here
+# (bam_dir/biomodal_fa/gc_wig/map_wig) is read by ctdna.nf but was completely ABSENT from
+# this yaml before this pass — you mentioned a real ichorcna: block already exists in a
+# separate yaml you haven't merged in yet; paste it in below in place of these placeholders
+# once you have it.
+
+bam_dir:      null   # path to dir containing input BAM files
+biomodal_fa:  null   # reference FASTA used to generate GC/mappability WIGs (only needed if
+                     # gc_wig/map_wig below are null and HMMCOPY_REFWIG must generate them)
+gc_wig:       null   # pre-existing GC content WIG — if set (with map_wig), skips HMMCOPY_REFWIG entirely
+                     # e.g. prebuilt ichorCNA reference tracks (gc_hg38_1000kb.wig) — see
+                     # 01_ichorCNA_setup.sh for how these were originally sourced/copied
+                     # into a shared resource dir
+map_wig:      null   # pre-existing mappability WIG — see gc_wig above
+
+# --- PASTE YOUR REAL ichorcna: BLOCK HERE, replacing this placeholder ---
+ichorcna:
+  bin_size:     null   # ← NO coded default found in runIchorCNA.R/.nf; needs your real value
+  ploidy:       "c(2,3)"                              # matches runIchorCNA.R's own default
+  normal:       "c(0.5,0.6,0.7,0.8,0.9,0.95,0.99)"     # matches runIchorCNA.R's own default
+  max_cn:       5                                      # matches runIchorCNA.R's own default
+  include_homd: false                                  # matches runIchorCNA.R's own default

@@ -1,0 +1,9 @@
+﻿sample_id,FileName_ID,Sample_ID,Patient_ID,Cycle,SampleType,Condition,Duration,Group,C1D1,Date of progression,Time to Progression (weeks),reason for progression,Baseline PSA,Best PSA,% change,8 week response,16 week response,24 week response,Pre APA-105 treatment,comments
+361C1,1,361C1,361,C1,cfDNA,Pre,Short,Short_Pre,1/8/2024,7/19/2024,28,clinical,7.59,7.91,4%,SD,SD,SD,Abiraterone,
+361C2,2,361C2,361,C2,cfDNA,Post,Short,Short_Post,1/8/2024,7/19/2024,28,clinical,7.59,7.91,4%,SD,SD,SD,Abiraterone,
+692C1,14,692C1,692,C1,cfDNA,Pre,Short,Short_Pre,7/22/2024,,-6499,Withdrew consent 4/27/26,5.63,5.3,-6%,SD,SD,SD,Enzalutamide,
+692C2,15,692C2,692,C2,cfDNA,Post,Short,Short_Post,7/22/2024,,-6499,Withdrew consent 4/27/26,5.63,5.3,-6%,SD,SD,SD,Enzalutamide,
+772C1,19,772C1,772,C1,cfDNA,Pre,Short,Short_Pre,12/10/2024,3/7/2025,12,,20.59,16.66,-19%,SD,,,Abiraterone,clinical progression- back pain upper T-spine
+772C2,20,772C2,772,C2,cfDNA,Post,Short,Short_Post,12/10/2024,3/7/2025,12,,20.59,16.66,-19%,SD,,,Abiraterone,clinical progression- back pain upper T-spine
+557C1,21,557C1,557,C1,cfDNA,Pre,Short,Short_Pre,4/21/2025,12/29/2025,36,clinical,0.82,0.41,-50%,SD,SD,SD,"Enzalutamide, Darolutamide, Lu-PSMA",
+557C2,22,557C2,557,C2,cfDNA,Post,Short,Short_Post,4/21/2025,12/29/2025,36,clinical,0.82,0.41,-50%,SD,SD,SD,"Enzalutamide, Darolutamide, Lu-PSMA",

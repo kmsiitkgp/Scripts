@@ -1,0 +1,212 @@
+✅ Configuration file Sandrine_Quadriceps_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        PROJECT VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+Experiment             : ---             : RNASeq
+Species                : ---             : Mouse
+Project Name           : ---             : Sandrine_Quadriceps
+
+Input Reads            : ✔ FOUND       : /common/bhowmicknlab/RNASeq/Sandrine_Quadriceps/input
+Fastq Map File         : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Sandrine_Quadriceps/Sandrine_Quadriceps_fastq_map.txt
+Metadata File          : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Sandrine_Quadriceps/Sandrine_Quadriceps_metadata.xlsx
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Sandrine_Quadriceps/Sandrine_Quadriceps_config.yaml
+
+Final Results          : ✔ FOUND       : /home/kailasamms/analysis
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+Image Cache            : ✔ FOUND       : /home/kailasamms/resources/containers
+Ref Genomes            : ✔ FOUND       : /home/kailasamms/resources/genomes
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /common/bhowmicknlab/RNASeq/Sandrine_Quadriceps/input        -> /common/bhowmicknlab/RNASeq/Sandrine_Quadriceps/input
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /common --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.1 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Sandrine_Quadriceps_2026-05-19_12-24-49] DSL2 - revision: 4854fc20c4
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+RNA-SEQ PIPELINE
+===========================================
+Experiment               : RNASeq
+Species                  : Mouse
+Project                  : Sandrine_Quadriceps
+Mapping File             : /home/kailasamms/scripts/nextflow/projects/RNASeq/Sandrine_Quadriceps/Sandrine_Quadriceps_fastq_map.txt
+Input FastQ Dir          : /common/bhowmicknlab/RNASeq/Sandrine_Quadriceps/input
+Reference Dir            : /home/kailasamms/resources/genomes
+===========================================
+
+==> Validating file naming conventions
+WARN: There's no process matching config selector: CALC_MODULE_SCORES
+WARN: There's no process matching config selector: ANNOTATE_CLUSTERS
+[c8/4023f9] Submitted process > RNASEQ:FETCH_ENSEMBL_VERSIONS (Fetching latest Ensembl metadata for Mouse)
+[64/cd8b8c] Submitted process > RNASEQ:RENAME_FASTQS (Renaming FASTQ files)
+[skipping] Stored process > RNASEQ:DOWNLOAD_ENSEMBL_REF (1)
+[skipping] Stored process > RNASEQ:RSEQC_BED (1)
+[skipping] Stored process > RNASEQ:CREATE_GENTROME (1)
+[skipping] Stored process > RNASEQ:SALMON_INDEX (1)
+[skipping] Stored process > RNASEQ:STAR_INDEX (1)
+[91/d24b67] Submitted process > RNASEQ:CREATE_TX2GENE (Creating tx2gene: Mouse (GRCm39.115))
+
+ ============================================================
+ FASTQ INPUT VALIDATION SUMMARY
+ ============================================================
+ FILE FORMAT         : fq.gz
+  - .fq.gz           : 30
+  - .fastq.gz        : 0
+------------------------------------------------------------
+ SEQUENCING MODE     : PAIRED_END
+ READ TAGS USED      :
+  - R1 tag           : _R1
+  - R2 tag           : _R2
+ TAG DISTRIBUTION    :
+  - Uppercase (R1/R2): 15 / 15
+  - Lowercase (r1/r2): 0 / 0
+------------------------------------------------------------
+ SAMPLE SUMMARY      :
+  - Total samples    : 15
+  - Tumor samples    : 0
+  - Normal samples   : 0
+  - Other samples    : 15
+ TOTAL FASTQ FILES   : 30
+============================================================
+
+[23/a81f9c] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc1_R1.fq.gz)
+[aa/d5cd32] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc1_R2.fq.gz)
+[f6/b7618c] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc2_R1.fq.gz)
+[58/cb8076] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc2_R2.fq.gz)
+[c4/0151f9] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc3_R1.fq.gz)
+[34/f0b2e4] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc4_R1.fq.gz)
+[cf/80e6ce] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc3_R2.fq.gz)
+[4c/83c143] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc6_R1.fq.gz)
+[9a/da84a9] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc4_R2.fq.gz)
+[88/95e830] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF1_R1.fq.gz)
+[ef/1eeec9] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadFc6_R2.fq.gz)
+[04/b30ddc] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF2_R1.fq.gz)
+[3a/919436] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF1_R2.fq.gz)
+[2b/8c6f15] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF2_R2.fq.gz)
+[75/a24fae] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF3_R1.fq.gz)
+[5f/7c3972] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadFc1 (raw))
+[0d/1bb5a1] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadFc2 (raw))
+[73/b772b1] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF4_R1.fq.gz)
+[2b/6b08ef] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadFc3 (raw))
+[a8/37c5e7] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadFc1)
+[cd/f9fbf4] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF3_R2.fq.gz)
+[a8/e863f6] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF4_R2.fq.gz)
+[aa/b3a4c5] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadFc6 (raw))
+[81/968e86] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadFc3)
+[95/4f29b9] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadFc2)
+[90/0da63b] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF5_R1.fq.gz)
+[13/14d199] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadFc4 (raw))
+[d9/a1c2b3] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadFc4)
+[86/c838c0] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadFc1)
+[3b/e013f1] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRF5_R2.fq.gz)
+[de/7eac90] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRF1 (raw))
+[b3/e224f4] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL1_R1.fq.gz)
+[5f/7b2281] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL2_R1.fq.gz)
+[61/3bdff9] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL1_R2.fq.gz)
+[c5/04b856] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadFc4)
+[df/697561] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadFc6)
+[fe/d01796] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadFc3)
+[d7/fa1dd9] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRF2 (raw))
+[f0/71f118] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRF3 (raw))
+[df/8d6864] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadFc6)
+[d4/36e56d] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL2_R2.fq.gz)
+[6c/e320a9] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadFc2)
+[60/faf2e2] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL3_R1.fq.gz)
+[95/a35ca5] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL4_R1.fq.gz)
+[04/3c7f13] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL4_R2.fq.gz)
+[d2/f38f45] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRF4 (raw))
+[dc/43aa6e] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL3_R2.fq.gz)
+[c8/85f0fa] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL5_R1.fq.gz)
+[3e/41a7e5] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRF1)
+[77/2a23a1] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRF5 (raw))
+[c1/24e2a9] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRF2)
+[9c/5e43ba] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRF1)
+[a6/6dcba4] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRF2)
+[74/939247] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRFL2 (raw))
+[bd/cf4eda] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRFL1 (raw))
+[97/07aefe] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRF3)
+[29/ceb180] Submitted process > RNASEQ:GENERATE_MD5 (MD5: SBQuadRFL5_R2.fq.gz)
+[61/bdabf8] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRFL4 (raw))
+[3f/78fe4e] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRF4)
+[ac/e90509] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRF3)
+[4c/edafdd] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRFL5 (raw))
+[f7/009ca8] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRF4)
+[5b/7064f0] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Mouse / SBQuadRFL3 (raw))
+[03/4a4106] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRF5)
+[b5/b637fe] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRFL1)
+[8d/c205ef] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRF5)
+[6b/7fa780] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRFL1)
+[56/fe70f5] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRFL2)
+[c2/dfa5c7] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRFL3)
+[da/ee1c52] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRFL3)
+[e0/4db7ed] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRFL4)
+[b4/1fd715] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Mouse / SBQuadRFL5)
+[0f/532d81] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRFL2)
+[3f/9316dc] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRFL4)
+[a8/cd12c2] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Mouse / SBQuadRFL5)
+[60/fd2906] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRF1)
+[c8/f60e37] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadFc2)
+[ae/e2e3b5] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRF2)
+[79/4e53bc] Submitted process > RNASEQ:SALMON_STATS (Salmon stats)
+[2a/6ed6aa] Submitted process > RNASEQ:CREATE_TXI (Creating txi: Mouse)
+[57/a55769] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRF3)
+[27/fabe95] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadFc1)
+[33/aea662] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRFL2)
+[c0/abd75d] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRF4)
+[ee/e7c393] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRFL1)
+[2d/9b8bf5] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadFc2)
+[07/b249af] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRF1)
+[a4/71d215] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRF2)
+[88/e60b1b] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadFc1)
+[0f/372589] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRFL2)
+[87/83009d] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRF3)
+[e0/4443a6] Submitted process > RNASEQ:CREATE_DDS (Creating DESeq2 dataset: Mouse)
+[1e/6bc0ba] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRF4)
+[c6/2279dd] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRFL1)
+[c6/d16b78] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRF5)
+[de/9dc7b7] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse / Quadriceps.RFL-Quadriceps.FC)
+[37/b3abb6] Submitted process > RNASEQ:PLOT_DESEQ2_QC (Plotting DESeq2 QC: Mouse)
+[b6/b1cdc8] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Mouse / Quadriceps.RF-Quadriceps.FC)
+[8a/3414a4] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRF5)
+[77/47b7da] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Mouse / Quadriceps.RFL-Quadriceps.FC)
+[df/ff8c95] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Mouse / Quadriceps.RFL-Quadriceps.FC)
+[64/aac467] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Mouse / Quadriceps.RFL-Quadriceps.FC)
+[c4/a5cc69] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Mouse / Quadriceps.RF-Quadriceps.FC)
+[25/596e95] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Mouse / Quadriceps.RF-Quadriceps.FC)
+[85/535296] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Mouse / Quadriceps.RF-Quadriceps.FC)
+[51/a0b2a2] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Mouse / Quadriceps.RF-Quadriceps.FC)
+[4b/4f03d4] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Mouse / Quadriceps.RFL-Quadriceps.FC)
+[0e/32a390] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Mouse / Quadriceps.RFL-Quadriceps.FC)
+[a1/7d427b] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Mouse / Quadriceps.RF-Quadriceps.FC)
+[ca/cb259b] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRFL3)
+[f5/075130] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRFL3)
+[f3/d0a6e0] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadFc3)
+[28/becc36] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadFc3)
+[bc/ac8581] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRFL4)
+[ea/a40f22] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRFL4)
+[bd/28a2a0] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadRFL5)
+[20/6da344] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadRFL5)
+[56/e71d1b] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadFc4)
+[e3/76c4b9] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadFc4)
+[e0/12444d] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Mouse / SBQuadFc6)
+[a4/5a7b35] Submitted process > RNASEQ:STAR_STATS (STAR stats)
+[c9/3b6a78] Submitted process > RNASEQ:MERGE_STAR_COUNTS (Merging STAR counts: Mouse)
+[c2/ae70d8] Submitted process > RNASEQ:DEEP_AUDIT (Auditing results)
+[c6/71a813] Submitted process > RNASEQ:RSEQC (RSeQC: Mouse / SBQuadFc6)
+[d8/d018ba] Submitted process > RNASEQ:MULTIQC (MultiQC: Mouse)

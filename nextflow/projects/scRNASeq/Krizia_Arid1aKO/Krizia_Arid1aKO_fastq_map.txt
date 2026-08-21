@@ -1,0 +1,8 @@
+Bladder_S1_L001_R1_001.fastq.gz    WT_1_S1_L001_R1_001.fastq.gz
+Bladder_S1_L001_R2_001.fastq.gz    WT_1_S1_L001_R2_001.fastq.gz
+Bladder_S1_L002_R1_001.fastq.gz    WT_1_S1_L002_R1_001.fastq.gz
+Bladder_S1_L002_R2_001.fastq.gz    WT_1_S1_L002_R2_001.fastq.gz
+Tumor_S2_L001_R1_001.fastq.gz    Arid1aKO_1_S2_L001_R1_001.fastq.gz
+Tumor_S2_L001_R2_001.fastq.gz    Arid1aKO_1_S2_L001_R2_001.fastq.gz
+Tumor_S2_L002_R1_001.fastq.gz    Arid1aKO_1_S2_L002_R1_001.fastq.gz
+Tumor_S2_L002_R2_001.fastq.gz    Arid1aKO_1_S2_L002_R2_001.fastq.gz

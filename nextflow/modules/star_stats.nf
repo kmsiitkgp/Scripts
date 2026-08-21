@@ -27,7 +27,7 @@ process STAR_STATS {
     // =================================================================================
     script:
     def script_path = "${workflow.projectDir}/modules"
-    def LOG         = "STAR_STATS.error.log"
+    def LOG         = "STAR_STATS.log"
 
     """
     bash ${script_path}/star_stats_collector.sh "${proj_dir}" > ${LOG} 2>&1

@@ -147,7 +147,7 @@ c("Comparisons", "HPrEC2.Control",        "HPrEC1.Control")
 **Parser (this pipeline):**
 ```yaml
 - "HPrEC2.GrowthHormone-HPrEC1.GrowthHormone"   # under GH treatment
-- "HPrEC2.Control-HPrEC1.Control"                # under control
+- "HPrEC2.Control-HPrEC1.Control"               # under control
 ```
 
 ---

@@ -19,6 +19,9 @@ process GENERATE_MD5 {
     tag "MD5: ${fastq}"
     label 'process_low'                           // md5sum is I/O bound; minimal CPU/RAM
 
+    //publishDir { "${params.proj_dir()}" },         mode: 'copy',    pattern: "*.md5"
+    publishDir { "${params.proj_dir()}/reports" }, mode: 'copy',    pattern: "*.log"
+
     // =================================================================================
     // INPUT
     // =================================================================================
@@ -30,14 +33,14 @@ process GENERATE_MD5 {
     // =================================================================================
     output:
     path("${fastq}.md5"),               emit: md5_file     // Per-file MD5 checksum
-    path("GENERATE_MD5.error.log"),     emit: error_log    // Process log
+    path("GENERATE_MD5.log"),     emit: error_log    // Process log
 
     // =================================================================================
     // EXECUTION
     // =================================================================================
     script:
 
-    def LOG = "GENERATE_MD5.error.log"
+    def LOG = "GENERATE_MD5.log"
 
     """
     md5sum "${fastq}" > "${fastq}.md5" \

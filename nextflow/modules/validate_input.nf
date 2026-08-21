@@ -31,6 +31,7 @@ workflow VALIDATE_INPUT {
 
         def fastq_files = fastq_list.sort { it.name }
 
+
         // =================================================================================
         // 1. DEFINE VALID NAMING PATTERN
         // =================================================================================
@@ -39,7 +40,7 @@ workflow VALIDATE_INPUT {
         if (params.expt == "RNASeq") {
             VALID_PATTERN = ~/.*(_Tumor|_Normal)?.*(_[Rr][12]).*\.f(q|astq)\.gz/
         } else if (params.expt == "scRNASeq") {
-            VALID_PATTERN = ~/^([A-Za-z0-9-]+)_S\d+_L\d{3}_(R[12]|I[12])_001\.fastq\.gz$/
+            VALID_PATTERN = ~/^([A-Za-z0-9_]+)_S\d+_L\d{3}_(R[12]|I[12])_001\.fastq\.gz$/
         } else {
             error "❌ Unknown experiment type: ${params.expt}. Options: 'RNASeq', 'scRNASeq'"
         }
@@ -64,19 +65,45 @@ workflow VALIDATE_INPUT {
         // =================================================================================
         // 3. DETECT SEQUENCING MODE (SE vs PE)
         // =================================================================================
+        // For scRNASeq, VALID_PATTERN also accepts I1/I2 (10x Genomics index-read files),
+        // which commonly sit alongside R1/R2 in the same directory. I1/I2 are NOT sequencing
+        // reads and must be excluded from the PE/SE ratio math below - otherwise a directory
+        // containing I1/I2 would never satisfy r1==r2==valid_files/2 and MODE would stay "".
+        // index_files are tracked separately and only used for the consistency check further
+        // down (their count should mirror R1's count when present).
 
         def r1_files = valid_files.findAll { it.name.contains("_r1") }
         def r2_files = valid_files.findAll { it.name.contains("_r2") }
         def R1_files = valid_files.findAll { it.name.contains("_R1") }
         def R2_files = valid_files.findAll { it.name.contains("_R2") }
+        def i1_files = valid_files.findAll { it.name.contains("_i1") }
+        def i2_files = valid_files.findAll { it.name.contains("_i2") }
+        def I1_files = valid_files.findAll { it.name.contains("_I1") }
+        def I2_files = valid_files.findAll { it.name.contains("_I2") }
+
+        // read_files = actual sequencing reads only (R1/R2, either case) - this is the
+        // denominator for PE/SE detection, NOT valid_files (which may also hold I1/I2).
+        def read_files  = r1_files + r2_files + R1_files + R2_files
+        def index_files = i1_files + i2_files + I1_files + I2_files
 
         def MODE = ""
-        if (r1_files.size() == valid_files.size() || R1_files.size() == valid_files.size()) {
+        if (r1_files.size() == read_files.size() || R1_files.size() == read_files.size()) {
             MODE = "SINGLE_END"
-        } else if (r1_files.size() > 0 && r1_files.size() == r2_files.size() && r1_files.size() * 2 == valid_files.size()) {
+        } else if (r1_files.size() > 0 && r1_files.size() == r2_files.size() && r1_files.size() * 2 == read_files.size()) {
             MODE = "PAIRED_END"
-        } else if (R1_files.size() > 0 && R1_files.size() == R2_files.size() && R1_files.size() * 2 == valid_files.size()) {
+        } else if (R1_files.size() > 0 && R1_files.size() == R2_files.size() && R1_files.size() * 2 == read_files.size()) {
             MODE = "PAIRED_END"
+        }
+
+        // Consistency check only (does not fail the run): if index reads are present,
+        // there should be exactly one I1(+I2) set per R1. A mismatch usually means a
+        // partial/corrupted transfer rather than a real naming problem.
+        if (index_files.size() > 0) {
+            def r1_total = r1_files.size() + R1_files.size()
+            def i1_total = i1_files.size() + I1_files.size()
+            if (i1_total != r1_total) {
+                log.warn "⚠️  Index read count (I1: ${i1_total}) does not match R1 count (${r1_total}) - check for missing/extra index files."
+            }
         }
 
         // =================================================================================
@@ -86,14 +113,14 @@ workflow VALIDATE_INPUT {
         def READ1_TAG = ""
         def READ2_TAG = ""
 
-        if      (MODE == "SINGLE_END" && r1_files.size() == valid_files.size()) { READ1_TAG = "_r1" }
-        else if (MODE == "SINGLE_END" && R1_files.size() == valid_files.size()) { READ1_TAG = "_R1" }
-        else if (MODE == "PAIRED_END" && r1_files.size() * 2 == valid_files.size()) { READ1_TAG = "_r1" }
-        else if (MODE == "PAIRED_END" && R1_files.size() * 2 == valid_files.size()) { READ1_TAG = "_R1" }
+        if      (MODE == "SINGLE_END" && r1_files.size() == read_files.size()) { READ1_TAG = "_r1" }
+        else if (MODE == "SINGLE_END" && R1_files.size() == read_files.size()) { READ1_TAG = "_R1" }
+        else if (MODE == "PAIRED_END" && r1_files.size() * 2 == read_files.size()) { READ1_TAG = "_r1" }
+        else if (MODE == "PAIRED_END" && R1_files.size() * 2 == read_files.size()) { READ1_TAG = "_R1" }
 
         if (MODE == "PAIRED_END") {
-            if      (r2_files.size() * 2 == valid_files.size()) { READ2_TAG = "_r2" }
-            else if (R2_files.size() * 2 == valid_files.size()) { READ2_TAG = "_R2" }
+            if      (r2_files.size() * 2 == read_files.size()) { READ2_TAG = "_r2" }
+            else if (R2_files.size() * 2 == read_files.size()) { READ2_TAG = "_R2" }
         }
 
         // =================================================================================
@@ -157,7 +184,9 @@ workflow VALIDATE_INPUT {
              File counts by tag:
                Lowercase → r1: ${r1_files.size()}, r2: ${r2_files.size()}
                Uppercase → R1: ${R1_files.size()}, R2: ${R2_files.size()}
-               Total files   : ${valid_files.size()}
+               Index (I1/I2) : ${index_files.size()} (excluded from PE/SE ratio)
+               Read files    : ${read_files.size()}
+               Total valid   : ${valid_files.size()}
              Solution:
                - Use ONLY _R1/_R2 (or ONLY _r1/_r2)
                - Ensure every R1 has a matching R2 with the same sample name
@@ -170,10 +199,12 @@ workflow VALIDATE_INPUT {
         // 6. COUNT SAMPLES
         // =================================================================================
 
-        def tumor_files  = valid_files.findAll { it.name.contains("_Tumor") }
-        def normal_files = valid_files.findAll { it.name.contains("_Normal") }
+        // NOTE: sample counts are based on read_files (R1/R2 only), not valid_files,
+        // so I1/I2 index-read files (scRNASeq) never inflate the sample count.
+        def tumor_files  = read_files.findAll { it.name.contains("_Tumor") }
+        def normal_files = read_files.findAll { it.name.contains("_Normal") }
 
-        def N_SAMPLES        = (MODE == "PAIRED_END") ? valid_files.size().intdiv(2)  : valid_files.size()
+        def N_SAMPLES        = (MODE == "PAIRED_END") ? read_files.size().intdiv(2)  : read_files.size()
         def N_TUMOR_SAMPLES  = (MODE == "PAIRED_END") ? tumor_files.size().intdiv(2)  : tumor_files.size()
         def N_NORMAL_SAMPLES = (MODE == "PAIRED_END") ? normal_files.size().intdiv(2) : normal_files.size()
 
@@ -250,7 +281,9 @@ workflow VALIDATE_INPUT {
               - Tumor samples    : $N_TUMOR_SAMPLES
               - Normal samples   : $N_NORMAL_SAMPLES
               - Other samples    : ${N_SAMPLES - N_TUMOR_SAMPLES - N_NORMAL_SAMPLES}
-             TOTAL FASTQ FILES   : ${valid_files.size()}
+             READ FILES (R1/R2)  : ${read_files.size()}
+             INDEX FILES (I1/I2) : ${index_files.size()}
+             TOTAL VALID FILES   : ${valid_files.size()}
             ============================================================
         """.stripIndent()
 

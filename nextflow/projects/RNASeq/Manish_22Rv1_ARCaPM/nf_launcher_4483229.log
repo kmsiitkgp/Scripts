@@ -1,0 +1,359 @@
+✅ Configuration file Manish_22Rv1_ARCaPM_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        PROJECT VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+Experiment             : ---             : RNASeq
+Species                : ---             : Human
+Project Name           : ---             : Manish_22Rv1_ARCaPM
+
+Input Reads            : ✔ FOUND       : /common/bhowmicknlab/RNASeq/Manish_22Rv1_ARCaPM/input
+Fastq Map File         : ❌ MISSING     : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_ARCaPM/Manish_22Rv1_ARCaPM_fastq_map.txt
+Metadata File          : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_ARCaPM/Manish_22Rv1_ARCaPM_metadata.xlsx
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_ARCaPM/Manish_22Rv1_ARCaPM_config.yaml
+
+Final Results          : ✔ FOUND       : /home/kailasamms/analysis
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+Image Cache            : ✔ FOUND       : /home/kailasamms/resources/containers
+Ref Genomes            : ✔ FOUND       : /home/kailasamms/resources/genomes
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /common/bhowmicknlab/RNASeq/Manish_22Rv1_ARCaPM/input        -> /common/bhowmicknlab/RNASeq/Manish_22Rv1_ARCaPM/input
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /common --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.1 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Manish_22Rv1_ARCaPM_2026-05-19_12-01-30] DSL2 - revision: 4854fc20c4
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+
+===========================================
+RNA-SEQ PIPELINE
+===========================================
+Experiment               : RNASeq
+Species                  : Human
+Project                  : Manish_22Rv1_ARCaPM
+Mapping File             : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_ARCaPM/Manish_22Rv1_ARCaPM_fastq_map.txt
+Input FastQ Dir          : /common/bhowmicknlab/RNASeq/Manish_22Rv1_ARCaPM/input
+Reference Dir            : /home/kailasamms/resources/genomes
+===========================================
+
+No map file found. Passing raw FASTQs directly to validation.
+==> Validating file naming conventions
+WARN: There's no process matching config selector: CALC_MODULE_SCORES
+WARN: There's no process matching config selector: ANNOTATE_CLUSTERS
+
+ ============================================================
+ FASTQ INPUT VALIDATION SUMMARY
+ ============================================================
+ FILE FORMAT         : fq.gz
+  - .fq.gz           : 48
+  - .fastq.gz        : 0
+------------------------------------------------------------
+ SEQUENCING MODE     : PAIRED_END
+ READ TAGS USED      :
+  - R1 tag           : _R1
+  - R2 tag           : _R2
+ TAG DISTRIBUTION    :
+  - Uppercase (R1/R2): 24 / 24
+  - Lowercase (r1/r2): 0 / 0
+------------------------------------------------------------
+ SAMPLE SUMMARY      :
+  - Total samples    : 24
+  - Tumor samples    : 0
+  - Normal samples   : 0
+  - Other samples    : 24
+ TOTAL FASTQ FILES   : 48
+============================================================
+
+[b7/3e668a] Submitted process > RNASEQ:FETCH_ENSEMBL_VERSIONS (Fetching latest Ensembl metadata for Human)
+[54/498359] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT17_R2.fq.gz)
+[0d/312194] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT5_R2.fq.gz)
+[f9/94b8f4] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT10_R1.fq.gz)
+[8a/541279] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT8_R2.fq.gz)
+[bb/9a3e5b] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT1_R1.fq.gz)
+[d1/865ffc] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT23_R1.fq.gz)
+[25/8cd063] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT17_R1.fq.gz)
+[3d/d9d760] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT2_R2.fq.gz)
+[a2/f14f77] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT13_R2.fq.gz)
+[b2/138c87] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT24_R2.fq.gz)
+[cd/abb9f6] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT10_R2.fq.gz)
+[01/fc982b] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT19_R2.fq.gz)
+[4d/0eda95] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT7_R1.fq.gz)
+[60/982def] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT1_R2.fq.gz)
+[28/9c7ac7] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT13_R1.fq.gz)
+[c3/f4bf0b] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT19_R1.fq.gz)
+[3d/3b1e3a] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT15_R1.fq.gz)
+[ae/a7fe56] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT24_R1.fq.gz)
+[56/d720d2] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT3_R2.fq.gz)
+[aa/0e519c] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT4_R2.fq.gz)
+[d4/14e68b] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT18_R2.fq.gz)
+[1e/0db80b] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT16_R2.fq.gz)
+[43/1f9734] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT6_R1.fq.gz)
+[44/d29534] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT7_R2.fq.gz)
+[5c/8cd408] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT14_R2.fq.gz)
+[e0/807805] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT22_R1.fq.gz)
+[7b/28a874] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT16_R1.fq.gz)
+[7c/925a43] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT6_R2.fq.gz)
+[c3/1c3e77] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT20_R2.fq.gz)
+[85/2cf454] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT4_R1.fq.gz)
+[e1/127c5a] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT9_R2.fq.gz)
+[2f/df5106] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT8_R1.fq.gz)
+[20/3f918c] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT11_R2.fq.gz)
+[39/509524] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT21_R2.fq.gz)
+[b3/7dfa93] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT20_R1.fq.gz)
+[d5/ed39a7] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT11_R1.fq.gz)
+[56/18be8a] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT14_R1.fq.gz)
+[72/cd0bf6] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT9_R1.fq.gz)
+[e7/110334] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT21_R1.fq.gz)
+[8e/34d07f] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT5_R1.fq.gz)
+[8b/a00179] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT3_R1.fq.gz)
+[01/110662] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT15_R2.fq.gz)
+[df/11565e] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT12_R2.fq.gz)
+[d1/c069cd] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT22_R2.fq.gz)
+[3d/fd621d] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT18_R1.fq.gz)
+[86/5ba679] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT12_R1.fq.gz)
+[10/3900c1] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT2_R1.fq.gz)
+[cb/181840] Submitted process > RNASEQ:GENERATE_MD5 (MD5: MT23_R2.fq.gz)
+[skipping] Stored process > RNASEQ:DOWNLOAD_ENSEMBL_REF (1)
+[skipping] Stored process > RNASEQ:RSEQC_BED (1)
+[skipping] Stored process > RNASEQ:STAR_INDEX (1)
+[skipping] Stored process > RNASEQ:CREATE_GENTROME (1)
+[skipping] Stored process > RNASEQ:SALMON_INDEX (1)
+[e7/282eac] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT10)
+[d2/e65f36] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT10)
+[65/6fb8ed] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT11 (raw))
+[23/dc1661] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT11)
+[e7/1bc984] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT11)
+[9d/ff58b7] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT12 (raw))
+[6c/c83728] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT12)
+[57/c7b25e] Submitted process > RNASEQ:CREATE_TX2GENE (Creating tx2gene: Human (GRCh38.115))
+[f8/b02578] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT10 (raw))
+[f5/6f3e0e] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT12)
+[44/a3e32c] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT13)
+[64/b2d54b] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT13 (raw))
+[09/15c3ee] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT15 (raw))
+[69/7ae141] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT14)
+[cf/289d19] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT13)
+[7a/c4355e] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT14)
+[13/506998] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT14 (raw))
+[fc/82a1f0] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT15)
+[73/e223d7] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT16)
+[68/22d42c] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT17 (raw))
+[06/cd142b] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT17)
+[05/ae0d7b] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT16)
+[43/1290bd] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT18 (raw))
+[8c/d02a6c] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT15)
+[7e/4eba0c] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT16 (raw))
+[af/b59bc4] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT17)
+[44/daf2f2] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT19 (raw))
+[23/ff64fa] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT1 (raw))
+[01/bd0b92] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT19)
+[3c/648aae] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT18)
+[a6/6fed84] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT19)
+[25/52c04e] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT1)
+[64/c69b61] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT20 (raw))
+[08/5d6416] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT18)
+[a2/d10c71] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT20)
+[40/146073] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT1)
+[19/2cb02a] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT21 (raw))
+[3d/e43cb9] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT22 (raw))
+[51/8206fc] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT21)
+[14/5fb732] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT23 (raw))
+[71/2c0407] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT22)
+[b6/72f977] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT20)
+[0e/f9d103] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT24 (raw))
+[f8/ff27d3] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT2 (raw))
+[df/5985b7] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT3 (raw))
+[ad/244225] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT23)
+[08/c9f66b] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT5 (raw))
+[53/22bb42] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT24)
+[85/703617] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT6 (raw))
+[fa/229405] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT4 (raw))
+[89/7aba0c] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT21)
+[c8/3d8539] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT2)
+[da/5d11f8] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT22)
+[96/8cb3db] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT3)
+[51/8eb72d] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT24)
+[96/f57138] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT4)
+[1b/8e8bb8] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT23)
+[fe/a879c9] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT8 (raw))
+[6f/621b45] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT5)
+[2d/20cb7c] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT2)
+[21/4d3203] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT7 (raw))
+[a1/48420a] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT6)
+[85/8100ea] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT4)
+[1f/6af0d4] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT3)
+[7e/9d1d5d] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT5)
+[9e/355e6a] Submitted process > RNASEQ:FASTQC_RAW (FastQC: Human / MT9 (raw))
+[bd/2406dd] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT8)
+[36/ece11d] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT7)
+[b3/9d6bed] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT6)
+[ef/dd2807] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT7)
+[a0/967619] Submitted process > RNASEQ:SALMON_QUANT (Salmon quant: Human / MT9)
+[e9/df25d6] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT8)
+[f3/8d0cdb] Submitted process > RNASEQ:STAR_ALIGN (STAR align: Human / MT9)
+[19/ae6ea7] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT11)
+[bd/59a563] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT10)
+[f5/276593] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT12)
+[45/9b5eab] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT13)
+[24/c65218] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT14)
+[c9/ba2110] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT15)
+[2f/7933f4] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT17)
+[60/d1dd40] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT16)
+[16/298ad3] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT19)
+[f8/8f2fe9] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT18)
+[3c/068345] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT1)
+[ec/e680ae] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT20)
+[a6/0a7e0a] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT21)
+[6f/7d2b6e] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT2)
+[86/4a5768] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT24)
+[ec/683352] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT23)
+[12/e6d7ad] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT22)
+[58/def53e] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT4)
+[50/10e287] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT5)
+[98/6779ce] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT3)
+[71/646203] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT6)
+[cc/092849] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT8)
+[f6/0ad052] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT7)
+[89/3415c5] Submitted process > RNASEQ:SAMBAMBA_PREP (BAM prep: Human / MT9)
+[11/f77f99] Submitted process > RNASEQ:MERGE_STAR_COUNTS (Merging STAR counts: Human)
+[6c/f81082] Submitted process > RNASEQ:STAR_STATS (STAR stats)
+[71/fd5c1f] Submitted process > RNASEQ:SALMON_STATS (Salmon stats)
+[78/98ca28] Submitted process > RNASEQ:CREATE_TXI (Creating txi: Human)
+[6c/e04770] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT11)
+[90/bd7317] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT10)
+[d1/700fa5] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT12)
+[3f/0b7fa9] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT13)
+[0a/520125] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT14)
+[af/ed2abe] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT17)
+[74/140788] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT15)
+[91/9a1121] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT16)
+[d3/63ca4d] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT19)
+[3e/b5a214] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT18)
+[5e/974278] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT1)
+[31/645a1c] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT21)
+[47/a6d882] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT20)
+[d4/1728b2] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT2)
+[05/709c9f] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT24)
+[bb/57703c] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT23)
+[b1/10cf68] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT22)
+[75/8b9d22] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT4)
+[86/e230b3] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT5)
+[2b/d74fcc] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT3)
+[75/313f16] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT6)
+[b0/d81a0f] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT8)
+[c6/160b38] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT7)
+[be/cc15db] Submitted process > RNASEQ:RSEQC (RSeQC: Human / MT9)
+[af/aa109f] Submitted process > RNASEQ:CREATE_DDS (Creating DESeq2 dataset: Human)
+[50/bb89ed] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)
+[7d/23fcf5] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / PRDX1_4Gy_ARCaPM-PRDX1_0Gy_ARCaPM)
+[9f/4a6390] Submitted process > RNASEQ:PLOT_DESEQ2_QC (Plotting DESeq2 QC: Human)
+[99/953514] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)
+[a5/0e836e] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / WT_4Gy_ARCaPM-WT_0Gy_ARCaPM)
+[5f/790096] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / PRDX1_4Gy_22Rv1-PRDX1_0Gy_22Rv1)
+[64/987fe9] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / WT_4Gy_22Rv1-WT_0Gy_22Rv1)
+[21/9dd423] Submitted process > RNASEQ:DEEP_AUDIT (Auditing results)
+[d5/6d6e4e] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / PRDX1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[b6/451cc4] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / NDRG1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[42/5a5ccd] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / NDRG1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[66/1d9fca] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / PRDX1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[54/9d3c22] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / NDRG1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[14/4a2abf] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / PRDX1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[5a/7b8d57] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / NDRG1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[d2/aee590] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / PRDX1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[89/544029] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / (NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)-(WT_4Gy_ARCaPM-WT_0Gy_ARCaPM))
+[61/4ce71c] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / (NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)-(WT_4Gy_22Rv1-WT_0Gy_22Rv1))
+[35/96673d] Submitted process > RNASEQ:MULTIQC (MultiQC: Human)
+[c4/b9e006] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)
+[79/957cf1] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)
+[46/a9f1b7] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)
+[af/8deaf8] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)
+[3c/298916] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / PRDX1_4Gy_ARCaPM-PRDX1_0Gy_ARCaPM)
+[f3/411645] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)
+[04/efc57a] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)
+[e2/8ed225] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / PRDX1_4Gy_ARCaPM-PRDX1_0Gy_ARCaPM)
+[5d/3b9a30] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / PRDX1_4Gy_ARCaPM-PRDX1_0Gy_ARCaPM)
+[ec/0320f8] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / WT_4Gy_ARCaPM-WT_0Gy_ARCaPM)
+[44/58c27c] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / WT_4Gy_ARCaPM-WT_0Gy_ARCaPM)
+[95/73c8ce] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / WT_4Gy_ARCaPM-WT_0Gy_ARCaPM)
+[dd/b9035e] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / WT_4Gy_22Rv1-WT_0Gy_22Rv1)
+[e3/9faf57] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / WT_4Gy_22Rv1-WT_0Gy_22Rv1)
+[26/0843b5] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / PRDX1_4Gy_22Rv1-PRDX1_0Gy_22Rv1)
+[0e/893400] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / PRDX1_4Gy_22Rv1-PRDX1_0Gy_22Rv1)
+[3e/fa8692] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / WT_4Gy_22Rv1-WT_0Gy_22Rv1)
+[8e/966769] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / PRDX1_4Gy_22Rv1-PRDX1_0Gy_22Rv1)
+[d0/cead77] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / PRDX1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[28/947440] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / PRDX1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[90/3660cc] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / NDRG1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[04/d89253] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / PRDX1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[28/9f2bef] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / NDRG1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[35/c59c7a] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / NDRG1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[c1/c782f4] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / PRDX1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[d9/835a67] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / NDRG1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[e4/0dc6e2] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / NDRG1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[88/786a05] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / NDRG1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[0b/4b7ef4] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / PRDX1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[3a/b8e19f] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / PRDX1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[f3/d12180] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / PRDX1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[65/754328] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / NDRG1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[53/96b9ab] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / NDRG1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[b8/f5b0e1] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / PRDX1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[e6/e3d923] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / NDRG1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[8b/8ff041] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / NDRG1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[99/c77cb3] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / PRDX1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[97/c608a7] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / PRDX1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[4b/ab4941] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / PRDX1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[bb/aa7be9] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / NDRG1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[77/9c49a4] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / NDRG1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[d2/6dcb74] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / (NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)-(WT_4Gy_ARCaPM-WT_0Gy_ARCaPM))
+[a9/3a5ac5] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / PRDX1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[cb/760a67] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / (NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)-(WT_4Gy_ARCaPM-WT_0Gy_ARCaPM))
+[67/9170b9] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / (NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)-(WT_4Gy_ARCaPM-WT_0Gy_ARCaPM))
+[7f/621076] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / (NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)-(WT_4Gy_22Rv1-WT_0Gy_22Rv1))
+[11/25965d] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / (NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)-(WT_4Gy_22Rv1-WT_0Gy_22Rv1))
+[24/571df5] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / (NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)-(WT_4Gy_22Rv1-WT_0Gy_22Rv1))
+[fd/a92620] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)
+[c9/c8121a] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)
+[67/e2d80b] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)
+[d2/9a9a68] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / PRDX1_4Gy_ARCaPM-PRDX1_0Gy_ARCaPM)
+[aa/fa14db] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / PRDX1_4Gy_ARCaPM-PRDX1_0Gy_ARCaPM)
+[bb/6cdf14] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / WT_4Gy_ARCaPM-WT_0Gy_ARCaPM)
+[a3/cf9923] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)
+[9b/5f7547] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / WT_4Gy_ARCaPM-WT_0Gy_ARCaPM)
+[38/fc817e] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / WT_4Gy_22Rv1-WT_0Gy_22Rv1)
+[98/1ea81c] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / WT_4Gy_22Rv1-WT_0Gy_22Rv1)
+[f8/75f84e] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / PRDX1_4Gy_22Rv1-PRDX1_0Gy_22Rv1)
+[cc/1004a7] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / PRDX1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[41/891fa2] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / PRDX1_4Gy_22Rv1-PRDX1_0Gy_22Rv1)
+[7f/edf173] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / NDRG1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[02/656307] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / NDRG1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[58/563d05] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / PRDX1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[b6/9723f5] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / NDRG1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[d3/7e55d9] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / PRDX1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[8d/585351] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / NDRG1_4Gy_ARCaPM-WT_4Gy_ARCaPM)
+[c2/e79193] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / PRDX1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[b8/5c21c9] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / PRDX1_0Gy_ARCaPM-WT_0Gy_ARCaPM)
+[92/650c6d] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / NDRG1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[6b/f3b72f] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / NDRG1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[8a/724d64] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / PRDX1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[a4/15a043] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / NDRG1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[0c/b90399] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / PRDX1_4Gy_22Rv1-WT_4Gy_22Rv1)
+[88/e7ff28] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / PRDX1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[5c/b7d881] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / (NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)-(WT_4Gy_22Rv1-WT_0Gy_22Rv1))
+[fb/9019d0] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / (NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)-(WT_4Gy_ARCaPM-WT_0Gy_ARCaPM))
+[60/a9f38e] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / NDRG1_0Gy_22Rv1-WT_0Gy_22Rv1)
+[71/12241a] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / (NDRG1_4Gy_ARCaPM-NDRG1_0Gy_ARCaPM)-(WT_4Gy_ARCaPM-WT_0Gy_ARCaPM))
+[a6/0aa75a] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / (NDRG1_4Gy_22Rv1-NDRG1_0Gy_22Rv1)-(WT_4Gy_22Rv1-WT_0Gy_22Rv1))

@@ -1,0 +1,65 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+# =============================================================================
+# GDC Data Transfer Client 2.3 Apptainer Container
+# =============================================================================
+# Prerequisites: gdc-client_2.3_Ubuntu_x64-py3.8-ubuntu-20.04.zip must be in
+#                the same folder as this def file before building.
+#
+# Download from: https://gdc.cancer.gov/access-data/gdc-data-transfer-tool
+#
+# Build command:
+#   sudo apptainer build gdc_client_2.3.sif gdc_client.def 2>&1 | tee build.log
+# =============================================================================
+
+%labels
+    Author      kailasamms
+    Version     2.3
+    Date        2026-04-30
+    Description "GDC Data Transfer Client 2.3"
+
+%files
+    # Copy the zip from the build folder into /opt inside the container
+    gdc-client_2.3_Ubuntu_x64-py3.8-ubuntu-20.04.zip /opt/gdc-client.zip
+
+%post
+    # Install minimal system dependencies needed to run GDC Client
+    # --no-install-recommends keeps the image lean by skipping optional packages
+    apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        locales \
+        unzip \
+        procps
+
+    # GDC Client is double zipped — outer zip extracts another zip, not the binary
+    # So we need to unzip twice to get the actual binary
+    cd /opt
+    unzip gdc-client.zip
+    unzip gdc-client_2.3_Ubuntu_x64.zip
+    rm gdc-client.zip
+    rm gdc-client_2.3_Ubuntu_x64.zip
+
+    # Ensure the gdc-client binary is executable
+    # Unlike cellranger/spaceranger tarballs, zip extraction may not preserve
+    # execute permissions, so this step is especially important here
+    chmod +x /opt/gdc-client
+
+    # Create a symlink so gdc-client is available system-wide without needing
+    # to set PATH explicitly — /usr/local/bin is always in the default PATH
+    ln -s /opt/gdc-client /usr/local/bin/gdc-client
+
+    # Set up locale to avoid warnings from tools that expect UTF-8
+    locale-gen en_US.UTF-8
+    update-locale LANG=en_US.UTF-8
+
+%environment
+    # Set locale environment variables at runtime
+    export LC_ALL=en_US.UTF-8
+    export LANG=en_US.UTF-8
+
+%test
+    # %environment is not sourced during %test, so PATH must be set explicitly
+    export PATH="/opt:$PATH"
+    echo "Testing GDC Client installation..."
+    gdc-client --version

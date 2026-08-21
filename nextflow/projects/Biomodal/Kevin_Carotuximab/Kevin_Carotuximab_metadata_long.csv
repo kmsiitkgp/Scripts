@@ -1,0 +1,10 @@
+﻿sample_id,FileName_ID,Sample_ID,Patient_ID,Cycle,SampleType,Condition,Duration,Group,C1D1,Date of progression,Time to Progression (weeks),reason for progression,Baseline PSA,Best PSA,% change,8 week response,16 week response,24 week response,Pre APA-105 treatment,comments
+676C1,6,676C1,676,C1,cfDNA,Pre,Long,Long_Pre,2/27/2024,4/21/2025,60,PD- bone scan,13.92,11.89,-15%,SD,SD,SD,Enzalutamide,
+676C2,7,676C2,676,C2,cfDNA,Post,Long,Long_Post,2/27/2024,4/21/2025,60,PD- bone scan,13.92,11.89,-15%,SD,SD,SD,Enzalutamide,
+700C1,10,700C1,700,C1,cfDNA,Pre,Long,Long_Pre,4/22/2024,10/6/2025,76,clinical,4.49,2.44,-46%,SD,SD,SD,Abiraterone,
+700C2,11,700C2,700,C2,cfDNA,Post,Long,Long_Post,4/22/2024,10/6/2025,76,clinical,4.49,2.44,-46%,SD,SD,SD,Abiraterone,
+704C1,12,704C1,704,C1,cfDNA,Pre,Long,Long_Pre,5/20/2024,4/27/2026,101,,278.43,57.17,-79%,SD,SD,SD,"Abiraterone, Enzalutamide",
+704C2,13,704C2,704,C2,cfDNA,Post,Long,Long_Post,5/20/2024,4/27/2026,101,,278.43,57.17,-79%,SD,SD,SD,"Abiraterone, Enzalutamide",
+283C1,17,283C1,283,C1,cfDNA,Pre,Long,Long_Pre,8/5/2024,4/27/2026,90,,3.37,0.41,-88%,SD,SD,SD,Abiraterone,
+283C2,18,283C2,283,C2,cfDNA,Post,Long,Long_Post,8/5/2024,4/27/2026,90,,3.37,0.41,-88%,SD,SD,SD,Abiraterone,
+700C3,23,700C3,700,C3,cfDNA,Post,Long,Long_Post,4/22/2024,10/6/2025,76,clinical,4.49,2.44,-46%,SD,SD,SD,Abiraterone,

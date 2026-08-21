@@ -16,9 +16,11 @@ process FASTQC {
     tag "FastQC: ${species} / ${sample_id} (${read_type})"
     label 'process_low'                           // ~250MB RAM, 1-2 CPUs per file
 
-    publishDir { "${params.proj_dir()}/${species}/02.FastQC/${read_type}" },    mode: 'copy',    pattern: "*.html"
-    publishDir { "${params.proj_dir()}/${species}/02.FastQC/${read_type}" },    mode: 'copy',    pattern: "*.zip"
-    publishDir { "${params.proj_dir()}/${species}/07.Logs" },                   mode: 'copy',    pattern: "*.FASTQC.error.log"
+    publishDir = [
+        [path: { "${params.proj_dir()}/${species}/02.FastQC/${read_type}" }, mode: 'copy', pattern: "*.html"],
+        [path: { "${params.proj_dir()}/${species}/02.FastQC/${read_type}" }, mode: 'copy', pattern: "*.zip"],
+        [path: { "${params.proj_dir()}/${species}/Logs" },                   mode: 'copy', pattern: "*.FASTQC.log"]
+    ]
 
     // =================================================================================
     // INPUT
@@ -35,14 +37,14 @@ process FASTQC {
     // =================================================================================
     output:
     tuple val(species), path("*_fastqc.zip"), path("*_fastqc.html"),    emit: fastqc_results    // Parsed by MultiQC
-    path("*.FASTQC.error.log"),                                         emit: error_log         // Process log
+    path("*.FASTQC.log"),                                         emit: error_log         // Process log
 
     // =================================================================================
     // EXECUTION
     // =================================================================================
     script:
 
-    def LOG = "${sample_id}.${read_type}.FASTQC.error.log"
+    def LOG = "${sample_id}.${read_type}.FASTQC.log"
 
     """
     # Run FastQC on all FASTQ files for this sample

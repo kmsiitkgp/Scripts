@@ -1,0 +1,71 @@
+✅ Environment activated: omics
+==========================================================
+Start date      : Thu May 14 14:05:10 PDT 2026
+==========================================================
+REF_DIR         : /home/kailasamms/resources/genomes
+BIO_DIR         : /home/kailasamms/resources/genomes/biomodal
+GTF             : /home/kailasamms/resources/genomes/Homo_sapiens.GRCh38.115.gtf
+CpG islands     : /home/kailasamms/resources/genomes/biomodal/hg38_CpG_islands.bed.gz
+Output subgene  : /home/kailasamms/resources/genomes/GRCh38_v115_biomodal_annotation_subgene.bed.gz
+Output gene     : /home/kailasamms/resources/genomes/GRCh38_v115_biomodal_annotation_gene.bed.gz
+==========================================================
+Checking dependencies...
+✅ bedtools bedtools v2.31.1
+Checking input files...
+✅ GTF: /home/kailasamms/resources/genomes/Homo_sapiens.GRCh38.115.gtf
+✅ CpG islands: /home/kailasamms/resources/genomes/biomodal/hg38_CpG_islands.bed.gz
+--- CpG: Decompressing and filtering CpG islands...
+✅ CpG islands (filtered + sorted): 27949 regions
+--- CpG: Step A — Extracting islands...
+✅ CpG islands: 27949 regions
+--- CpG: Step B — Deriving shores (islands subtracted)...
+✅ CpG shores (islands removed): 61047 regions
+--- CpG: Step C — Deriving shelves (shores + islands subtracted)...
+✅ CpG shelves (shores + islands removed): 48691 regions
+--- SUBGENE: Extracting transcript-level promoters...
+✅ Transcript-level promoters: 293567 regions
+--- SUBGENE: Extracting 5' UTRs...
+✅ 5' UTRs: 426391 regions
+--- SUBGENE: Extracting CDS exons...
+✅ CDS exons: 2282252 regions
+--- SUBGENE: Extracting 3' UTRs...
+✅ 3' UTRs: 340532 regions
+--- SUBGENE: Extracting gene spans (for intron derivation)...
+--- SUBGENE: Deriving introns (gene span minus CDS + 5UTR + 3UTR)...
+✅ Introns: 274398 regions
+--- GENE: Extracting gene bodies and promoters...
+✅ Gene bodies:          20097 regions
+✅ Gene-level promoters: 20097 regions
+Merging subgene-level BED...
+✅ Subgene BED written: 3754827 regions
+Merging gene-level BED...
+✅ Gene-level BED written: 177881 regions
+Compressing...
+Cleaning up temporary files...
+
+==========================================================
+End date        : Thu May 14 14:06:09 PDT 2026
+==========================================================
+✅ Done! Annotation BED files written to: /home/kailasamms/resources/genomes/biomodal
+
+📄 File 1 — Subgene: /home/kailasamms/resources/genomes/GRCh38_v115_biomodal_annotation_subgene.bed.gz
+   Total regions: 3754827
+   Breakdown:
+2282252 Exon
+ 426391 5UTR
+ 340532 3UTR
+ 293567 Promoter
+ 274398 Intron
+  61047 CpG_shore
+  48691 CpG_shelf
+  27949 CpG_island
+
+📄 File 2 — Gene: /home/kailasamms/resources/genomes/GRCh38_v115_biomodal_annotation_gene.bed.gz
+   Total regions: 177881
+   Breakdown:
+  61047 CpG_shore
+  48691 CpG_shelf
+  27949 CpG_island
+  20097 Promoter
+  20097 Gene_body
+==========================================================

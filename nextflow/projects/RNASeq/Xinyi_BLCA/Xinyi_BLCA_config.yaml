@@ -1,0 +1,254 @@
+# =========================================================================================
+# PROJECT CONFIGURATION FILE — UNIFIED TEMPLATE
+# =========================================================================================
+# Usage : nextflow run main.nf -params-file <this_file> -profile sge -resume
+#
+# Works for ALL experiment types:
+#   expt = "RNASeq"   → uses star_align + salmon_quant + deseq2 blocks
+#   expt = "scRNASeq" → uses cellranger_count + scrna blocks
+#   expt = "TCGA"     → uses gdc block
+#
+# Quick Start:
+#   1. Fill in SECTION 1 (Project Metadata) — always required
+#   2. Fill in SECTION 2 (Input Files)      — always required
+#   3. Fill in SECTION 3 (Precomputed Inputs) only if run_mode = "downstream" or "specialized"
+#   4. Fill in SECTION 4 (Analysis) for your experiment type; set others to null
+#   5. Fill in SECTION 5 (Directories)     — always required
+#   6. Leave tool parameter sections (STAR, Salmon, CellRanger) unchanged unless needed
+#
+# run_mode options:
+#   RNASeq   : "upstream"              → FastQC + STAR + Salmon + RSeQC + MultiQC
+#              "downstream"            → DESeq2 + Pathways + TFs  (needs precomputed inputs)
+#              "upstream+downstream"   → full pipeline
+#   scRNASeq : "upstream"              → FastQC + CellRanger + MultiQC
+#              "downstream"            → Seurat QC + integration + annotation (needs precomputed inputs)
+#              "specialized"           → trajectory + pySCENIC etc (needs precomputed inputs)
+#              "upstream+downstream"
+#              "downstream+specialized"
+#              "upstream+downstream+specialized"
+#   TCGA     : "tcga"                  → GDC download + MD5 validate
+#   Any      : "rename"                → rename FASTQs only and stop
+# =========================================================================================
+
+
+# =========================================================================================
+# SECTION 1: PROJECT METADATA                              ← always fill this
+# =========================================================================================
+
+expt:     "RNASeq"               # "RNASeq" | "scRNASeq" | "TCGA"
+species:  "Human"                # "Human"  | "Mouse"    | "Xenograft"
+project:  "Xinyi_BLCA"           # used in output directory naming
+run_mode: "upstream"             # see run_mode options above
+
+
+# =========================================================================================
+# SECTION 2: INPUT FILES                                   ← always fill this
+# =========================================================================================
+
+#read_dir:      "/common/bhowmicknlab/RNASeq/Xinyi_BLCA/input"
+read_dir:      "/home/kailasamms/zprior_analysis/RNASeq_Xinyi/srr"
+yaml_file:     "/home/kailasamms/scripts/nextflow/projects/RNASeq/Xinyi_BLCA/Xinyi_BLCA_config.yaml"
+map_file:      "/home/kailasamms/scripts/nextflow/projects/RNASeq/Xinyi_BLCA/Xinyi_BLCA_fastq_map.txt"
+metadata_file: "/home/kailasamms/scripts/nextflow/projects/RNASeq/Xinyi_BLCA/Xinyi_BLCA_metadata.xlsx"
+
+
+# =========================================================================================
+# SECTION 3: PRECOMPUTED INPUTS                            ← fill only if run_mode starts
+#                                                            with "downstream" or "specialized"
+#                                                            pipeline auto-generates these
+#                                                            for upstream modes
+# =========================================================================================
+
+# --- RNASeq downstream-only ---
+# Required when run_mode = "downstream" for RNASeq
+# Leave as null for scRNASeq or when upstream runs first
+gene_counts: null    # path to dir containing *.ReadsPerGene.out.tab files
+salmon_dir:  null    # path to dir containing per-sample Salmon quant folders
+gtf:         null    # path to GTF file  e.g. Homo_sapiens.GRCh38.115.gtf
+fa:          null    # path to FASTA file e.g. Homo_sapiens.GRCh38.dna.primary_assembly.fa
+
+# --- scRNASeq downstream-only ---
+# Required when run_mode = "downstream" or "downstream+specialized" for scRNASeq
+# Leave as null for RNASeq or when upstream runs first
+cellranger_dir:  null    # path to dir containing per-sample CellRanger output folders
+
+# --- Genome version info ---
+# Auto-detected when upstream runs. Fill manually only for downstream-only modes.
+genome_version: null   # e.g. "GRCh38.115"  or  "GRCh38.2024-A" (10X)
+assembly:       null   # e.g. "GRCh38"
+release:        null   # e.g. "115"  or  "2024-A" (10X)
+
+# --- TCGA inputs ---
+# Required only when expt = "TCGA"
+# Leave as null for RNASeq / scRNASeq
+manifest_file:     null  # GDC manifest file (TSV)
+sample_sheet_file: null  # GDC sample sheet (TSV)
+
+
+# =========================================================================================
+# SECTION 4a: DIFFERENTIAL EXPRESSION                      ← RNASeq only
+#                                                            ignored for scRNASeq / TCGA
+# =========================================================================================
+
+deseq2:
+  design: "0+Comparisons"         # DESeq2 design formula column
+                                  # "0+Column"      → group means, no intercept (recommended for
+                                  #                   multiple group comparisons with makeContrasts)
+                                  # "Batch+Column"  → corrects for batch in the model
+
+  independent_filtering_alpha: 0.1  # DESeq2 internal low-count filter threshold
+                                    # 0.1 recommended; do not set below 0.05
+
+  batch_vars: null                # Metadata column(s) for ComBat-seq batch correction
+                                  # Applied BEFORE DESeq2, not inside the model
+                                  # e.g. ["Batch"]  or  null = no correction
+
+  contrasts:                      # Format: "Numerator-Denominator"
+    - "Treated-Control"           # Each contrast → its own output subfolder
+
+
+# =========================================================================================
+# SECTION 4b: PATHWAY ANALYSIS (GSEA / ORA)               ← RNASeq only
+#                                                            ignored for scRNASeq / TCGA
+# =========================================================================================
+
+gsea:
+  padj_cutoff: 0.05   # FDR threshold for significant pathways
+  top_n: 10           # Top N up + top N down pathways to plot per collection
+
+
+# =========================================================================================
+# SECTION 4c: TF / PATHWAY ACTIVITY (decoupleR)           ← RNASeq only
+#                                                            ignored for scRNASeq / TCGA
+# =========================================================================================
+
+decoupler:
+  top_n: 20           # Top N up + top N down TFs/pathways to plot
+
+
+# =========================================================================================
+# SECTION 4d: HEATMAP SETTINGS                            ← RNASeq + scRNASeq
+#                                                           applied to DEG, pathway,
+#                                                           and TF activity heatmaps
+# =========================================================================================
+
+heatmap:
+  col_annotations: ["Treatment"]   # Metadata columns shown as color bars above heatmap
+                                   # must match column names in metadata_file exactly
+
+  col_cluster_by: "Treatment"      # Column ordering strategy:
+                                   #   "all"          → single unsupervised clustering
+                                   #   "alphabetical" → sort by sample name
+                                   #   "Treatment"    → cluster within each group separately
+
+  heatmap_palette: "rdbu"          # "rdbu" (Red-Blue diverging, recommended for expression)
+                                   # or any viridis variant: "viridis" | "magma" | "plasma" | "inferno"
+
+
+# =========================================================================================
+# SECTION 4e: SCRNA-SEQ ANALYSIS SETTINGS                 ← scRNASeq only
+#                                                            ignored for RNASeq / TCGA
+# =========================================================================================
+
+scrna:
+  read10x:
+    gene_column: 2                 # Column in features.tsv.gz containing gene symbols
+                                   # 1 = Ensembl ID, 2 = gene symbol (default for 10X)
+
+  qc:
+    gene_cutoff:    250            # Min unique genes per cell  (below = empty droplet or debris)
+    umi_cutoff:     500            # Min UMI count per cell     (below = low quality)
+    mito_cutoff:    0.2            # Max mitochondrial fraction (above = dying cell)
+    novelty_cutoff: 0.8            # Min log10(genes)/log10(UMIs) ratio (below = low complexity)
+    ribo_cutoff:    0.05           # Max ribosomal gene fraction (above = stressed cell)
+
+  doubletfinder:
+    pN:    0.25                    # Proportion of artificial doublets to generate (0.25 = standard)
+
+  seurat:
+    cellcycle_marker_file: "/home/kailasamms/scripts/nextflow/projects/resources/Cell_Cycle_Markers.xlsx"
+    celltype_marker_file:  "/home/kailasamms/scripts/nextflow/projects/resources/Cell_Type_Markers.xlsx"
+    sparse_threshold:      5            # Clusters with less than threshold cells will be removed
+    avg_prob_threshold:    0.3
+    delta_threshold:       0.1
+    stability_threshold:   0.9
+
+
+# =========================================================================================
+# SECTION 4f: TCGA DOWNLOAD SETTINGS                      ← TCGA only
+#                                                            ignored for RNASeq / scRNASeq
+# =========================================================================================
+
+gdc:
+  n_processes:     8               # Parallel download connections (GDC recommends ≤8)
+  retry_attempts:  3               # Number of retry attempts on download failure
+
+
+# =========================================================================================
+# SECTION 5: TOOL PARAMETERS — STAR                       ← RNASeq only
+#                                                           leave unchanged unless needed
+# =========================================================================================
+
+star_align:
+  runMode:                    "alignReads"
+  twopassMode:                "Basic"              # 2-pass mapping: improves novel junction detection
+  quantMode:                  "GeneCounts"         # Generate gene counts alongside BAM
+  sjdbOverhang:               100                  # ReadLength - 1; 100 works for 75–150 bp reads
+  readFilesCommand:           "zcat"               # "zcat" for .gz; "cat" for uncompressed
+  outFilterMultimapNmax:      10                   # Discard reads mapping to > 10 loci
+  outFilterMismatchNmax:      999                  # Disable absolute mismatch filter
+  outFilterMismatchNoverReadLmax: 0.04             # Max 4% mismatches per read (active filter)
+  outFilterType:              "BySJout"            # Remove spurious junctions (recommended)
+  alignEndsType:              "Local"              # Soft-clip read ends (handles adapter remnants)
+  alignIntronMin:             20                   # Gaps < 20 bp = deletion, not intron
+  alignIntronMax:             1000000              # Max intron size
+  alignMatesGapMax:           1000000              # Max insert size for paired-end reads
+  outSAMattributes:           "NH HI AS nM MD"     # MD tag required for RSeQC mismatch analysis
+  outSAMunmapped:             "Within"             # Retain unmapped reads in output BAM
+  outSAMtype:                 ["BAM", "SortedByCoordinate"]
+  limitSjdbInsertNsj:         1500000
+
+
+# =========================================================================================
+# SECTION 6: TOOL PARAMETERS — SALMON                     ← RNASeq only
+#                                                           leave unchanged unless needed
+# =========================================================================================
+
+salmon_quant:
+  libType:       "IU"      # "A" = auto-detect strandedness (recommended)
+                          # "IU" = force unstranded if auto-detect fails
+  gcBias:        true     # Correct GC content bias (~2-5% accuracy gain)
+  seqBias:       true     # Correct hexamer priming bias
+  posBias:       true     # Correct positional bias (5'/3' read distribution)
+  numBootstraps: 0        # Bootstrap replicates for uncertainty estimation
+                          # Set to 30 if using sleuth or Swish for DE
+
+
+# =========================================================================================
+# SECTION 7: TOOL PARAMETERS — CELLRANGER                 ← scRNASeq only
+#                                                           leave unchanged unless needed
+# =========================================================================================
+
+cellranger_count:
+  chemistry:                   "auto"    # Library chemistry; "auto" = auto-detect (recommended)
+                                         # Override only if auto-detect fails (e.g. "SC3Pv3")
+  include_introns:             "true"    # Count intronic reads (important for nascent RNA)
+  check_library_compatibility: "true"    # Validate FASTQ library type matches chemistry
+  create_bam:                  "false"   # BAM output; "false" saves significant disk space
+                                         # Set "true" only if you need BAM for downstream tools
+  cell_annotation_model:       "auto"    # 10X cell type annotation model; "auto" = recommended
+  tenx_cloud_token_path:       "/home/kailasamms/resources/tenx_token.txt"
+
+
+# =========================================================================================
+# SECTION 8: OUTPUT DIRECTORIES                           ← always fill this
+# =========================================================================================
+# Output lands at: ${base_dir}/${expt}/${project}/
+# e.g. /home/kailasamms/analysis/RNASeq/Kevin_22Rv1_Xeno/
+#      /home/kailasamms/analysis/scRNASeq/Vera_GHRKO/
+
+base_dir:  "/home/kailasamms/analysis"              # Analysis results (permanent)
+work_dir:  "/home/kailasamms/scratch"               # Nextflow intermediates (safe to delete after run)
+cache_dir: "/home/kailasamms/resources/containers"  # Singularity images (shared across projects)
+ref_dir:   "/home/kailasamms/resources/genomes"     # Reference genomes and indexes (shared)
+gmt_dir:   "/home/kailasamms/resources/signatures"  # GMT gene set files for GSEA/ORA (shared)

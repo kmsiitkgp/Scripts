@@ -1,0 +1,75 @@
+✅ Configuration file Manish_22Rv1_Xeno2_MT5_excluded_config.yaml cleaned.
+--------------------------------------------------------------------------------
+        PROJECT VERIFICATION
+--------------------------------------------------------------------------------
+PARAMETER              : STATUS          : VALUE
+--------------------------------------------------------------------------------
+Experiment             : ---             : RNASeq
+Species                : ---             : Xenograft
+Project Name           : ---             : Manish_22Rv1_Xeno2_MT5_excluded
+
+Input Reads            : ❌ MISSING     : null
+Fastq Map File         : ❌ MISSING     : null
+Metadata File          : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_Xeno2_MT5_excluded/Manish_22Rv1_Xeno2_MT5_excluded_metadata.xlsx
+YAML File              : ✔ FOUND       : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_Xeno2_MT5_excluded/Manish_22Rv1_Xeno2_MT5_excluded_config.yaml
+
+Final Results          : ✔ FOUND       : /home/kailasamms/analysis
+Temporary Files        : ✔ FOUND       : /home/kailasamms/scratch
+Image Cache            : ✔ FOUND       : /home/kailasamms/resources/containers
+Ref Genomes            : ✔ FOUND       : /home/kailasamms/resources/genomes
+--------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Mapping:         : PHYSICAL (Host)                                              -> LOGICAL (Container)
+---------------------------------------------------------------------------------------------------------------
+Raw Reads        : /home/kailasamms/scripts/nextflow/projects/RNASeq/Manish_22Rv1_Xeno2_MT5_excluded/null -> null
+Project Base     : /home/kailasamms/analysis                                    -> /home/kailasamms/analysis
+Temp Work Dir    : /home/kailasamms/scratch                                     -> /home/kailasamms/scratch
+Image Cache      : /home/kailasamms/resources/containers                        -> /home/kailasamms/resources/containers
+Ref Genomes      : /home/kailasamms/resources/genomes                           -> /home/kailasamms/resources/genomes
+---------------------------------------------------------------------------------------------------------------
+Singularity bind flags: --bind /home 
+Loading nextflow/24.10.4.5934
+  Loading requirement: java/jdk11.0.12
+[33mNextflow 26.04.3 is available - Please consider updating your version to it(B[m
+N E X T F L O W  ~  version 24.10.4
+WARN: Missing params file variable: ${base_dir}
+WARN: Missing params file variable: ${expt}
+WARN: Missing params file variable: ${project}
+WARN: It appears you have never run this project before -- Option `-resume` is ignored
+Launching `/home/kailasamms/scripts/nextflow/main.nf` [Manish_22Rv1_Xeno2_MT5_excluded_2026-06-05_12-15-27] DSL2 - revision: 4854fc20c4
+WARN: Access to undefined parameter `cache_dir` -- Initialise it to a default value eg. `params.cache_dir = some_value`
+WARN: There's no process matching config selector: SCRNASEQ:CELLRANGER_COUNT
+WARN: There's no process matching config selector: SCRNASEQ:(?!CELLRANGER_COUNT|.*FASTQC|MULTIQC).*
+WARN: There's no process matching config selector: HMMCOPY_REFWIG
+WARN: There's no process matching config selector: HMMCOPY_READCOUNTER
+WARN: There's no process matching config selector: ICHORCNA_RUN
+[4a/9b43b6] Submitted process > RNASEQ:MERGE_STAR_COUNTS (Merging STAR counts: Human)
+[7a/e267be] Submitted process > RNASEQ:CREATE_TX2GENE (Creating tx2gene: Human (GRCh38.115))
+[c6/341b88] Submitted process > RNASEQ:CREATE_TXI (Creating txi: Human)
+[1f/6b897c] Submitted process > RNASEQ:CREATE_DDS (Creating DESeq2 dataset: Human)
+[db/d39dc0] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / IRR-Vehicle)
+[48/5a4e45] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / SPB_IRR-Vehicle)
+[f6/2b9979] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / SPB-Vehicle)
+[15/81d588] Submitted process > RNASEQ:EXTRACT_DESEQ2_RESULTS (DESeq2 results: Human / SPB_IRR-IRR)
+[bb/cf1658] Submitted process > RNASEQ:PLOT_DESEQ2_QC (Plotting DESeq2 QC: Human)
+[57/a8b9ab] Submitted process > RNASEQ:DEEP_AUDIT (Auditing results)
+[f2/f6f6f9] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / SPB_IRR-Vehicle)
+[9c/78a131] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / SPB_IRR-Vehicle)
+[f7/00fd83] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / SPB_IRR-Vehicle)
+[6c/96e959] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / SPB_IRR-IRR)
+[bd/b3edc6] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / SPB-Vehicle)
+[5a/f72e8a] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / SPB-Vehicle)
+[d6/249ea6] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / SPB-Vehicle)
+[6e/174a4b] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / SPB_IRR-IRR)
+[ba/316b70] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / SPB_IRR-IRR)
+[9a/cc772e] Submitted process > RNASEQ:PLOT_DESEQ2_RESULTS (Plotting DESeq2 results: Human / IRR-Vehicle)
+[5f/4962e5] Submitted process > RNASEQ:ANALYZE_TFS (Pathway analysis: Human / IRR-Vehicle)
+[34/45cabb] Submitted process > RNASEQ:ANALYZE_PATHWAYS (Pathway analysis: Human / IRR-Vehicle)
+[d1/031321] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / IRR-Vehicle)
+[22/2362ae] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / SPB_IRR-IRR)
+[e1/9b37ff] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / SPB_IRR-Vehicle)
+[74/6ec0cb] Submitted process > RNASEQ:PLOT_PATHWAYS (Plotting pathways: Human / SPB-Vehicle)
+[f4/31b8e2] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / SPB-Vehicle)
+[61/d16db5] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / SPB_IRR-IRR)
+[aa/9464f2] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / IRR-Vehicle)
+[45/97df06] Submitted process > RNASEQ:PLOT_TFS (Plotting pathways: Human / SPB_IRR-Vehicle)
